@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>左に進むロボットのアクションゲーム</title>
+<title>ロボ×アド</title>
 <style>
   html, body {
     margin:0; padding:0; width:100%; height:100%;
@@ -276,8 +276,7 @@
     <rect x="27" y="58" width="36" height="42" fill="#9aa5ad" stroke="#000" stroke-width="2"/>
     <rect x="33" y="68" width="8" height="20" fill="#000"/>
   </svg>
-  <h1>ロボットランナー</h1>
-  <div class="subtitle">左へ進んで松明を目指せ！</div>
+  <h1>ロボ×アド</h1>
   <button class="menu-btn" id="btnNew">🆕　はじめから</button>
   <button class="menu-btn" id="btnContinue" style="background:linear-gradient(135deg,#27ae60,#1e8449);color:#fff;box-shadow:0 4px 20px rgba(39,174,96,0.5);">▶️　つづきから</button>
   <div id="onlineMsg"></div>
@@ -556,6 +555,7 @@ function explodeAt(x, y, atk, radius) {
 // シールドシステム
 let shieldActive = false, shieldDuration = 0, shieldReduction = 0.1;
 let shieldFlash = 0; // 被ダメ時エフェクト用
+let shieldFlashDir = 1; // 被ダメ方向（盾を表示する向き）
 let goal = null;
 let startX = 0, startY = 0;
 let solids = [];
@@ -655,68 +655,71 @@ function fireSkill() {
   if (typeof player === 'undefined') return;
   if (!player.skillReady) return;
   if (player.attackAnim) return;
-  if (skillCooldown > 0) return; // クールダウン中は無視
 
-  // 発動と同時に全フラグをロック
-  player.skillReady  = false;
-  player.skillGauge  = 0;
-  player.skillHits   = 0;
-  player.skillTimer  = 0;
-  player.pendingShots = [];
-  skillCooldown = 3.0; // 3秒クールダウン
+  const isShieldClass = player.classId === 'shield';
+
+  if (!isShieldClass) {
+    if (skillCooldown > 0) return; // クールダウン中は無視
+  }
+
+  // 発動と同時に全フラグをロック（タッテンは常に満タン維持するためスキップ）
+  if (!isShieldClass) {
+    player.skillReady  = false;
+    player.skillGauge  = 0;
+    player.skillHits   = 0;
+    player.skillTimer  = 0;
+    player.pendingShots = [];
+    skillCooldown = 3.0; // 3秒クールダウン
+  }
 
   const skillLv  = getSkillLevel(player.classId || 'none').lv;
   const skillAtk = getSkillAtk(player.classId || 'none') * 3;
 
+  // スキル発動確定：経験値+1を付与（発動1回につき1EXP）
+  gainSkillExp(1, player.classId);
+
   if (player.classId === 'shield') {
     const reduction = 0.10 + (skillLv - 1) * (0.40 / 9);
     shieldActive    = true;
-    shieldDuration  = 8 + skillLv;
+    shieldDuration  = Infinity; // 永続（行動するまで解除されない）
     shieldReduction = Math.min(0.5, reduction);
     player.attackAnim = { type:'shield_bash', t:0, duration:0.6 };
 
   } else if (player.classId === 'spear') {
     const count = Math.min(11, 1 + skillLv);
     player.attackAnim = { type:'spear_throw', t:0, duration:1.2 };
-    // 即時全弾発射（遅延なし）
-    for (let i = 0; i < count; i++) {
-      const spread = (i - (count-1)/2) * 0.3;
-      arrows.push({
-        x: player.x + player.w/2,
-        y: player.y + player.h * 0.3,
-        vx: player.facing * TILE * 22,
-        vy: spread * TILE * 8,
-        atk: skillAtk,
-        life: 1.5,
-        trail: [],
-        type: 'spear_throw',
-      });
-    }
+    // 発射フラグ（投擲フェーズに入ったら1度だけ発射）
+    player.attackAnim.spearsFired = false;
+    player.attackAnim.spearCount  = count;
+    player.attackAnim.spearAtk    = skillAtk;
 
   } else if (player.classId === 'bow') {
     const count = Math.min(15, 3 + Math.floor((skillLv - 1) * 12 / 9));
-    player.attackAnim = { type:'bow_rain', t:0, duration:1.0 };
+    const setupDuration = 0.18;      // 構え(セット)にかかる時間
+    const perShotDuration = 0.13;    // 1本あたりの引く→放つサイクル時間
+    const totalDuration = setupDuration + count * perShotDuration;
+    player.attackAnim = {
+      type:'bow_rain', t:0, duration: totalDuration,
+      shotCount: count, setupDuration, perShotDuration,
+    };
     const aliveEnemies = enemies.filter(e => e.alive);
     const targetXs = aliveEnemies.length > 0
       ? aliveEnemies.map(e => e.x + e.w/2)
       : [player.x + player.facing * TILE * 5];
-    // 全弾即時登録（pendingなし）
+    // 各矢が「放つ」タイミング（サイクルの後半70%地点）で発射
     for (let i = 0; i < count; i++) {
       const tx = targetXs[i % targetXs.length] + (Math.random()-0.5)*TILE*3;
-      arrows.push({
-        x: tx + (Math.random()-0.5)*TILE*2,
-        y: player.y - TILE * 6,
-        vx: (Math.random()-0.5)*TILE*2,
-        vy: TILE * 6 + Math.random() * TILE * 4,
+      const releaseAt = setupDuration + i * perShotDuration + perShotDuration * 0.7;
+      player.pendingShots.push({
+        delay: releaseAt,
+        targetX: tx + (Math.random()-0.5)*TILE*2,
         atk: skillAtk,
-        life: 2.0,
-        trail: [],
         type: 'rain',
       });
     }
 
   } else {
-    player.attackAnim = { type:'punch', t:0, duration:0.4 };
+    player.attackAnim = { type:'punch_giant', t:0, duration:0.6 };
     const range = TILE * 3.0;
     for (const e of enemies) {
       if (!e.alive) continue;
@@ -839,8 +842,8 @@ const CLASS_DEFS = {
     baseHp:18, baseAtk:1, baseSpd:0.85,
     hpPerLv:4, atkPerLv:0.5,
     skill: {
-      name:'シールドバッシュ', icon:'🛡️',
-      desc:'盾で強打。ダメージは低いが確実に当てる。',
+      name:'インビジブルシールド', icon:'🛡️',
+      desc:'味方全体に見えないシールドを付与、ダメージを軽減する。',
       baseAtk:1, atkPerLv:0.8,
       range:1.8, cooldown:0.5,
     },
@@ -853,10 +856,10 @@ const CLASS_DEFS = {
     baseHp:12, baseAtk:3, baseSpd:0.95,
     hpPerLv:3, atkPerLv:1.5,
     skill: {
-      name:'スラスト', icon:'🔱',
-      desc:'槍を突き出す。リーチが長い。',
+      name:'スローランス', icon:'🔱',
+      desc:'着弾時に小爆発を起こす槍を敵に投げつける。',
       baseAtk:3, atkPerLv:1.5,
-      range:0.7, cooldown:0.5,
+      range:1.8, cooldown:0.5,
     },
   },
   bow: {
@@ -867,8 +870,8 @@ const CLASS_DEFS = {
     baseHp:8,  baseAtk:4, baseSpd:1.2,
     hpPerLv:2, atkPerLv:2,
     skill: {
-      name:'アロー', icon:'🏹',
-      desc:'矢を放つ。遠距離から攻撃できる。',
+      name:'レインアロー', icon:'🏹',
+      desc:'敵に矢の雨を降らせる。',
       baseAtk:4, atkPerLv:2,
       range:5.0, cooldown:0.6,
     },
@@ -900,20 +903,26 @@ let skillData = loadSkillData(); // { classId: { lv, exp } }
 function getSkillLevel(classId) {
   return skillData[classId] || { lv:1, exp:0 };
 }
-function skillExpToNextLv(lv) { return lv * 15; } // スキルLvアップ必要EXP（クラスより少なめ）
+function skillExpToNextLv(lv) {
+  // スキルLvアップ必要EXP（Lv1〜4は100、Lv5以降は100ずつ増加）
+  if (lv < 5) return 100;
+  return 100 * (lv - 3); // Lv5→6:200, Lv6→7:300, Lv7→8:400, Lv8→9:500, Lv9→10:600
+}
 function getSkillAtk(classId) {
   const cls = CLASS_DEFS[classId] || CLASS_DEFS.none;
   const slv = getSkillLevel(classId).lv;
   return Math.floor(cls.skill.baseAtk + cls.skill.atkPerLv * (slv - 1)) || 1;
 }
-function gainSkillExp(amount) {
-  const id = currentClassId;
+function gainSkillExp(amount, classId) {
+  const id = classId || currentClassId;
   if (!skillData[id]) skillData[id] = { lv:1, exp:0 };
+  if (skillData[id].lv >= 10) return; // 最大Lvでは加算不要
   skillData[id].exp += amount;
-  while (skillData[id].exp >= skillExpToNextLv(skillData[id].lv)) {
+  while (skillData[id].lv < 10 && skillData[id].exp >= skillExpToNextLv(skillData[id].lv)) {
     skillData[id].exp -= skillExpToNextLv(skillData[id].lv);
     skillData[id].lv = Math.min(10, skillData[id].lv + 1);
   }
+  if (skillData[id].lv >= 10) skillData[id].exp = 0; // MAX到達後は余剰EXPを切り捨て
   saveSkillData(skillData);
 }
 
@@ -993,6 +1002,9 @@ const SPEAR_SVG_LG = `<svg width="22" height="22" viewBox="0 0 22 22" style="ver
 
 let score = 0;
 let gameState = 'playing';
+const QUEST_TIME_LIMIT = 180; // クエスト制限時間（秒）= 3分
+let questTimeLeft = QUEST_TIME_LIMIT;
+let isTimeUpLose = false; // タイムアップによるゲームオーバーか
 let camX = Math.max(0, Math.min(startX - canvas.width/2 + ROBOT.w/2, WORLD_W - canvas.width));
 
 function rectsOverlap(a,b){
@@ -1002,6 +1014,15 @@ function rectsOverlap(a,b){
 function update(dt){
   if (gameState !== 'playing') {
     if (keys['Enter']) { goHome(); }
+    return;
+  }
+
+  // ===== クエスト制限時間 =====
+  questTimeLeft -= dt;
+  if (questTimeLeft <= 0) {
+    questTimeLeft = 0;
+    gameState = 'lose';
+    isTimeUpLose = true;
     return;
   }
 
@@ -1016,6 +1037,15 @@ function update(dt){
   // 移動中は攻撃アニメキャンセル
   if (moveDir !== 0) {
     player.attackAnim = null;
+  }
+
+  // タッテンのシールド：移動・ジャンプ・通常攻撃で解除
+  if (player.classId === 'shield' && shieldActive) {
+    const willAttack = (keys['KeyX'] || keys['KeyZ']) && player.attackTimer <= 0 && !player.attackAnim;
+    if (moveDir !== 0 || (jumpKeyDown && player.onGround) || willAttack) {
+      shieldActive = false;
+      shieldDuration = 0;
+    }
   }
 
   player.vx = moveDir * MOVE_SPEED;
@@ -1033,6 +1063,70 @@ function update(dt){
   // 攻撃アニメ更新
   if (player.attackAnim) {
     player.attackAnim.t += dt;
+
+    // spear_throw: リリースフェーズ(45%)到達時に1度だけ槍を発射
+    if (player.attackAnim.type === 'spear_throw' && !player.attackAnim.spearsFired) {
+      const ta = player.attackAnim.t / player.attackAnim.duration;
+      if (ta >= 0.45) {
+        player.attackAnim.spearsFired = true;
+        const count = player.attackAnim.spearCount || 1;
+        const spearAtk = player.attackAnim.spearAtk || 1;
+        for (let i = 0; i < count; i++) {
+          const spread = (i - (count-1)/2) * 0.3;
+          arrows.push({
+            x: player.x + player.w/2,
+            y: player.y + player.h * 0.3,
+            vx: player.facing * TILE * 22,
+            vy: spread * TILE * 8,
+            atk: spearAtk,
+            life: 1.5,
+            trail: [],
+            type: 'spear_throw',
+          });
+        }
+      }
+    }
+
+    // bow: リリースフェーズ(55%)到達時に1度だけ矢を発射
+    if (player.attackAnim.type === 'bow' && !player.attackAnim.arrowFired) {
+      const ta = player.attackAnim.t / player.attackAnim.duration;
+      if (ta >= 0.55) {
+        player.attackAnim.arrowFired = true;
+        arrows.push({
+          x: player.x + player.w/2,
+          y: player.y + player.h * 0.35,
+          vx: player.facing * TILE * 14,
+          vy: -TILE * 1.8,
+          atk: player.attackAnim.arrowAtk || 1,
+          life: 1.6,
+          trail: [],
+          type: 'normal',
+        });
+      }
+    }
+
+    // sword_slash: 振り下ろしの中間地点(50%)で1度だけ当たり判定
+    if (player.attackAnim.type === 'sword_slash' && !player.attackAnim.hitChecked) {
+      const ta = player.attackAnim.t / player.attackAnim.duration;
+      if (ta >= 0.50) {
+        player.attackAnim.hitChecked = true;
+        const range = player.attackAnim.hitRange || TILE * 1.8;
+        const swordAtk = player.attackAnim.hitAtk || 1;
+        let shieldHit = false;
+        for (const e of enemies) {
+          if (!e.alive) continue;
+          const dx = (e.x+e.w/2)-(player.x+player.w/2);
+          const dy = Math.abs((e.y+e.h/2)-(player.y+player.h/2));
+          if (Math.sign(dx)===player.facing && Math.abs(dx)<range && dy<TILE*1.5) {
+            e.hp -= swordAtk; e.dmgFlash=0.2;
+            if (e.hp<=0){e.alive=false;score+=e.type==='large'?500:200;}
+            shieldHit = true;
+          }
+        }
+        if (shieldHit) addGaugeHit(1);
+      }
+    }
+
     if (player.attackAnim.t >= player.attackAnim.duration) {
       player.attackAnim = null;
     }
@@ -1047,22 +1141,13 @@ function update(dt){
 
     if (player.classId === 'bow') {
       player.attackTimer = 1.8;
-      player.attackAnim = { type:'bow', t:0, duration:1.8 };
-      arrows.push({
-        x: player.x + player.w/2,
-        y: player.y + player.h * 0.35,
-        vx: player.facing * TILE * 14,
-        vy: -TILE * 4,
-        atk: skillAtk,
-        life: 1.6,
-        trail: [],
-        type: 'normal',
-      });
+      player.attackAnim = { type:'bow', t:0, duration:1.8, arrowFired:false, arrowAtk:skillAtk };
 
     } else if (player.classId === 'spear') {
       player.attackTimer = Math.max(_skill.cooldown, 1.2);
       player.attackAnim = { type:'spear_thrust', t:0, duration:0.5 };
       const range = TILE * _skill.range;
+      let spearHit = false;
       for (const e of enemies) {
         if (!e.alive) continue;
         const dx = (e.x+e.w/2)-(player.x+player.w/2);
@@ -1070,29 +1155,23 @@ function update(dt){
         if (Math.sign(dx)===player.facing && Math.abs(dx)<range && dy<TILE*1.2) {
           e.hp -= skillAtk; e.dmgFlash=0.2;
           if (e.hp<=0){e.alive=false;score+=e.type==='large'?500:200;}
+          spearHit = true;
         }
       }
-      addGaugeHit(1);
+      if (spearHit) addGaugeHit(1); // ヒット時のみゲージ付与
 
     } else if (player.classId === 'shield') {
       player.attackTimer = _skill.cooldown;
-      player.attackAnim = { type:'sword_slash', t:0, duration:0.35 };
-      const range = TILE * _skill.range;
-      for (const e of enemies) {
-        if (!e.alive) continue;
-        const dx = (e.x+e.w/2)-(player.x+player.w/2);
-        const dy = Math.abs((e.y+e.h/2)-(player.y+player.h/2));
-        if (Math.sign(dx)===player.facing && Math.abs(dx)<range && dy<TILE*1.5) {
-          e.hp -= skillAtk; e.dmgFlash=0.2;
-          if (e.hp<=0){e.alive=false;score+=e.type==='large'?500:200;}
-        }
-      }
-      addGaugeHit(1);
+      player.attackAnim = {
+        type:'sword_slash', t:0, duration:0.5,
+        hitChecked:false, hitAtk:skillAtk, hitRange:TILE * _skill.range,
+      };
 
     } else {
       player.attackTimer = _skill.cooldown;
       player.attackAnim = { type:'punch', t:0, duration:0.25 };
       const range = TILE * _skill.range;
+      let noneHit = false;
       for (const e of enemies) {
         if (!e.alive) continue;
         const dx = (e.x+e.w/2)-(player.x+player.w/2);
@@ -1100,9 +1179,74 @@ function update(dt){
         if (Math.sign(dx)===player.facing && Math.abs(dx)<range && dy<TILE*1.5) {
           e.hp -= skillAtk; e.dmgFlash=0.18;
           if (e.hp<=0){e.alive=false;score+=e.type==='large'?500:200;}
+          noneHit = true;
         }
       }
-      addGaugeHit(1);
+      if (noneHit) addGaugeHit(1); // ヒット時のみゲージ付与
+    }
+  }
+
+  // ===== pendingShots（時間差発射キュー）処理 =====
+  // 安全装置：1回のスキルで最大15発までしかキューに入らない設計（fireSkill側で保証済み）
+  if (player.pendingShots && player.pendingShots.length > 0) {
+    // 念のための絶対上限（バグ時の暴走防止）
+    if (player.pendingShots.length > 20) {
+      player.pendingShots.length = 20;
+    }
+    for (let i = player.pendingShots.length - 1; i >= 0; i--) {
+      const s = player.pendingShots[i];
+      s.delay -= dt;
+      if (s.delay <= 0) {
+        if (arrows.length < 60) { // 矢の総数も二重に保護
+          // 第1段階：プレイヤー頭上から画面上端へ向けて打ち上げる（rise_up）
+          // 画面上端到達後、若干のタイムラグを経て第2段階（rain）が画面上から降ってくる
+          const startX = player.x + player.w/2;
+          const startY = player.y - TILE * 2.2; // 打ち上げエフェクトの終点に合わせる
+          const riseDistance = TILE * 9; // 画面上端までの目安距離
+          const riseTime = 0.45; // 上昇〜フェードアウトにかかる時間
+          const vyRise = -(riseDistance / riseTime);
+
+          arrows.push({
+            x: startX,
+            y: startY,
+            vx: 0,
+            vy: vyRise,
+            atk: s.atk,
+            life: riseTime, // この時間で自然消滅（フェードアウト）
+            trail: [],
+            type: 'rise_up',
+            fadeLife: riseTime, // フェード計算用に元の寿命を保持
+            // 降下フェーズの予約情報
+            landX: s.targetX,
+            fallDelay: 0.35, // 上昇終了からの追加タイムラグ（降り注ぐまでの間）
+            fallAtk: s.atk,
+          });
+        }
+        player.pendingShots.splice(i, 1);
+      }
+    }
+  }
+
+  // ===== rise_up矢が消滅した後、タイムラグを経てrain矢を画面上から降らせる =====
+  if (!window.fallingQueue) window.fallingQueue = [];
+  if (window.fallingQueue.length > 200) window.fallingQueue.length = 200; // 安全上限
+  for (let i = window.fallingQueue.length - 1; i >= 0; i--) {
+    const fq = window.fallingQueue[i];
+    fq.delay -= dt;
+    if (fq.delay <= 0) {
+      if (arrows.length < 60) {
+        arrows.push({
+          x: fq.landX + (Math.random()-0.5) * TILE * 1.5,
+          y: player.y - TILE * 8, // 画面上端付近から降下開始
+          vx: (Math.random()-0.5) * TILE * 1.2,
+          vy: TILE * 3,
+          atk: fq.atk,
+          life: 2.0,
+          trail: [],
+          type: 'rain',
+        });
+      }
+      window.fallingQueue.splice(i, 1);
     }
   }
 
@@ -1111,7 +1255,28 @@ function update(dt){
   for (let i = arrows.length - 1; i >= 0; i--) {
     const a = arrows[i];
     a.life -= dt;
-    if (a.life <= 0) { arrows.splice(i, 1); continue; }
+    if (a.life <= 0) {
+      // rise_up矢が寿命を迎えたら、タイムラグ後に降り注ぐ矢を予約
+      if (a.type === 'rise_up') {
+        if (!window.fallingQueue) window.fallingQueue = [];
+        window.fallingQueue.push({
+          delay: a.fallDelay || 0.35,
+          landX: a.landX,
+          atk: a.fallAtk || a.atk,
+        });
+      }
+      arrows.splice(i, 1);
+      continue;
+    }
+    // rise_up矢：重力を受けず直進、当たり判定なし、life経過でフェードアウト消滅
+    if (a.type === 'rise_up') {
+      a.trail.push({ x: a.x, y: a.y });
+      if (a.trail.length > 4) a.trail.shift();
+      a.x += a.vx * dt;
+      a.y += a.vy * dt;
+      continue;
+    }
+
     a.trail.push({ x: a.x, y: a.y });
     if (a.trail.length > 4) a.trail.shift();
     a.x += a.vx * dt;
@@ -1152,8 +1317,13 @@ function update(dt){
     window.explosions[i].t += dt;
     if (window.explosions[i].t > 0.5) window.explosions.splice(i,1);
   }
-  // スキルゲージ減少
-  if (player.skillTimer > 0) {
+  // スキルゲージ減少（タッテンは常に満タン維持・減少しない）
+  if (player.classId === 'shield') {
+    player.skillGauge = 1;
+    player.skillReady = true;
+    player.skillHits  = 3;
+    player.skillTimer = 0;
+  } else if (player.skillTimer > 0) {
     player.skillTimer -= dt;
     player.skillGauge = player.skillTimer / 3.0;
     if (player.skillTimer <= 0) {
@@ -1273,7 +1443,11 @@ function update(dt){
       if (dx < attackReach && dy < e.h * 1.0) {
         let dmg = e.type === 'large' ? 10 : 2;
         // シールド軽減
-        if (shieldActive) { dmg = Math.max(1, Math.floor(dmg * (1 - shieldReduction))); shieldFlash = 0.4; }
+        if (shieldActive) {
+          dmg = Math.max(1, Math.floor(dmg * (1 - shieldReduction)));
+          shieldFlash = 0.6;
+          shieldFlashDir = Math.sign((e.x + e.w/2) - (player.x + player.w/2)) || player.facing;
+        }
         player.hp -= dmg;
         player.dmgFlash = 0.4;
         player.invTimer = 1.2;
@@ -1285,15 +1459,6 @@ function update(dt){
     }
 
     if (rectsOverlap(player, e)) {
-      // 踏みつけ判定
-      if (player.vy > 0 && (player.y + player.h) - e.y < 14) {
-        e.hp = 0;
-        e.alive = false;
-        player.vy = ROBOT.jumpVel * 0.6;
-        score += e.type === 'large' ? 500 : 200;
-        continue;
-      }
-
       // 通常接触：押し返し（攻撃フェーズ中は無敵時間で処理済なのでスキップ）
       if (e.phase !== 'attack') {
         const overlapLeft   = (player.x + player.w) - e.x;
@@ -1323,7 +1488,6 @@ function update(dt){
   if (goal && rectsOverlap(player, goal)) {
     gameState = 'win';
     gainExp(QUEST_CLEAR_EXP);
-    gainSkillExp(QUEST_CLEAR_EXP);
     localStorage.removeItem(SAVE_KEY);
     refreshContinueBtn();
   }
@@ -1349,8 +1513,9 @@ function resetGame(){
   player.attackAnim = null; player.autoMove = null;
   player.pendingShots = [];
   arrows = [];
+  window.fallingQueue = [];
   skillCooldown = 0;
-  shieldActive = false; shieldDuration = 0; shieldFlash = 0;
+  shieldActive = false; shieldDuration = 0; shieldFlash = 0; shieldFlashDir = 1;
   window.explosions = [];
   for (const c of coins) c.got = false;
   for (const e of enemies) {
@@ -1362,6 +1527,8 @@ function resetGame(){
   }
   score = 0;
   gameState = 'playing';
+  questTimeLeft = QUEST_TIME_LIMIT;
+  isTimeUpLose = false;
   msgEl.textContent = '';
 }
 
@@ -1624,7 +1791,7 @@ function drawBird(p, cfg){
   }
 
   if (cls.id === 'none') {
-    drawCourseMumei(ctx, cx, baseY, W, H, m < 0);
+    drawCourseMumei(ctx, cx, baseY, W, H, m < 0, player.attackAnim);
   } else {
     drawCourseGeneric(ctx, cx, baseY, W, H, cls, player.attackAnim);
   }
@@ -1633,7 +1800,7 @@ function drawBird(p, cfg){
 }
 
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
-function drawCourseMumei(c, cx, baseY, W, H, flipped) {
+function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
   const u = W / 48;
   const headW = W * 0.55, headH = H * 0.32;
   const bodyW = W * 0.38;
@@ -1642,12 +1809,53 @@ function drawCourseMumei(c, cx, baseY, W, H, flipped) {
   const bodyTop  = headTop + headH + 2*u;
   const bodyH = baseY - bodyTop;
 
+  // パンチモーション判定（通常 / 巨大化スキル）
+  const isPunching = attackAnim && attackAnim.type === 'punch';
+  const isGiantPunching = attackAnim && attackAnim.type === 'punch_giant';
+  const punchT = (isPunching || isGiantPunching) ? attackAnim.t / attackAnim.duration : 0;
+  // 0→1→0で前に突き出して戻る（sin波）
+  const punchProgress = (isPunching || isGiantPunching) ? Math.sin(Math.min(1, punchT) * Math.PI) : 0;
+  const punchExtend = punchProgress * W * 0.42; // 突き出し量
+  // 巨大化倍率（最大：スライム大の頭よりやや小さいサイズ）
+  const giantScale = isGiantPunching ? 1 + punchProgress * 5.4 : 1;
+
   // 腕（左右）
   c.fillStyle = '#c8d4de';
+  // 左腕（軸足側・固定）
   c.beginPath(); c.roundRect(cx - bodyW/2 - armW, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
   c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
-  c.beginPath(); c.roundRect(cx + bodyW/2, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
+
+  // 右腕（パンチを繰り出す側：前方に伸びる。巨大化時は太さも増す）
+  const armWGiant = armW * (1 + (giantScale-1) * 0.6);
+  c.beginPath();
+  c.roundRect(cx + bodyW/2 + punchExtend, bodyTop + bodyH*0.08, armWGiant + punchExtend*0.3, armH, 3*u);
+  c.fill();
   c.stroke();
+
+  // パンチ時：拳の強調（先端に丸い拳）
+  if ((isPunching || isGiantPunching) && punchProgress > 0.1) {
+    const fistX = cx + bodyW/2 + punchExtend + armWGiant + punchExtend*0.3;
+    const fistY = bodyTop + bodyH*0.08 + armH/2;
+    const fistR = armW * 0.55 * giantScale; // 巨大化時は拳も大きく（見た目は通常と同じ）
+
+    c.fillStyle = '#dde8f0';
+    c.beginPath(); c.arc(fistX, fistY, fistR, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
+
+    // 衝撃線（通常・巨大共通デザイン。サイズのみfistRに連動）
+    if (punchProgress > 0.5) {
+      c.globalAlpha = (punchProgress - 0.5) * 1.6;
+      c.strokeStyle = '#ffe066'; c.lineWidth = 2*u; c.lineCap = 'round';
+      for (let k = 0; k < 3; k++) {
+        const ang = -0.4 + k * 0.4;
+        c.beginPath();
+        c.moveTo(fistX + Math.cos(ang)*fistR*1.1, fistY + Math.sin(ang)*fistR*1.1);
+        c.lineTo(fistX + Math.cos(ang)*fistR*1.7, fistY + Math.sin(ang)*fistR*1.7);
+        c.stroke();
+      }
+      c.globalAlpha = 1;
+    }
+  }
 
   // 胴体
   c.fillStyle = '#dde8f0';
@@ -1700,11 +1908,56 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
   const bodyH    = baseY - bodyTop;
 
   // 腕（左右）
+  const isBowRainArm = cls.weapon === 'bow' && attackAnim && attackAnim.type === 'bow_rain';
+  let bowArmT = 0, rightArmAngle = 0, leftArmPull = 0;
+  if (isBowRainArm) {
+    const setupDur = attackAnim.setupDuration || 0.18;
+    const shotDur  = attackAnim.perShotDuration || 0.13;
+    if (attackAnim.t < setupDur) {
+      // セット：構えに入る
+      bowArmT = attackAnim.t / setupDur;
+      rightArmAngle = -Math.PI * 0.85 * bowArmT;
+      leftArmPull   = bowArmT * 5*u;
+    } else {
+      // 矢ごとの引く→放つサイクル
+      const cycleT = (attackAnim.t - setupDur) % shotDur;
+      const cycleP = cycleT / shotDur; // 0→1
+      rightArmAngle = -Math.PI * 0.85; // 右腕（弓を持つ側）は頭上構え固定
+      // 左腕（弦を引く側）：0→0.7で引き込み(0→最大)、0.7→1で素早く放つ(最大→0)
+      let pull;
+      if (cycleP < 0.7) {
+        const p = cycleP / 0.7;
+        pull = 1 - Math.pow(1 - p, 2); // ease-out（滑らかに引く）
+      } else {
+        const p = (cycleP - 0.7) / 0.3;
+        pull = (1 - p*p); // ease-in（素早く放つ）
+      }
+      leftArmPull = pull * 8*u; // 引き幅を少し大きく
+    }
+  }
+
   c.fillStyle = cls.color;
-  c.beginPath(); c.roundRect(cx - bodyW/2 - armW, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
+  // 左腕（弦を引く・後方に下がる）
+  c.beginPath(); c.roundRect(cx - bodyW/2 - armW - leftArmPull, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
   c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
-  c.beginPath(); c.roundRect(cx + bodyW/2, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
-  c.stroke();
+
+  // 右腕（spear_throw/sword_slash中は専用描画内で腕を描くのでスキップ）
+  const isThrowingArm = cls.weapon === 'spear' && attackAnim && attackAnim.type === 'spear_throw';
+  const isSlashingArm = cls.weapon === 'sword_shield' && attackAnim && attackAnim.type === 'sword_slash';
+  if (isBowRainArm) {
+    c.save();
+    const armPivotX = cx + bodyW/2 + armW/2;
+    const armPivotY = bodyTop + bodyH*0.08;
+    c.translate(armPivotX, armPivotY);
+    c.rotate(rightArmAngle);
+    c.translate(-armPivotX, -armPivotY);
+    c.beginPath(); c.roundRect(cx + bodyW/2, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
+    c.stroke();
+    c.restore();
+  } else if (!isThrowingArm && !isSlashingArm) {
+    c.beginPath(); c.roundRect(cx + bodyW/2, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
+    c.stroke();
+  }
 
   // 胴体
   c.fillStyle = cls.color;
@@ -1751,30 +2004,179 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
   // ===== 武器描画 =====
   const wy = bodyTop + bodyH * 0.25;
   if (cls.weapon === 'sword_shield') {
-    // 短剣（左腕の外側・後方）
-    const kx = cx - bodyW/2 - W*0.12 - 6*u;
-    const ky = bodyTop + bodyH*0.08;
-    c.fillStyle = '#c8c8c8'; c.fillRect(kx, ky, 3*u, 18*u);
-    c.fillStyle = '#c0a000'; c.fillRect(kx - 4*u, ky + 18*u, 11*u, 3*u);
-    c.fillStyle = '#8b5a2b'; c.fillRect(kx + 0.5*u, ky + 21*u, 2*u, 8*u);
-    c.strokeStyle = '#666'; c.lineWidth = 0.5*u; c.strokeRect(kx, ky, 3*u, 18*u);
-    // 盾（右腕の外側・前方）
-    const sX = cx + bodyW/2 + W*0.12 + 9*u;
-    const sY = bodyTop + bodyH*0.05;
-    c.fillStyle = '#3a5fbb';
-    c.beginPath();
-    c.moveTo(sX,        sY);
-    c.lineTo(sX + 9*u,  sY + 5*u);
-    c.lineTo(sX + 9*u,  sY + 18*u);
-    c.lineTo(sX,        sY + 23*u);
-    c.lineTo(sX - 5*u,  sY + 18*u);
-    c.lineTo(sX - 5*u,  sY + 5*u);
-    c.closePath(); c.fill();
-    c.strokeStyle = cls.accentColor; c.lineWidth = 1.2*u; c.stroke();
-    // 盾の紋章
-    c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1*u;
-    c.beginPath(); c.moveTo(sX + 4*u, sY + 6*u); c.lineTo(sX + 4*u, sY + 17*u); c.stroke();
-    c.beginPath(); c.moveTo(sX - 4*u, sY + 11*u); c.lineTo(sX + 8*u, sY + 11*u); c.stroke();
+    const isSlashing = attackAnim && attackAnim.type === 'sword_slash';
+    const slashT = isSlashing ? Math.min(1, attackAnim.t / attackAnim.duration) : 0;
+    const isShieldBash = attackAnim && attackAnim.type === 'shield_bash';
+    const bashT = isShieldBash ? Math.min(1, attackAnim.t / attackAnim.duration) : 0;
+
+    if (isShieldBash) {
+      // ===== スキル発動：盾を前方に構えて拡大 =====
+      // フェーズ: 構え(0-0.40) 発動(0.40-0.70) 収納(0.70-1.0)
+      // shieldActiveが継続中なら、収納後も拡大サイズを維持（通常位置に収まるだけ）
+      const shieldStillActive = (typeof shieldActive !== 'undefined') && shieldActive;
+      const endScale = shieldStillActive ? 1.8 : 1.0;
+
+      let bashScale, bashOffset;
+      if (bashT < 0.40) {
+        const p = bashT / 0.40;
+        const ease = 1 - Math.pow(1 - p, 2);
+        bashScale  = 1 + ease * 0.8;
+        bashOffset = ease * 14*u;
+      } else if (bashT < 0.70) {
+        bashScale  = 1.8;
+        bashOffset = 14*u;
+      } else {
+        const p = (bashT - 0.70) / 0.30;
+        const ease = 1 - Math.pow(1 - p, 2);
+        bashScale  = 1.8 - ease * (1.8 - endScale);
+        bashOffset = shieldStillActive ? 14*u : 14*u * (1 - ease);
+      }
+
+      const kx = cx - bodyW/2 - W*0.12 - 6*u;
+      const ky = bodyTop + bodyH*0.08;
+      c.fillStyle = '#c8c8c8'; c.fillRect(kx, ky, 3*u, 18*u);
+      c.fillStyle = '#c0a000'; c.fillRect(kx - 4*u, ky + 18*u, 11*u, 3*u);
+      c.fillStyle = '#8b5a2b'; c.fillRect(kx + 0.5*u, ky + 21*u, 2*u, 8*u);
+      c.strokeStyle = '#666'; c.lineWidth = 0.5*u; c.strokeRect(kx, ky, 3*u, 18*u);
+
+      const shieldCenterX = cx + bodyW/2 + W*0.12 + 4*u + bashOffset;
+      const shieldCenterY = bodyTop + bodyH*0.16;
+      c.save();
+      c.translate(shieldCenterX, shieldCenterY);
+      c.scale(bashScale, bashScale);
+      c.fillStyle = '#3a5fbb';
+      c.beginPath();
+      c.moveTo(0,      -11*u);
+      c.lineTo(9*u,    -6*u);
+      c.lineTo(9*u,    7*u);
+      c.lineTo(0,       12*u);
+      c.lineTo(-9*u,    7*u);
+      c.lineTo(-9*u,   -6*u);
+      c.closePath(); c.fill();
+      c.strokeStyle = cls.accentColor; c.lineWidth = 1.2*u; c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1*u;
+      c.beginPath(); c.moveTo(0, -5*u); c.lineTo(0, 6*u); c.stroke();
+      c.beginPath(); c.moveTo(-4*u, 0); c.lineTo(8*u, 0); c.stroke();
+      c.restore();
+
+    } else if (!isSlashing) {
+      // ===== 通常時：ロビーと同じ配置（shieldActive中は盾を拡大維持） =====
+      const kx = cx - bodyW/2 - W*0.12 - 6*u;
+      const ky = bodyTop + bodyH*0.08;
+      c.fillStyle = '#c8c8c8'; c.fillRect(kx, ky, 3*u, 18*u);
+      c.fillStyle = '#c0a000'; c.fillRect(kx - 4*u, ky + 18*u, 11*u, 3*u);
+      c.fillStyle = '#8b5a2b'; c.fillRect(kx + 0.5*u, ky + 21*u, 2*u, 8*u);
+      c.strokeStyle = '#666'; c.lineWidth = 0.5*u; c.strokeRect(kx, ky, 3*u, 18*u);
+
+      const shieldIsActive = (typeof shieldActive !== 'undefined') && shieldActive;
+      const persistScale = shieldIsActive ? 1.8 : 1.0;
+      const persistOffset = shieldIsActive ? 14*u : 0;
+
+      const sX0 = cx + bodyW/2 + W*0.12 + 9*u + persistOffset;
+      const sY0 = bodyTop + bodyH*0.05;
+      c.save();
+      if (shieldIsActive) {
+        // 拡大時：盾の中心基準でスケール
+        const scx = sX0 + 2*u, scy = sY0 + 11.5*u;
+        c.translate(scx, scy);
+        c.scale(persistScale, persistScale);
+        c.translate(-scx, -scy);
+      }
+      c.fillStyle = '#3a5fbb';
+      c.beginPath();
+      c.moveTo(sX0,        sY0);
+      c.lineTo(sX0 + 9*u,  sY0 + 5*u);
+      c.lineTo(sX0 + 9*u,  sY0 + 18*u);
+      c.lineTo(sX0,        sY0 + 23*u);
+      c.lineTo(sX0 - 5*u,  sY0 + 18*u);
+      c.lineTo(sX0 - 5*u,  sY0 + 5*u);
+      c.closePath(); c.fill();
+      c.strokeStyle = cls.accentColor; c.lineWidth = 1.2*u; c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1*u;
+      c.beginPath(); c.moveTo(sX0 + 4*u, sY0 + 6*u); c.lineTo(sX0 + 4*u, sY0 + 17*u); c.stroke();
+      c.beginPath(); c.moveTo(sX0 - 4*u, sY0 + 11*u); c.lineTo(sX0 + 8*u, sY0 + 11*u); c.stroke();
+      c.restore();
+
+    } else {
+      // ===== 攻撃時：右手に持ち替えて振り上げ→振り下ろし =====
+      // フェーズ: 振り上げ(0-0.30) タメ(0.30-0.40) 振り下ろし(0.40-0.65) フォロー(0.65-1.0)
+      let swordAngle;
+      if (slashT < 0.30) {
+        const p = slashT / 0.30;
+        const ease = 1 - Math.pow(1 - p, 2);
+        swordAngle = -Math.PI * 0.55 * ease;
+      } else if (slashT < 0.40) {
+        swordAngle = -Math.PI * 0.55;
+      } else if (slashT < 0.65) {
+        const p = (slashT - 0.40) / 0.25;
+        const ease = p * p;
+        swordAngle = -Math.PI * 0.55 + Math.PI * 0.90 * ease;
+      } else {
+        const p = (slashT - 0.65) / 0.35;
+        const ease = 1 - Math.pow(1 - p, 2);
+        swordAngle = Math.PI * 0.35 * (1 - ease);
+      }
+
+      const armPivotX2 = cx + bodyW/2 + armW/2;
+      const armPivotY2 = bodyTop + bodyH*0.10;
+      const swordArmLen = armH * 1.0;
+
+      // 右腕（剣を握る側）
+      c.save();
+      c.translate(armPivotX2, armPivotY2);
+      c.rotate(swordAngle);
+      c.fillStyle = cls.color;
+      c.beginPath(); c.roundRect(0, -armW*0.4, swordArmLen, armW*0.8, 3*u); c.fill();
+      c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
+      c.restore();
+
+      // 剣本体
+      const swordTipPivotX = armPivotX2 + Math.cos(swordAngle) * swordArmLen;
+      const swordTipPivotY = armPivotY2 + Math.sin(swordAngle) * swordArmLen;
+      c.save();
+      c.translate(swordTipPivotX, swordTipPivotY);
+      c.rotate(swordAngle);
+      c.fillStyle = '#d8e4ee';
+      c.beginPath();
+      c.moveTo(0, -1.5*u);
+      c.lineTo(20*u, -2.5*u);
+      c.lineTo(23*u, 0);
+      c.lineTo(20*u, 2.5*u);
+      c.lineTo(0, 1.5*u);
+      c.closePath(); c.fill();
+      c.strokeStyle = '#888'; c.lineWidth = 0.6*u; c.stroke();
+      c.fillStyle = '#c0a000'; c.fillRect(-2.5*u, -3.5*u, 2*u, 7*u);
+      c.fillStyle = '#5a3a1e'; c.fillRect(-7*u, -1.3*u, 5*u, 2.6*u);
+      c.restore();
+
+      // 振り下ろし中の風切り線
+      if (slashT >= 0.40 && slashT < 0.65) {
+        const p2 = (slashT - 0.40) / 0.25;
+        c.globalAlpha = (1 - p2) * 0.5;
+        c.strokeStyle = '#dde8f5'; c.lineWidth = 1.5*u; c.lineCap = 'round';
+        c.beginPath();
+        c.arc(armPivotX2, armPivotY2, swordArmLen * 0.6, swordAngle - 0.3, swordAngle);
+        c.stroke();
+        c.globalAlpha = 1;
+      }
+
+      // 盾（左腕に保持・防御姿勢のまま）
+      const sX = cx - bodyW/2 - W*0.12 - 9*u;
+      const sY = bodyTop + bodyH*0.05;
+      c.fillStyle = '#3a5fbb';
+      c.beginPath();
+      c.moveTo(sX,        sY);
+      c.lineTo(sX - 9*u,  sY + 5*u);
+      c.lineTo(sX - 9*u,  sY + 18*u);
+      c.lineTo(sX,        sY + 23*u);
+      c.lineTo(sX + 5*u,  sY + 18*u);
+      c.lineTo(sX + 5*u,  sY + 5*u);
+      c.closePath(); c.fill();
+      c.strokeStyle = cls.accentColor; c.lineWidth = 1.2*u; c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1*u;
+      c.beginPath(); c.moveTo(sX - 4*u, sY + 6*u); c.lineTo(sX - 4*u, sY + 17*u); c.stroke();
+      c.beginPath(); c.moveTo(sX - 8*u, sY + 11*u); c.lineTo(sX + 4*u, sY + 11*u); c.stroke();
+    }
 
   } else if (cls.weapon === 'spear') {
     const isThrusting = attackAnim && attackAnim.type === 'spear_thrust';
@@ -1782,42 +2184,118 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
     const thrust = isThrusting ? Math.sin((attackAnim.t / attackAnim.duration) * Math.PI) : 0;
 
     if (isThrowing) {
-      // 必殺技：チャージ→投擲モーション
       const ta = attackAnim.t / attackAnim.duration;
       const skillLv2 = (typeof getSkillLevel === 'function') ? getSkillLevel('spear').lv : 1;
       const spearCount = Math.min(11, 1 + skillLv2);
-      const baseX2 = cx + bodyW/2;
-      const baseY2 = bodyTop + bodyH * 0.3;
-      if (ta < 0.45) {
-        // チャージ：手元に複数の槍を重ねて表示
-        const glow = 0.6 + Math.abs(Math.sin(ta * Math.PI * 6)) * 0.4;
+
+      // 右肩をピボットに腕を回転させる
+      const pivotX = cx + bodyW/2;
+      const pivotY = headTop + headH * 0.6; // 頭の横（耳の高さ）
+      const upperArmLen = armH * 0.7;        // 上腕の長さ
+      const foreArmLen  = armH * 0.75;       // 前腕の長さ
+
+      // ===== フェーズ定義 =====
+      // 構え  (0.00〜0.35): 槍を頭横で水平に構え、肘を曲げる
+      // テイクバック(0.35〜0.45): 腕を後ろへ引く
+      // リリース(0.45〜0.60): 前方へ一気に伸ばして放つ
+      // フォロー(0.60〜1.00): 腕が前方に伸びきる
+
+      let upperAngle, elbowAngle, showSpears;
+
+      if (ta < 0.35) {
+        // 構えフェーズ：頭横で水平構え。肘を約90度曲げた状態へ徐々に移行
+        const p = ta / 0.35;
+        const ease = 1 - Math.pow(1 - p, 2);
+        upperAngle = -Math.PI * 0.5 * ease;       // 上腕：下→後ろ水平
+        elbowAngle = -Math.PI * 0.5 * ease;       // 前腕：上腕に対して上→水平後ろ
+        showSpears = true;
+      } else if (ta < 0.45) {
+        // テイクバック：腕を後ろへ引く
+        const p = (ta - 0.35) / 0.10;
+        upperAngle = -Math.PI * 0.5 + Math.PI * 0.25 * p;  // 後ろへ少し上げる
+        elbowAngle = -Math.PI * 0.5 - Math.PI * 0.15 * p;  // 肘をさらに曲げる
+        showSpears = true;
+      } else if (ta < 0.60) {
+        // リリース：前方へ一気に
+        const p = (ta - 0.45) / 0.15;
+        const ease = 1 - Math.pow(1 - p, 2); // ease-out（最初速く）
+        upperAngle = (-Math.PI * 0.5 + Math.PI * 0.25) - (Math.PI * 0.25 + Math.PI * 0.3) * ease;
+        elbowAngle = (-Math.PI * 0.5 - Math.PI * 0.15) + (Math.PI * 0.65) * ease;
+        showSpears = p < 0.5;
+      } else {
+        // フォロースルー：腕が前方に伸びきる
+        upperAngle = -Math.PI * 0.55;
+        elbowAngle =  Math.PI * 0.0;
+        showSpears = false;
+      }
+
+      // 上腕の先端（肘）座標
+      const elbowX = pivotX + Math.cos(upperAngle) * upperArmLen;
+      const elbowY = pivotY + Math.sin(upperAngle) * upperArmLen;
+      // 前腕の先端（手首）座標
+      const wristAngle = upperAngle + elbowAngle;
+      const wristX = elbowX + Math.cos(wristAngle) * foreArmLen;
+      const wristY = elbowY + Math.sin(wristAngle) * foreArmLen;
+
+      // 上腕描画
+      c.fillStyle = cls.color;
+      c.save();
+      c.translate(pivotX, pivotY);
+      c.rotate(upperAngle);
+      c.beginPath(); c.roundRect(0, -armW*0.45, upperArmLen, armW*0.9, 3*u); c.fill();
+      c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
+      c.restore();
+
+      // 前腕描画
+      c.save();
+      c.translate(elbowX, elbowY);
+      c.rotate(wristAngle);
+      c.beginPath(); c.roundRect(0, -armW*0.4, foreArmLen, armW*0.8, 3*u); c.fill();
+      c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
+      c.restore();
+
+      // 槍（手首から槍の方向へ描画）
+      if (showSpears) {
+        // 槍は常に水平（構え中）→ リリース時に腕の向きへ追従
+        const spearAngle = ta < 0.45
+          ? -Math.PI * 0.02         // 構え・テイクバック中はほぼ水平
+          : wristAngle - Math.PI * 0.1; // リリース時は腕の向きに追従
+
         for (let i = 0; i < spearCount; i++) {
-          const oy = (i - (spearCount-1)/2) * 4*u;
-          // オーラ
-          c.globalAlpha = 0.2 * glow;
-          c.strokeStyle = '#ffaa00'; c.lineWidth = (10-i)*u; c.lineCap = 'round';
-          c.beginPath(); c.moveTo(baseX2 - 18*u, baseY2+oy); c.lineTo(baseX2 + 18*u, baseY2+oy); c.stroke();
-          c.globalAlpha = 1;
+          const oy = (i - (spearCount-1)/2) * 2.2*u;
+          const alpha = (ta >= 0.45 && showSpears) ? Math.max(0, 1 - (ta-0.45)/0.15*2) : 1;
+          c.globalAlpha = alpha;
+          c.save();
+          c.translate(wristX, wristY + oy);
+          c.rotate(spearAngle);
           // 柄
           c.strokeStyle = '#5aaad0'; c.lineWidth = 2.5*u; c.lineCap = 'round';
-          c.beginPath(); c.moveTo(baseX2 - 16*u, baseY2+oy); c.lineTo(baseX2 + 14*u, baseY2+oy); c.stroke();
+          c.beginPath(); c.moveTo(-22*u, 0); c.lineTo(16*u, 0); c.stroke();
+          // 石突き
+          c.fillStyle = '#888';
+          c.beginPath(); c.arc(-22*u, 0, 1.8*u, 0, Math.PI*2); c.fill();
           // 穂先
           const hw2 = 2.2*u;
           c.fillStyle = '#d8e4ee';
           c.beginPath();
-          c.moveTo(baseX2 + 19*u, baseY2+oy);
-          c.lineTo(baseX2 + 14*u, baseY2+oy - hw2);
-          c.lineTo(baseX2 + 12*u, baseY2+oy);
-          c.lineTo(baseX2 + 14*u, baseY2+oy + hw2);
+          c.moveTo(21*u, 0); c.lineTo(15*u, -hw2); c.lineTo(13*u, 0); c.lineTo(15*u, hw2);
           c.closePath(); c.fill();
           c.strokeStyle = '#999'; c.lineWidth = 0.5*u; c.stroke();
+          c.restore();
+          c.globalAlpha = 1;
         }
-      } else {
-        // 投擲後：手元の槍が消えた状態（残像だけ）
-        const fade = Math.max(0, 1 - (ta - 0.45) * 3.6);
-        c.globalAlpha = fade * 0.4;
+      }
+
+      // フォロースルー：手首位置に残像
+      if (ta >= 0.60) {
+        const fade = Math.max(0, 1 - (ta - 0.60) / 0.40);
+        c.globalAlpha = fade * 0.22;
+        c.save();
+        c.translate(wristX, wristY);
+        c.rotate(wristAngle);
         c.strokeStyle = '#5aaad0'; c.lineWidth = 3*u; c.lineCap = 'round';
-        c.beginPath(); c.moveTo(baseX2 - 8*u, baseY2); c.lineTo(baseX2 + 6*u, baseY2); c.stroke();
+        c.beginPath(); c.moveTo(-15*u, 0); c.lineTo(10*u, 0); c.stroke();
+        c.restore();
         c.globalAlpha = 1;
       }
     } else if (isThrusting) {
@@ -1866,45 +2344,202 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
     }
 
   } else if (cls.weapon === 'bow') {
-    // 弓（右腕外側・短い弓）
-    const bCX = cx + bodyW/2 + W*0.14 + 8*u;
-    const bCY = bodyTop + bodyH * 0.4;
-    const bR  = bodyH * 0.28; // 短い半径
-    // 弓本体（木・茶色）
-    c.strokeStyle = '#8B5E2A'; c.lineWidth = 2.5*u; c.lineCap = 'round';
-    c.beginPath();
-    c.arc(bCX, bCY, bR, -Math.PI*0.6, Math.PI*0.6);
-    c.stroke();
-    // 弦（白・少し引いた形）
-    const sTop = bCY - bR * Math.sin(Math.PI*0.6);
-    const sMid = bCX - bR * 0.6; // 弦の中央（やや左に引いてる）
-    const sBot = bCY + bR * Math.sin(Math.PI*0.6);
-    c.strokeStyle = '#e8e0d0'; c.lineWidth = 1*u;
-    c.beginPath();
-    c.moveTo(bCX - bR * Math.cos(Math.PI*0.6), sTop);
-    c.quadraticCurveTo(sMid, bCY, bCX - bR * Math.cos(Math.PI*0.6), sBot);
-    c.stroke();
-    // 矢（弓の左側・横向き）
-    const arrowY = bCY - 1*u;
-    c.strokeStyle = '#A0784A'; c.lineWidth = 1.2*u;
-    c.beginPath();
-    c.moveTo(bCX - bR*0.5, arrowY); c.lineTo(bCX + bR*0.5, arrowY);
-    c.stroke();
-    // 矢じり
-    c.fillStyle = '#ccc';
-    c.beginPath();
-    c.moveTo(bCX + bR*0.5,       arrowY);
-    c.lineTo(bCX + bR*0.5 - 4*u, arrowY - 2.5*u);
-    c.lineTo(bCX + bR*0.5 - 4*u, arrowY + 2.5*u);
-    c.closePath(); c.fill();
-    // 矢羽根
-    c.strokeStyle = '#88aa66'; c.lineWidth = 1*u;
-    c.beginPath();
-    c.moveTo(bCX - bR*0.5,       arrowY);
-    c.lineTo(bCX - bR*0.5 - 3*u, arrowY - 3*u);
-    c.moveTo(bCX - bR*0.5,       arrowY);
-    c.lineTo(bCX - bR*0.5 - 3*u, arrowY + 3*u);
-    c.stroke();
+    const isBowRain = attackAnim && attackAnim.type === 'bow_rain';
+    const setupDur2 = isBowRain ? (attackAnim.setupDuration || 0.18) : 0;
+    const shotDur2  = isBowRain ? (attackAnim.perShotDuration || 0.13) : 0;
+    const isSetupPhase = isBowRain && attackAnim.t < setupDur2;
+    const setupP = isSetupPhase ? Math.min(1, attackAnim.t / setupDur2) : 1;
+
+    // 矢ごとのサイクル位置（0=引き始め, 0.7=最大に引いた状態, 1.0=放った直後）
+    let shotCycleP = 0;
+    if (isBowRain && !isSetupPhase) {
+      const cycleT = (attackAnim.t - setupDur2) % shotDur2;
+      shotCycleP = cycleT / shotDur2;
+    }
+    // 現在何本目を引いているか（演出用）
+    const currentShotIndex = isBowRain && !isSetupPhase
+      ? Math.min((attackAnim.shotCount||1) - 1, Math.floor((attackAnim.t - setupDur2) / shotDur2))
+      : -1;
+
+    if (isBowRain) {
+      // ===== 頭上に構えて1本ずつ引いて放つモーション =====
+      const riseProgress = setupP; // セット中に頭上へ移動、以後は固定
+      const bCXn = cx + bodyW/2*(1-riseProgress) - bodyW*0.1*riseProgress;
+      const bCYn = (bodyTop + bodyH*0.4) * (1-riseProgress) + (headTop - 10*u) * riseProgress;
+      const bRn  = bodyH * 0.30;
+
+      // 引き具合：0→0.7で滑らかに引く(ease-out)、0.7→1.0で素早く放つ(ease-in)
+      let drawAmount = 0;
+      if (isSetupPhase) {
+        drawAmount = 0;
+      } else if (shotCycleP < 0.7) {
+        const p = shotCycleP / 0.7;
+        drawAmount = 1 - Math.pow(1 - p, 2);
+      } else {
+        const p = (shotCycleP - 0.7) / 0.3;
+        drawAmount = 1 - p*p;
+      }
+
+      c.save();
+      c.translate(bCXn, bCYn);
+      c.rotate(-Math.PI/2 * riseProgress);
+      c.translate(-bCXn, -bCYn);
+
+      // 弓本体
+      c.strokeStyle = '#8B5E2A'; c.lineWidth = 2.5*u; c.lineCap = 'round';
+      c.beginPath();
+      c.arc(bCXn, bCYn, bRn, -Math.PI*0.6, Math.PI*0.6);
+      c.stroke();
+
+      // 弦（引き具合に応じてしなる）
+      const sTop = bCYn - bRn * Math.sin(Math.PI*0.6);
+      const sMid = bCXn - bRn * (0.6 + drawAmount * 0.5);
+      const sBot = bCYn + bRn * Math.sin(Math.PI*0.6);
+      c.strokeStyle = '#e8e0d0'; c.lineWidth = 1*u;
+      c.beginPath();
+      c.moveTo(bCXn - bRn * Math.cos(Math.PI*0.6), sTop);
+      c.quadraticCurveTo(sMid, bCYn, bCXn - bRn * Math.cos(Math.PI*0.6), sBot);
+      c.stroke();
+
+      // 矢：1本だけを番えて引く（放った瞬間だけ短く消える）
+      const justReleased = !isSetupPhase && shotCycleP >= 0.92;
+      if (!justReleased) {
+        const arrowBaseX = bCXn + bRn*0.5;
+        const arrowPullback = drawAmount * bRn * 0.55;
+        const arrowY = bCYn - 1*u;
+
+        c.strokeStyle = '#A0784A'; c.lineWidth = 1.3*u;
+        c.beginPath();
+        c.moveTo(bCXn - bRn*0.5 - arrowPullback, arrowY); c.lineTo(arrowBaseX, arrowY);
+        c.stroke();
+        c.fillStyle = '#55ffcc';
+        c.beginPath();
+        c.moveTo(arrowBaseX,         arrowY);
+        c.lineTo(arrowBaseX - 4*u,   arrowY - 2.3*u);
+        c.lineTo(arrowBaseX - 4*u,   arrowY + 2.3*u);
+        c.closePath(); c.fill();
+        c.strokeStyle = '#88aa66'; c.lineWidth = 1*u;
+        c.beginPath();
+        c.moveTo(bCXn - bRn*0.5 - arrowPullback,       arrowY);
+        c.lineTo(bCXn - bRn*0.5 - arrowPullback - 3*u, arrowY - 3*u);
+        c.moveTo(bCXn - bRn*0.5 - arrowPullback,       arrowY);
+        c.lineTo(bCXn - bRn*0.5 - arrowPullback - 3*u, arrowY + 3*u);
+        c.stroke();
+      }
+
+      // 引き絞り中：オーラ（引き具合が高いほど強く）
+      if (!isSetupPhase && drawAmount > 0.3) {
+        c.globalAlpha = (drawAmount - 0.3) * 0.5;
+        c.strokeStyle = '#88ffee'; c.lineWidth = (2 + drawAmount*2)*u;
+        c.beginPath();
+        c.arc(bCXn, bCYn, bRn + 2*u, -Math.PI*0.6, Math.PI*0.6);
+        c.stroke();
+        c.globalAlpha = 1;
+      }
+
+      // 放った瞬間：小さな閃光
+      if (justReleased) {
+        const flashP = (shotCycleP - 0.92) / 0.08;
+        c.globalAlpha = Math.max(0, 1 - flashP) * 0.8;
+        c.fillStyle = '#ccffee';
+        c.beginPath();
+        c.arc(bCXn + bRn*0.5, bCYn - 1*u, 5*u, 0, Math.PI*2);
+        c.fill();
+        c.globalAlpha = 1;
+      }
+
+      c.restore();
+    } else {
+      // ===== 通常攻撃：体の横で弓を引くリアルモーション =====
+      const isBowNormal = attackAnim && attackAnim.type === 'bow';
+      const bowNormalT  = isBowNormal ? Math.min(1, attackAnim.t / attackAnim.duration) : 0;
+
+      // フェーズ: 構え(0-0.20) 引く(0.20-0.55) 放つ(0.55-0.70) 残心(0.70-1.0)
+      let nPhase, nPhaseT;
+      if (!isBowNormal)                 { nPhase = 'idle';    nPhaseT = 0; }
+      else if (bowNormalT < 0.20)       { nPhase = 'set';     nPhaseT = bowNormalT / 0.20; }
+      else if (bowNormalT < 0.55)       { nPhase = 'draw';    nPhaseT = (bowNormalT - 0.20) / 0.35; }
+      else if (bowNormalT < 0.70)       { nPhase = 'release'; nPhaseT = (bowNormalT - 0.55) / 0.15; }
+      else                              { nPhase = 'zanshin'; nPhaseT = (bowNormalT - 0.70) / 0.30; }
+
+      // 弦の引き量：drawで最大、releaseで急速に戻る
+      let nDrawAmount = 0;
+      if (nPhase === 'set')          nDrawAmount = 0;
+      else if (nPhase === 'draw')    nDrawAmount = nPhaseT;
+      else if (nPhase === 'release') nDrawAmount = Math.max(0, 1 - nPhaseT * 4);
+      else if (nPhase === 'zanshin') nDrawAmount = 0;
+
+      const bCX = cx + bodyW/2 + W*0.14 + 8*u;
+      const bCY = bodyTop + bodyH * 0.4;
+      const bR  = bodyH * 0.28;
+
+      // 左腕（弦を引く側）：drawで後方へ大きく引かれる
+      const leftArmDraw = nDrawAmount * 9*u;
+      c.save();
+      c.translate(cx - bodyW/2 - armW/2 - leftArmDraw, bodyTop + bodyH*0.08 + armH/2);
+      c.fillStyle = cls.color;
+      c.beginPath(); c.roundRect(-armW/2, -armH/2, armW, armH, 3*u); c.fill();
+      c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
+      c.restore();
+
+      // 弓本体
+      c.strokeStyle = '#8B5E2A'; c.lineWidth = 2.5*u; c.lineCap = 'round';
+      c.beginPath();
+      c.arc(bCX, bCY, bR, -Math.PI*0.6, Math.PI*0.6);
+      c.stroke();
+
+      // draw中：引き絞りの緊張オーラ（軽量）
+      if (nPhase === 'draw' && nPhaseT > 0.5) {
+        c.globalAlpha = (nPhaseT - 0.5) * 0.5;
+        c.strokeStyle = '#aaccff'; c.lineWidth = 1.5*u;
+        c.beginPath(); c.arc(bCX, bCY, bR + 1.5*u, -Math.PI*0.6, Math.PI*0.6); c.stroke();
+        c.globalAlpha = 1;
+      }
+
+      const sTop = bCY - bR * Math.sin(Math.PI*0.6);
+      const sMid = bCX - bR * (0.6 + nDrawAmount * 0.45);
+      const sBot = bCY + bR * Math.sin(Math.PI*0.6);
+      c.strokeStyle = '#e8e0d0'; c.lineWidth = 1*u;
+      c.beginPath();
+      c.moveTo(bCX - bR * Math.cos(Math.PI*0.6), sTop);
+      c.quadraticCurveTo(sMid, bCY, bCX - bR * Math.cos(Math.PI*0.6), sBot);
+      c.stroke();
+
+      // 矢：release後半は番えていない（発射済み）
+      const showNormalArrow = nPhase !== 'release' || nPhaseT < 0.3;
+      if (showNormalArrow) {
+        const arrowY = bCY - 1*u;
+        const arrowPullback = nDrawAmount * bR * 0.45;
+        const arrowTip = bCX + bR*0.5;
+        c.strokeStyle = '#A0784A'; c.lineWidth = 1.2*u;
+        c.beginPath();
+        c.moveTo(bCX - bR*0.5 - arrowPullback, arrowY); c.lineTo(arrowTip, arrowY);
+        c.stroke();
+        c.fillStyle = '#ccc';
+        c.beginPath();
+        c.moveTo(arrowTip,       arrowY);
+        c.lineTo(arrowTip - 4*u, arrowY - 2.5*u);
+        c.lineTo(arrowTip - 4*u, arrowY + 2.5*u);
+        c.closePath(); c.fill();
+        c.strokeStyle = '#88aa66'; c.lineWidth = 1*u;
+        c.beginPath();
+        c.moveTo(bCX - bR*0.5 - arrowPullback,       arrowY);
+        c.lineTo(bCX - bR*0.5 - arrowPullback - 3*u, arrowY - 3*u);
+        c.moveTo(bCX - bR*0.5 - arrowPullback,       arrowY);
+        c.lineTo(bCX - bR*0.5 - arrowPullback - 3*u, arrowY + 3*u);
+        c.stroke();
+      }
+
+      // release直後：解放の閃光（軽量・小さめ）
+      if (nPhase === 'release' && nPhaseT < 0.4) {
+        c.globalAlpha = (0.4 - nPhaseT) / 0.4 * 0.6;
+        c.fillStyle = '#fff6dd';
+        c.beginPath();
+        c.arc(bCX + bR*0.5, bCY - 1*u, 3.5*u, 0, Math.PI*2);
+        c.fill();
+        c.globalAlpha = 1;
+      }
+    }
   }
 }
 
@@ -2064,24 +2699,7 @@ function draw(){
     const f  = player.facing;
     ctx.save();
 
-    if (anim.type === 'sword_slash') {
-      // 剣の切り付け：扇形の斬撃弧
-      const r = TILE * 2.0;
-      const progress = Math.sin(t * Math.PI);
-      const startAngle = f > 0 ? -Math.PI*0.6 : Math.PI*0.4;
-      const sweepAngle = f > 0 ? Math.PI*0.8 : -Math.PI*0.8;
-      ctx.globalAlpha = progress * 0.9;
-      ctx.strokeStyle = '#aaddff'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(px, py, r, startAngle, startAngle + sweepAngle * t);
-      ctx.stroke();
-      // 剣の軌跡
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.globalAlpha = progress * 0.5;
-      ctx.beginPath();
-      ctx.arc(px, py, r * 0.7, startAngle, startAngle + sweepAngle * t);
-      ctx.stroke();
-
-    } else if (anim.type === 'shield_bash') {
+    if (anim.type === 'shield_bash') {
       const r = Math.max(1, TILE * 2 * t);
       ctx.globalAlpha = (1-t) * 0.7;
       ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 4;
@@ -2090,14 +2708,44 @@ function draw(){
       ctx.beginPath(); ctx.arc(px, py, Math.max(1, r * 0.6), 0, Math.PI*2); ctx.stroke();
 
     } else if (anim.type === 'bow_rain') {
-      // 矢の雨チャージ：上に弓を向けるエフェクト
-      ctx.globalAlpha = Math.sin(t * Math.PI) * 0.8;
-      ctx.strokeStyle = '#55ffcc'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-      for (let i = 0; i < 5; i++) {
-        const ox = (i-2) * TILE*0.5;
+      // 矢の雨：1本引くごとに対応する光の軌跡を1本だけ表示
+      const setupDur3 = anim.setupDuration || 0.18;
+      const shotDur3  = anim.perShotDuration || 0.13;
+      const inSetup   = anim.t < setupDur3;
+
+      if (!inSetup) {
+        const cycleT = (anim.t - setupDur3) % shotDur3;
+        const cycleP = cycleT / shotDur3; // 0(引き始め)→1(放った直後)
+        // 引いている間（0〜70%）に光が伸びていき、放った瞬間(70%)で軌跡が消える
+        const riseP = Math.min(1, cycleP / 0.7);
+        const riseLen = TILE * 2.2 * riseP;
+        const fadeOut = cycleP > 0.7 ? Math.max(0, 1 - (cycleP - 0.7) / 0.3) : 1;
+
+        ctx.globalAlpha = fadeOut * 0.85;
+        ctx.strokeStyle = '#55ffcc'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(px + ox, py);
-        ctx.lineTo(px + ox, py - TILE * 2 * t);
+        ctx.moveTo(px, py);
+        ctx.lineTo(px, py - riseLen);
+        ctx.stroke();
+        // 先端の矢じり風マーク
+        if (riseLen > 4) {
+          ctx.fillStyle = '#aaffee';
+          ctx.beginPath();
+          ctx.moveTo(px, py - riseLen - 5);
+          ctx.lineTo(px - 3, py - riseLen + 3);
+          ctx.lineTo(px + 3, py - riseLen + 3);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      // 上空の収束オーラ（矢を放つたびに少しずつ強まる）
+      if (!inSetup) {
+        const shotCount3 = anim.shotCount || 1;
+        const shotIndex3 = Math.min(shotCount3 - 1, Math.floor((anim.t - setupDur3) / shotDur3));
+        const progress3  = shotCount3 > 1 ? shotIndex3 / (shotCount3 - 1) : 1;
+        ctx.globalAlpha = 0.15 + progress3 * 0.35;
+        ctx.strokeStyle = '#88ffee'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(px, py - TILE * 2.2, 12, 0, Math.PI*2);
         ctx.stroke();
       }
     }
@@ -2106,6 +2754,27 @@ function draw(){
 
   // ===== 矢の描画 =====
   for (const a of arrows) {
+    if (a.type === 'rise_up') {
+      // 打ち上げ矢：フェードアウトする光の軌跡として描画
+      const fadeRatio = Math.max(0, a.life / (a.fadeLife || 0.45)); // 1→0
+      ctx.save();
+      ctx.globalAlpha = fadeRatio * 0.85;
+      ctx.strokeStyle = '#55ffcc'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y + 14);
+      ctx.lineTo(a.x, a.y - 8);
+      ctx.stroke();
+      // 先端の矢じり風マーク
+      ctx.fillStyle = '#aaffee';
+      ctx.beginPath();
+      ctx.moveTo(a.x,     a.y - 12);
+      ctx.lineTo(a.x - 3, a.y - 5);
+      ctx.lineTo(a.x + 3, a.y - 5);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      continue;
+    }
+
     const angle = Math.atan2(a.vy, a.vx);
     const len = a.type === 'rain' ? 20 : 18;
     const isSkill = a.type === 'rain' || a.type === 'spear_throw';
@@ -2180,21 +2849,37 @@ function draw(){
     }
   }
 
-  // ===== シールドエフェクト =====
-  if (shieldActive) {
-    const px = player.x + player.w/2, py = player.y + player.h/2;
+  // ===== シールドエフェクト：被ダメ時にプレイヤーと敵の間に盾が出現 =====
+  if (shieldActive && shieldFlash > 0) {
+    const dirToEnemy = shieldFlashDir || player.facing;
+    const px = player.x + player.w/2 + dirToEnemy * player.w * 1.4; // 体から完全に離した位置
+    const py = player.y + player.h * 0.45;
+    const flashP = shieldFlash / 0.6; // 1→0
+    const popScale = 0.6 + (1 - flashP) * 0.7; // 出現時にポップ（拡大→落ち着く）
+    const shieldSize = 26; // 大きめサイズ
     ctx.save();
-    ctx.globalAlpha = 0.18 + (shieldFlash > 0 ? 0.4 : 0);
-    ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(px, py, player.w * 1.0, 0, Math.PI*2); ctx.stroke();
-    ctx.fillStyle = 'rgba(100,180,255,0.08)';
-    ctx.fill();
-    // 被ダメ時に強調フラッシュ
-    if (shieldFlash > 0) {
-      ctx.globalAlpha = shieldFlash * 0.6;
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.arc(px, py, player.w * 1.1, 0, Math.PI*2); ctx.stroke();
-    }
+    ctx.globalAlpha = flashP;
+    ctx.translate(px, py);
+    ctx.scale(popScale, popScale);
+    // 盾本体
+    ctx.fillStyle = '#3a5fbb';
+    ctx.beginPath();
+    ctx.moveTo(0,              -shieldSize);
+    ctx.lineTo(shieldSize*0.85, -shieldSize*0.5);
+    ctx.lineTo(shieldSize*0.85,  shieldSize*0.65);
+    ctx.lineTo(0,                shieldSize*1.15);
+    ctx.lineTo(-shieldSize*0.85, shieldSize*0.65);
+    ctx.lineTo(-shieldSize*0.85,-shieldSize*0.5);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 3; ctx.stroke();
+    // 紋章
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, -shieldSize*0.45); ctx.lineTo(0, shieldSize*0.55); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-shieldSize*0.45, 0); ctx.lineTo(shieldSize*0.55, 0); ctx.stroke();
+    // 出現時の光の輪
+    ctx.globalAlpha = flashP * 0.7;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, shieldSize * 1.25, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
   }
 
@@ -2203,6 +2888,24 @@ function draw(){
   ctx.fillStyle = '#fff';
   ctx.font = '16px sans-serif';
   ctx.fillText('Score: ' + score, 10, 22);
+
+  // ===== 制限時間表示 =====
+  {
+    const tMin = Math.floor(Math.max(0, questTimeLeft) / 60);
+    const tSec = Math.floor(Math.max(0, questTimeLeft) % 60);
+    const timeStr = tMin + ':' + String(tSec).padStart(2, '0');
+    const isUrgent = questTimeLeft <= 30; // 残り30秒以下で警告色
+    ctx.save();
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = isUrgent ? '#ff4444' : '#fff';
+    if (isUrgent && Math.floor(questTimeLeft * 2) % 2 === 0) {
+      ctx.fillStyle = '#ffaaaa'; // 点滅効果
+    }
+    ctx.fillText('⏱ ' + timeStr, canvas.width - 10, 26);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
 
   // ===== ゲームオーバー画面 =====
   if (gameState === 'lose') {
@@ -2217,7 +2920,7 @@ function draw(){
     // サブテキスト
     ctx.fillStyle = '#fff';
     ctx.font = `${Math.round(canvas.width * 0.04)}px sans-serif`;
-    ctx.fillText('クエスト失敗', canvas.width/2, canvas.height * 0.54);
+    ctx.fillText(isTimeUpLose ? '制限時間切れ' : 'クエスト失敗', canvas.width/2, canvas.height * 0.54);
     // 操作案内
     ctx.fillStyle = '#aac4e8';
     ctx.font = `${Math.round(canvas.width * 0.033)}px sans-serif`;
