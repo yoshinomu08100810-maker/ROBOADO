@@ -520,9 +520,7 @@
 
 <script>
 
-/* ============================================================
-   01-core-setup.js
-   ============================================================ */
+/* ===== 01-core-setup.js ===== */
 // ===== roundRectポリフィル =====
 // 古いAndroid WebView（Chrome 99未満相当）ではCanvasの roundRect() が未実装で、
 // 呼び出すとエラーになり描画が途中で止まってしまう（タイトル画面のロボット顔が
@@ -685,9 +683,8 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-/* ============================================================
-   02-input-skills.js
-   ============================================================ */
+
+/* ===== 02-input-skills.js ===== */
 // ===== ボタン・タップゾーンのバインド =====
 // キーをホールド扱いにするユーティリティ
 function bindHoldButton(el, code){
@@ -898,9 +895,8 @@ function drawSkillGauge() {
 
 
 
-/* ============================================================
-   03-classes-equipment.js
-   ============================================================ */
+
+/* ===== 03-classes-equipment.js ===== */
 // ======================================================
 // ===== クラス定義 =====
 // ======================================================
@@ -1230,9 +1226,8 @@ function applyStageDifficulty(stageId) {
 
 
 
-/* ============================================================
-   04-player-state.js
-   ============================================================ */
+
+/* ===== 04-player-state.js ===== */
 const ROBOT = {
   w: Math.round(TILE * 1.0),
   h: Math.round(TILE * 1.3),
@@ -1292,9 +1287,8 @@ function rectsOverlap(a,b){
 
 
 
-/* ============================================================
-   05-game-loop.js
-   ============================================================ */
+
+/* ===== 05-game-loop.js ===== */
 function update(dt){
   if (gameState !== 'playing') {
     if (keys['Enter']) { goHome(); }
@@ -1826,9 +1820,8 @@ let animTime = 0;
 
 
 
-/* ============================================================
-   06-enemies-render.js
-   ============================================================ */
+
+/* ===== 06-enemies-render.js ===== */
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
   const cx = x + w/2;
@@ -2099,9 +2092,8 @@ function drawBird(p, cfg){
 
 
 
-/* ============================================================
-   07-course-render.js
-   ============================================================ */
+
+/* ===== 07-course-render.js ===== */
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
   const u = W / 48;
@@ -2907,9 +2899,8 @@ function drawTorch(g){
 
 
 
-/* ============================================================
-   08-draw-loop.js
-   ============================================================ */
+
+/* ===== 08-draw-loop.js ===== */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.save();
@@ -3278,9 +3269,8 @@ function loop(now){
 
 
 
-/* ============================================================
-   09-profile-save.js
-   ============================================================ */
+
+/* ===== 09-profile-save.js ===== */
 // ======================================================
 // ===== プロフィール・ID管理 =====
 // ======================================================
@@ -3579,8 +3569,7 @@ document.getElementById('backFromSetting').addEventListener('click', () => {
 });
 document.getElementById('resetLocalBtn').addEventListener('click', () => {
   const oldId = myProfile.id;
-  const sure = confirm(`現在のID「${oldId}」のデータはクラウドに残ります。
-この端末を新しいプレイヤーとして始めますか？`);
+  const sure = confirm(`現在のID「${oldId}」のデータはクラウドに残ります。\nこの端末を新しいプレイヤーとして始めますか？`);
   if (!sure) return;
   const SYNC_KEYS = ['rr_profile','rr_savedata','rr_equipment','rr_levels','rr_skills','rr_class','rr_friends','rr_quest'];
   SYNC_KEYS.forEach(k => localStorage.removeItem(k));
@@ -3592,9 +3581,8 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-/* ============================================================
-   10-lobby.js
-   ============================================================ */
+
+/* ===== 10-lobby.js ===== */
 // ======================================================
 // ===== 2Dロビーワールド =====
 // ======================================================
@@ -4260,6 +4248,7 @@ function openFacility(screenId) {
     document.getElementById('myPidFriend').textContent = myProfile.friendId;
     document.getElementById('addFriendInput').value = '';
     document.getElementById('addFriendMsg').style.display = 'none';
+    window.CloudSync?.ensureFriendIndex(myProfile.friendId, myProfile.id);
     refreshFriendData();
   }
   if (screenId === 'classScreen') renderClassScreen();
@@ -4279,6 +4268,7 @@ document.getElementById('lobbyFriendBtn').addEventListener('click', () => {
   document.getElementById('myPidFriend').textContent = myProfile.friendId;
   document.getElementById('addFriendInput').value = '';
   document.getElementById('addFriendMsg').style.display = 'none';
+  window.CloudSync?.ensureFriendIndex(myProfile.friendId, myProfile.id);
   refreshFriendData();
   showOverlay('friendScreen');
 });
@@ -4298,9 +4288,8 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-/* ============================================================
-   11-ui-screens.js
-   ============================================================ */
+
+/* ===== 11-ui-screens.js ===== */
 // ======================================================
 // ===== クエスト画面 =====
 // ======================================================
@@ -4645,11 +4634,6 @@ document.getElementById('addFriendBtn').addEventListener('click', async () => {
   const msg = document.getElementById('addFriendMsg');
   msg.style.display = 'block'; msg.style.color = '#f39c12';
   if (!id) { msg.textContent = 'IDを入力してください'; return; }
-  if (/^RR-/.test(id)) {
-    msg.style.color = '#e74c3c';
-    msg.textContent = '⚠️ それはプレイヤーID（引き継ぎコード）です。フレンドIDをご入力ください';
-    return;
-  }
   if (!/^FR-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(id)) {
     msg.style.color = '#e74c3c';
     msg.textContent = '⚠️ IDの形式が正しくありません（例：FR-XXXX-XXXX）';
@@ -4785,6 +4769,7 @@ if (!myProfile.name) {
 
 
 
+
 </script>
 <script type="module">
 /* ===== 12-cloud-sync.js =====
@@ -4794,7 +4779,7 @@ if (!myProfile.name) {
 */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, getDoc, updateDoc, serverTimestamp
+  getFirestore, doc, setDoc, getDoc, updateDoc, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -4891,10 +4876,23 @@ async function pullFromCloud(playerId) {
 const ONLINE_THRESHOLD_MS = 90 * 1000; // 90秒以内に活動があればオンライン扱い
 
 // 自分のフレンドIDをFirestoreに登録（他人が検索できるようにする索引）
-function ensureFriendIndex(friendId, playerId) {
+// ※この登録さえ済んでいれば、後で自分が今オフラインでも相手から申請を送ってもらえる。
+//   起動直後は通信が不安定なことがあるため、失敗時は間隔を空けて自動的に再試行する。
+let _friendIndexArgs = null;
+function ensureFriendIndex(friendId, playerId, attempt = 0) {
   if (!friendId || !playerId) return;
-  setDoc(doc(db, 'friendIndex', friendId), { playerId }, { merge: true }).catch(() => {});
+  _friendIndexArgs = [friendId, playerId];
+  setDoc(doc(db, 'friendIndex', friendId), { playerId }, { merge: true }).catch(() => {
+    const maxAttempts = 6; // 1s,2s,4s,8s,16s,30s … 最後は約1分後まで再試行
+    if (attempt >= maxAttempts) return;
+    const delay = Math.min(30000, 1000 * Math.pow(2, attempt));
+    setTimeout(() => ensureFriendIndex(friendId, playerId, attempt + 1), delay);
+  });
 }
+// 回線が切れていて登録できなかった場合に備え、ネットワーク復帰時にも再登録を試みる
+window.addEventListener('online', () => {
+  if (_friendIndexArgs) ensureFriendIndex(_friendIndexArgs[0], _friendIndexArgs[1]);
+});
 
 async function getPlayerName(playerId) {
   try {
@@ -4924,16 +4922,21 @@ async function sendFriendRequest(myId, myFriendId, myName, targetFriendId) {
     const outSnap = await getDoc(doc(db, 'friendRequests', myId));
     const outData = outSnap.exists() ? outSnap.data() : {};
     const outgoing = (outData.outgoing || []).concat([{ reqId, toPlayerId: targetId, toFriendId: targetFriendId, toName: targetName, createdAt }]);
-    await setDoc(doc(db, 'friendRequests', myId), { incoming: outData.incoming || [], outgoing }, { merge: true });
 
     const inSnap = await getDoc(doc(db, 'friendRequests', targetId));
     const inData = inSnap.exists() ? inSnap.data() : {};
     const incoming = (inData.incoming || []).concat([{ reqId, fromPlayerId: myId, fromFriendId: myFriendId, fromName: myName, createdAt }]);
-    await setDoc(doc(db, 'friendRequests', targetId), { incoming, outgoing: inData.outgoing || [] }, { merge: true });
+
+    // 自分側・相手側を1回のバッチ書き込みにまとめ、途中失敗による不整合を防ぐ
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'friendRequests', myId), { incoming: outData.incoming || [], outgoing }, { merge: true });
+    batch.set(doc(db, 'friendRequests', targetId), { incoming, outgoing: inData.outgoing || [] }, { merge: true });
+    await batch.commit();
 
     return { ok: true, reqId, targetId, targetName };
   } catch (e) {
-    console.warn('フレンド申請の送信に失敗しました', e);
+    // 原因特定用：権限エラー(permission-denied)かどうかをコンソールで確認できるようにする
+    console.warn('フレンド申請の送信に失敗しました', e.code || e.message || e);
     return { ok: false, reason: 'error' };
   }
 }
