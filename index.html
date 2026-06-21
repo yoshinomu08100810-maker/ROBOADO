@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ロボ×アド</title>
 <style>
-html, body {
+<style>
+  html, body {
     margin:0; padding:0; width:100%; height:100%;
     background:#000; font-family:sans-serif; color:#fff;
     overflow:hidden;
@@ -267,6 +268,13 @@ html, body {
   .fi-name { font-size:14px; color:#fff; }
   .fi-id { font-size:11px; color:#7fa8c8; }
   .fi-invite { background:#2980b9; border:none; color:#fff; border-radius:20px; padding:5px 12px; font-size:12px; cursor:pointer; }
+  .fi-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .fi-dot.online { background:#2ecc71; box-shadow:0 0 6px rgba(46,204,113,0.7); }
+  .fi-dot.offline { background:#888; }
+  .fi-pending {
+    font-size:10px; color:#f39c12; border:1px solid #f39c12; border-radius:10px;
+    padding:1px 6px; margin-left:6px; vertical-align:middle;
+  }
   .notice { font-size:13px; color:#f39c12; text-align:center; margin:8px 0; }
 
   #homeSettingBtn {
@@ -278,6 +286,10 @@ html, body {
     transition:background 0.2s; white-space:nowrap;
   }
   #homeSettingBtn:hover { background:rgba(255,255,255,0.2); }
+
+
+</style>
+
 </style>
 </head>
 <body>
@@ -414,40 +426,7 @@ html, body {
 <div class="overlay" id="questScreen">
   <p class="ov-title">📋 クエスト掲示板</p>
   <p class="ov-sub">挑戦するクエストを選んでください</p>
-  <div class="ov-card" id="questCard1" style="cursor:pointer;border-color:rgba(255,215,0,0.4);">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div style="font-size:11px;color:#f39c12;letter-spacing:1px;margin-bottom:4px;">⭐ QUEST 1</div>
-        <div style="font-size:17px;font-weight:bold;">草原の道</div>
-        <div style="font-size:12px;color:#aac4e8;margin-top:4px;">スライムを倒して松明を目指せ！</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:22px;">🌿</div>
-        <div style="font-size:11px;color:#2ecc71;margin-top:4px;">難易度：★☆☆</div>
-      </div>
-    </div>
-    <button class="ov-btn ov-btn-green" style="margin-top:12px;" id="questStart1">出発する ➡</button>
-  </div>
-  <div class="ov-card" style="opacity:0.5;">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div style="font-size:11px;color:#7fa8c8;letter-spacing:1px;margin-bottom:4px;">🔒 QUEST 2</div>
-        <div style="font-size:17px;font-weight:bold;">遺跡の洞窟</div>
-        <div style="font-size:12px;color:#aac4e8;margin-top:4px;">Coming Soon...</div>
-      </div>
-      <div style="font-size:22px;">🏛️</div>
-    </div>
-  </div>
-  <div class="ov-card" style="opacity:0.5;">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div style="font-size:11px;color:#7fa8c8;letter-spacing:1px;margin-bottom:4px;">🔒 QUEST 3</div>
-        <div style="font-size:17px;font-weight:bold;">溶岩地帯</div>
-        <div style="font-size:12px;color:#aac4e8;margin-top:4px;">Coming Soon...</div>
-      </div>
-      <div style="font-size:22px;">🌋</div>
-    </div>
-  </div>
+  <div id="questCardList"></div>
   <button class="ov-back" id="backFromQuest">← ロビーへ戻る</button>
 </div>
 
@@ -496,8 +475,12 @@ html, body {
   <div class="ov-card">
     <h3>➕ フレンド追加</h3>
     <input class="ov-input" id="addFriendInput" placeholder="相手のフレンドIDを入力（FR-XXXX-XXXX）">
-    <button class="ov-btn ov-btn-green" id="addFriendBtn">追加する</button>
+    <button class="ov-btn ov-btn-green" id="addFriendBtn">申請を送る</button>
     <p class="notice" id="addFriendMsg" style="display:none"></p>
+  </div>
+  <div class="ov-card" id="friendIncomingCard" style="display:none">
+    <h3>📨 届いている申請</h3>
+    <div id="friendIncomingList"></div>
   </div>
   <div class="ov-card">
     <h3>👥 フレンドリスト</h3>
@@ -536,6 +519,10 @@ html, body {
 
 
 <script>
+
+/* ============================================================
+   01-core-setup.js
+   ============================================================ */
 // ===== roundRectポリフィル =====
 // 古いAndroid WebView（Chrome 99未満相当）ではCanvasの roundRect() が未実装で、
 // 呼び出すとエラーになり描画が途中で止まってしまう（タイトル画面のロボット顔が
@@ -663,12 +650,14 @@ for (let r=0; r<ROWS; r++){
       const eh = Math.round(TILE * 1.0), ew = Math.round(TILE * 1.1);
       enemies.push({x:x, y:groundRowY - eh, w:ew, h:eh, dir:1, speed:TILE*1.7, alive:true, baseX:x,
         type:'small', frame:0, frameTimer:0, attacking:false, attackTimer:0,
-        hp:10, maxHp:10});
+        hp:10, maxHp:10,
+        baseMaxHp:10, baseSpeed:TILE*1.7}); // ステージ難易度倍率の計算元になる「素のステータス」
     } else if (ch === '6') {
       const eh = Math.round(TILE * 1.4), ew = Math.round(TILE * 1.6);
       enemies.push({x:x, y:groundRowY - eh, w:ew, h:eh, dir:1, speed:TILE*1.1, alive:true, baseX:x,
         type:'large', frame:0, frameTimer:0, attacking:false, attackTimer:0, attackCooldown:0,
-        hp:1000, maxHp:1000});
+        hp:1000, maxHp:1000,
+        baseMaxHp:1000, baseSpeed:TILE*1.1});
     } else if (ch === 'S') {
       startX = x;
       // ★修正: groundRowY（地面タイル上端）を基準にスタート位置を計算
@@ -696,8 +685,9 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-</script>
-<script>
+/* ============================================================
+   02-input-skills.js
+   ============================================================ */
 // ===== ボタン・タップゾーンのバインド =====
 // キーをホールド扱いにするユーティリティ
 function bindHoldButton(el, code){
@@ -908,8 +898,9 @@ function drawSkillGauge() {
 
 
 
-</script>
-<script>
+/* ============================================================
+   03-classes-equipment.js
+   ============================================================ */
 // ======================================================
 // ===== クラス定義 =====
 // ======================================================
@@ -1176,13 +1167,72 @@ function gainExp(amount) {
   applyClassToPlayer();
 }
 
+// ======================================================
+// ===== クエスト(ステージ)定義・進行度管理 =====
+// ======================================================
+// order: 出現順。unlock.requireStageOrder で「このorderのステージをクリア済みか」を判定する。
+// enemyHpMul / enemySpeedMul: 敵の素のステータス(baseMaxHp/baseSpeed)への倍率。
+// expMul: クリア時EXP(QUEST_CLEAR_EXP)への倍率。
+const STAGE_DEFS = [
+  { id:'stage1', order:1, name:'草原の道',   icon:'🌿', desc:'スライムを倒して松明を目指せ！',
+    difficultyStars:'★☆☆', enemyHpMul:1.0, enemySpeedMul:1.0, expMul:1.0, unlock:null },
+  { id:'stage2', order:2, name:'遺跡の洞窟', icon:'🏛️', desc:'手強い敵が待ち受ける遺跡を踏破せよ！',
+    difficultyStars:'★★☆', enemyHpMul:1.6, enemySpeedMul:1.15, expMul:1.6, unlock:{ requireStageOrder:1 } },
+  { id:'stage3', order:3, name:'溶岩地帯',   icon:'🌋', desc:'灼熱の溶岩地帯で最強の敵に挑め！',
+    difficultyStars:'★★★', enemyHpMul:2.4, enemySpeedMul:1.3, expMul:2.4, unlock:{ requireStageOrder:2 } },
+];
+function getStageDef(id) { return STAGE_DEFS.find(s => s.id === id) || STAGE_DEFS[0]; }
+
+const QUEST_SAVE_KEY = 'rr_quest';
+function loadQuestData() {
+  try { return JSON.parse(localStorage.getItem(QUEST_SAVE_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveQuestData(data) { localStorage.setItem(QUEST_SAVE_KEY, JSON.stringify(data)); window.CloudSync?.queuePush(typeof myProfile !== 'undefined' && myProfile ? myProfile.id : null); }
+
+let questData = loadQuestData(); // { clearedOrder: number }
+function getClearedStageOrder() { return questData.clearedOrder || 0; }
+
+// アンロック判定：unlockがnullなら常時アンロック済み
+function isStageUnlocked(stageId) {
+  const st = getStageDef(stageId);
+  if (!st.unlock) return true;
+  return getClearedStageOrder() >= st.unlock.requireStageOrder;
+}
+function getStageUnlockText(st) {
+  if (!st.unlock) return '';
+  const reqSt = STAGE_DEFS.find(s => s.order === st.unlock.requireStageOrder);
+  return `${reqSt ? reqSt.name : ''} クリアで解放`;
+}
+
+// クリア済み最高ステージを更新（進んだ場合のみ保存）
+function markStageCleared(stageId) {
+  const st = getStageDef(stageId);
+  if (st.order > getClearedStageOrder()) {
+    questData.clearedOrder = st.order;
+    saveQuestData(questData);
+  }
+}
+
+// 現在挑戦中のステージID（クエスト画面で出発ボタンを押した時に切り替わる）
+let currentStageId = STAGE_DEFS[0].id;
+
+// 敵の難易度をステージに合わせて適用する（resetGame内から毎回呼ばれる）
+function applyStageDifficulty(stageId) {
+  const st = getStageDef(stageId);
+  for (const e of enemies) {
+    e.maxHp = Math.round(e.baseMaxHp * st.enemyHpMul);
+    e.speed = e.baseSpeed * st.enemySpeedMul;
+  }
+}
 
 
 
 
 
-</script>
-<script>
+
+/* ============================================================
+   04-player-state.js
+   ============================================================ */
 const ROBOT = {
   w: Math.round(TILE * 1.0),
   h: Math.round(TILE * 1.3),
@@ -1242,8 +1292,9 @@ function rectsOverlap(a,b){
 
 
 
-</script>
-<script>
+/* ============================================================
+   05-game-loop.js
+   ============================================================ */
 function update(dt){
   if (gameState !== 'playing') {
     if (keys['Enter']) { goHome(); }
@@ -1720,7 +1771,9 @@ function update(dt){
 
   if (goal && rectsOverlap(player, goal)) {
     gameState = 'win';
-    gainExp(QUEST_CLEAR_EXP);
+    const st = getStageDef(currentStageId);
+    gainExp(Math.round(QUEST_CLEAR_EXP * st.expMul));
+    markStageCleared(currentStageId);
     localStorage.removeItem(SAVE_KEY);
   }
 
@@ -1738,6 +1791,7 @@ function update(dt){
 }
 
 function resetGame(){
+  applyStageDifficulty(currentStageId); // 現在挑戦中のステージ難易度を敵のmaxHp/speedに反映
   player.x = startX; player.y = startY;
   player.vx = 0; player.vy = 0;
   player.hp = player.maxHp; player.dmgFlash = 0; player.invTimer = 0;
@@ -1772,8 +1826,9 @@ let animTime = 0;
 
 
 
-</script>
-<script>
+/* ============================================================
+   06-enemies-render.js
+   ============================================================ */
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
   const cx = x + w/2;
@@ -2044,8 +2099,9 @@ function drawBird(p, cfg){
 
 
 
-</script>
-<script>
+/* ============================================================
+   07-course-render.js
+   ============================================================ */
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
   const u = W / 48;
@@ -2851,8 +2907,9 @@ function drawTorch(g){
 
 
 
-</script>
-<script>
+/* ============================================================
+   08-draw-loop.js
+   ============================================================ */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.save();
@@ -3221,8 +3278,9 @@ function loop(now){
 
 
 
-</script>
-<script>
+/* ============================================================
+   09-profile-save.js
+   ============================================================ */
 // ======================================================
 // ===== プロフィール・ID管理 =====
 // ======================================================
@@ -3256,8 +3314,15 @@ if (!myProfile.friendId) {
   // CloudSyncの初期化（モジュール読み込み）が完了してから同期する
   window.addEventListener('cloudsync-ready', () => window.CloudSync?.queuePush(myProfile.id), { once: true });
 }
+// フレンドID検索用の索引登録と、オンライン状態のハートビート開始
+window.addEventListener('cloudsync-ready', () => {
+  window.CloudSync?.ensureFriendIndex(myProfile.friendId, myProfile.id);
+  window.CloudSync?.startPresenceHeartbeat(myProfile.id);
+}, { once: true });
 let friends = JSON.parse(localStorage.getItem('rr_friends') || '[]');
 function saveFriends() { localStorage.setItem('rr_friends', JSON.stringify(friends)); }
+let friendRequestsIncoming = []; // 自分宛に届いている申請
+let friendRequestsOutgoing = []; // 自分が送って承認待ちの申請
 
 // ======================================================
 // ===== 画面要素 =====
@@ -3290,7 +3355,7 @@ function showHome() {
 function saveGame() {
   const data = {
     playerX: player.x, playerY: player.y,
-    playerHp: player.hp, score,
+    playerHp: player.hp, score, stageId: currentStageId,
     enemies: enemies.map(e => ({ alive:e.alive, hp:e.hp, x:e.x, dir:e.dir }))
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -3301,6 +3366,7 @@ function loadGame() {
   if (!raw) return false;
   try {
     const data = JSON.parse(raw);
+    currentStageId = data.stageId || STAGE_DEFS[0].id; // resetGame()がこの値を見て難易度を反映するので先に設定
     resetGame();
     player.x  = data.playerX ?? startX;
     player.y  = data.playerY ?? startY;
@@ -3516,7 +3582,7 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
   const sure = confirm(`現在のID「${oldId}」のデータはクラウドに残ります。
 この端末を新しいプレイヤーとして始めますか？`);
   if (!sure) return;
-  const SYNC_KEYS = ['rr_profile','rr_savedata','rr_equipment','rr_levels','rr_skills','rr_class','rr_friends'];
+  const SYNC_KEYS = ['rr_profile','rr_savedata','rr_equipment','rr_levels','rr_skills','rr_class','rr_friends','rr_quest'];
   SYNC_KEYS.forEach(k => localStorage.removeItem(k));
   location.reload();
 });
@@ -3526,8 +3592,9 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-</script>
-<script>
+/* ============================================================
+   10-lobby.js
+   ============================================================ */
 // ======================================================
 // ===== 2Dロビーワールド =====
 // ======================================================
@@ -4193,9 +4260,10 @@ function openFacility(screenId) {
     document.getElementById('myPidFriend').textContent = myProfile.friendId;
     document.getElementById('addFriendInput').value = '';
     document.getElementById('addFriendMsg').style.display = 'none';
-    renderFriendList();
+    refreshFriendData();
   }
   if (screenId === 'classScreen') renderClassScreen();
+  if (screenId === 'questScreen') renderQuestScreen();
   showOverlay(screenId);
 }
 document.getElementById('lobbyBtnAction').addEventListener('click', openNearFacility);
@@ -4211,7 +4279,7 @@ document.getElementById('lobbyFriendBtn').addEventListener('click', () => {
   document.getElementById('myPidFriend').textContent = myProfile.friendId;
   document.getElementById('addFriendInput').value = '';
   document.getElementById('addFriendMsg').style.display = 'none';
-  renderFriendList();
+  refreshFriendData();
   showOverlay('friendScreen');
 });
 document.getElementById('lobbyEquipBtn').addEventListener('click', () => {
@@ -4230,22 +4298,67 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-</script>
-<script>
+/* ============================================================
+   11-ui-screens.js
+   ============================================================ */
 // ======================================================
 // ===== クエスト画面 =====
 // ======================================================
-document.getElementById('questStart1').addEventListener('click', () => {
+// ステージ一覧を解放状況に応じて動的に描画する
+function renderQuestScreen() {
+  const list = document.getElementById('questCardList');
+  const cleared = getClearedStageOrder();
+  list.innerHTML = STAGE_DEFS.map(st => {
+    const unlocked = isStageUnlocked(st.id);
+    const isCleared = cleared >= st.order;
+
+    if (!unlocked) {
+      return `
+      <div class="ov-card" style="opacity:0.5;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:11px;color:#7fa8c8;letter-spacing:1px;margin-bottom:4px;">🔒 QUEST ${st.order}</div>
+            <div style="font-size:17px;font-weight:bold;">？？？</div>
+            <div style="font-size:12px;color:#aac4e8;margin-top:4px;">${getStageUnlockText(st)}</div>
+          </div>
+          <div style="font-size:22px;filter:grayscale(1);">${st.icon}</div>
+        </div>
+      </div>`;
+    }
+
+    return `
+    <div class="ov-card" style="border-color:rgba(255,215,0,0.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:11px;color:#f39c12;letter-spacing:1px;margin-bottom:4px;">⭐ QUEST ${st.order}${isCleared ? ' <span style="color:#2ecc71;">クリア済</span>' : ''}</div>
+          <div style="font-size:17px;font-weight:bold;">${st.name}</div>
+          <div style="font-size:12px;color:#aac4e8;margin-top:4px;">${st.desc}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:22px;">${st.icon}</div>
+          <div style="font-size:11px;color:#2ecc71;margin-top:4px;">難易度：${st.difficultyStars}</div>
+        </div>
+      </div>
+      <button class="ov-btn ov-btn-green" style="margin-top:12px;" onclick="startQuest('${st.id}')">出発する ➡</button>
+    </div>`;
+  }).join('');
+}
+
+// クエスト出発処理（解放済みステージのみ開始可能）
+function startQuest(stageId) {
+  if (!isStageUnlocked(stageId)) return;
+  currentStageId = stageId;
   hideAllOverlays();
   closeLobbyWorld();
-  resetGame();
-  // canvasを表示してゲーム開始
+  resetGame(); // resetGame内でcurrentStageIdに応じた難易度が敵に反映される
   canvas.style.display = 'block';
   document.getElementById('tapLeft').style.display = 'block';
   document.getElementById('tapRight').style.display = 'block';
   document.getElementById('ui').style.display = 'block';
   startGameFromLobby();
-});
+}
+window.startQuest = startQuest;
+
 document.getElementById('backFromQuest').addEventListener('click', () => { hideAllOverlays(); });
 
 // ======================================================
@@ -4421,28 +4534,113 @@ window.equipWeaponClick = (classId, weaponId) => {
 // ======================================================
 // ===== フレンド管理 =====
 // ======================================================
+
+// フレンド画面を開いたときにクラウドから最新の申請・フレンド状態を取得する
+async function refreshFriendData() {
+  if (!window.CloudSync || !myProfile?.id) { renderFriendList(); return; }
+  if (friends.length === 0 && friendRequestsIncoming.length === 0 && friendRequestsOutgoing.length === 0) {
+    const fl = document.getElementById('friendList');
+    if (fl) fl.innerHTML = '<p style="color:#7fa8c8;font-size:13px">読み込み中...</p>';
+  }
+  try {
+    const [reqs, friendsWithStatus] = await Promise.all([
+      window.CloudSync.getFriendRequests(myProfile.id),
+      window.CloudSync.getFriendsWithStatus(myProfile.id)
+    ]);
+    friendRequestsIncoming = reqs.incoming;
+    friendRequestsOutgoing = reqs.outgoing;
+    friends = friendsWithStatus.map(f => ({ id: f.friendId, playerId: f.playerId, name: f.name, online: f.online }));
+    saveFriends();
+  } catch (e) {
+    console.warn('フレンド情報の取得に失敗しました', e);
+  }
+  renderFriendList();
+}
+window.refreshFriendData = refreshFriendData;
+
 function renderFriendList() {
+  // ----- 届いている申請 -----
+  const icCard = document.getElementById('friendIncomingCard');
+  const icList = document.getElementById('friendIncomingList');
+  if (icCard && icList) {
+    if (friendRequestsIncoming.length === 0) {
+      icCard.style.display = 'none';
+      icList.innerHTML = '';
+    } else {
+      icCard.style.display = 'block';
+      icList.innerHTML = friendRequestsIncoming.map(r => `
+        <div class="friend-item">
+          <div><div class="fi-name">${r.fromName}</div><div class="fi-id">ID: ${r.fromFriendId}</div></div>
+          <div style="display:flex;gap:6px">
+            <button onclick="acceptFriendReq('${r.reqId}')"
+              style="background:#2ecc71;border:none;color:#fff;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer">承認</button>
+            <button onclick="cancelFriendReq('${r.reqId}')"
+              style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer">拒否</button>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // ----- フレンドリスト（確定フレンド＋送信中の申請） -----
   const fl = document.getElementById('friendList');
   if (!fl) return;
-  if (friends.length === 0) {
+  if (friends.length === 0 && friendRequestsOutgoing.length === 0) {
     fl.innerHTML = '<p style="color:#7fa8c8;font-size:13px">まだフレンドがいません</p>';
     return;
   }
-  fl.innerHTML = friends.map((f,i) => `
+  const friendRows = friends.map((f,i) => `
     <div class="friend-item">
-      <div><div class="fi-name">${f.name}</div><div class="fi-id">ID: ${f.id}</div></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="fi-dot ${f.online ? 'online' : 'offline'}"></span>
+        <div><div class="fi-name">${f.name}</div><div class="fi-id">ID: ${f.id}</div></div>
+      </div>
       <button onclick="removeFriend(${i})"
         style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:20px;padding:4px 10px;font-size:12px;cursor:pointer">削除</button>
     </div>`).join('');
+  const pendingRows = friendRequestsOutgoing.map(r => `
+    <div class="friend-item">
+      <div><div class="fi-name">${r.toName}<span class="fi-pending">申請中</span></div><div class="fi-id">ID: ${r.toFriendId}</div></div>
+      <button onclick="cancelFriendReq('${r.reqId}')"
+        style="background:none;border:1px solid #f39c12;color:#f39c12;border-radius:20px;padding:4px 10px;font-size:12px;cursor:pointer">取消</button>
+    </div>`).join('');
+  fl.innerHTML = friendRows + pendingRows;
 }
-window.removeFriend = (i) => { friends.splice(i,1); saveFriends(); renderFriendList(); };
+
+// 申請を承認 → 相互フレンドになる
+window.acceptFriendReq = async (reqId) => {
+  const r = friendRequestsIncoming.find(x => x.reqId === reqId);
+  if (!r || !window.CloudSync) return;
+  const ok = await window.CloudSync.acceptFriendRequest({
+    reqId,
+    meId: myProfile.id, meFriendId: myProfile.friendId, meName: myProfile.name || 'プレイヤー',
+    otherId: r.fromPlayerId, otherFriendId: r.fromFriendId, otherName: r.fromName
+  });
+  if (ok) await refreshFriendData();
+};
+
+// 申請の取消・拒否（送信側・受信側どちらからでも呼べる共通処理）
+window.cancelFriendReq = async (reqId) => {
+  const r = friendRequestsIncoming.find(x => x.reqId === reqId) || friendRequestsOutgoing.find(x => x.reqId === reqId);
+  if (!r || !window.CloudSync) return;
+  const otherId = r.fromPlayerId || r.toPlayerId;
+  const ok = await window.CloudSync.removeFriendRequest(reqId, myProfile.id, otherId);
+  if (ok) await refreshFriendData();
+};
+
+// 確定フレンドの削除（相互に解除）
+window.removeFriend = async (i) => {
+  const f = friends[i];
+  if (!f) return;
+  friends.splice(i,1); saveFriends(); renderFriendList();
+  if (f.playerId && window.CloudSync) await window.CloudSync.removeFriendMutual(myProfile.id, f.playerId);
+};
 
 document.getElementById('copyPidFriend').addEventListener('click', () => {
   navigator.clipboard?.writeText(myProfile.friendId).catch(()=>{});
   const b = document.getElementById('copyPidFriend');
   b.textContent = '✔'; setTimeout(() => b.textContent = 'コピー', 1500);
 });
-document.getElementById('addFriendBtn').addEventListener('click', () => {
+document.getElementById('addFriendBtn').addEventListener('click', async () => {
   const id  = document.getElementById('addFriendInput').value.trim().toUpperCase();
   const msg = document.getElementById('addFriendMsg');
   msg.style.display = 'block'; msg.style.color = '#f39c12';
@@ -4457,13 +4655,25 @@ document.getElementById('addFriendBtn').addEventListener('click', () => {
     msg.textContent = '⚠️ IDの形式が正しくありません（例：FR-XXXX-XXXX）';
     return;
   }
-  if (id === myProfile.friendId) { msg.textContent = '自分自身は追加できません'; return; }
-  if (friends.find(f => f.id === id)) { msg.textContent = 'すでにフレンドです'; return; }
-  const name = 'ロボ_' + id.slice(-4);
-  friends.push({id, name}); saveFriends(); renderFriendList();
+  if (id === myProfile.friendId) { msg.style.color = '#e74c3c'; msg.textContent = '自分自身は追加できません'; return; }
+  if (friends.find(f => f.id === id)) { msg.style.color = '#e74c3c'; msg.textContent = 'すでにフレンドです'; return; }
+  if (friendRequestsOutgoing.find(r => r.toFriendId === id)) { msg.style.color = '#e74c3c'; msg.textContent = 'すでに申請を送信済みです'; return; }
+  if (!window.CloudSync) { msg.style.color = '#e74c3c'; msg.textContent = '⚠️ 通信機能の準備中です。少し待ってからお試しください'; return; }
+
+  msg.style.color = '#7fa8c8';
+  msg.textContent = '送信中...';
+  const result = await window.CloudSync.sendFriendRequest(myProfile.id, myProfile.friendId, myProfile.name || 'プレイヤー', id);
+  if (!result || !result.ok) {
+    msg.style.color = '#e74c3c';
+    msg.textContent = result?.reason === 'notfound' ? '⚠️ そのIDのプレイヤーが見つかりません'
+      : result?.reason === 'self' ? '自分自身は追加できません'
+      : '⚠️ 申請の送信に失敗しました（通信状況をご確認ください）';
+    return;
+  }
   msg.style.color = '#2ecc71';
-  msg.textContent = `✅ ${name} をフレンドに追加しました！`;
+  msg.textContent = `✅ ${result.targetName} に申請を送信しました！相手の承認をお待ちください`;
   document.getElementById('addFriendInput').value = '';
+  await refreshFriendData();
 });
 document.getElementById('backFromFriend').addEventListener('click', () => hideAllOverlays());
 
@@ -4584,7 +4794,7 @@ if (!myProfile.name) {
 */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, getDoc, serverTimestamp
+  getFirestore, doc, setDoc, getDoc, updateDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -4600,7 +4810,7 @@ const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
 // クラウドと同期する localStorage のキー一覧
-const SYNC_KEYS = ['rr_profile', 'rr_savedata', 'rr_equipment', 'rr_levels', 'rr_skills', 'rr_class', 'rr_friends'];
+const SYNC_KEYS = ['rr_profile', 'rr_savedata', 'rr_equipment', 'rr_levels', 'rr_skills', 'rr_class', 'rr_friends', 'rr_quest'];
 
 function collectLocalData() {
   const out = {};
@@ -4670,7 +4880,181 @@ async function pullFromCloud(playerId) {
   }
 }
 
-window.CloudSync = { pushToCloud, queuePush, pullFromCloud, flushPush, setStatus };
+// ======================================================
+// ===== フレンド申請・承認 =====
+// ======================================================
+// friendIndex/{friendId}      → { playerId } …FR-IDからplayerIdを引く索引
+// friendRequests/{playerId}   → { incoming:[...], outgoing:[...] } …自分宛・自分発の申請一覧
+// players/{playerId}.friendsList → 確定した相互フレンドの一覧（このplayerId自身が保持する側）
+// players/{playerId}.lastActive  → オンライン判定用のハートビート時刻
+
+const ONLINE_THRESHOLD_MS = 90 * 1000; // 90秒以内に活動があればオンライン扱い
+
+// 自分のフレンドIDをFirestoreに登録（他人が検索できるようにする索引）
+function ensureFriendIndex(friendId, playerId) {
+  if (!friendId || !playerId) return;
+  setDoc(doc(db, 'friendIndex', friendId), { playerId }, { merge: true }).catch(() => {});
+}
+
+async function getPlayerName(playerId) {
+  try {
+    const snap = await getDoc(doc(db, 'players', playerId));
+    if (!snap.exists()) return 'プレイヤー';
+    const raw = snap.data().rr_profile;
+    if (!raw) return 'プレイヤー';
+    const p = JSON.parse(raw);
+    return p.name || 'プレイヤー';
+  } catch (e) {
+    return 'プレイヤー';
+  }
+}
+
+// ===== フレンド申請を送信 =====
+async function sendFriendRequest(myId, myFriendId, myName, targetFriendId) {
+  try {
+    const idxSnap = await getDoc(doc(db, 'friendIndex', targetFriendId));
+    if (!idxSnap.exists()) return { ok: false, reason: 'notfound' };
+    const targetId = idxSnap.data().playerId;
+    if (targetId === myId) return { ok: false, reason: 'self' };
+
+    const targetName = await getPlayerName(targetId);
+    const reqId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const createdAt = Date.now();
+
+    const outSnap = await getDoc(doc(db, 'friendRequests', myId));
+    const outData = outSnap.exists() ? outSnap.data() : {};
+    const outgoing = (outData.outgoing || []).concat([{ reqId, toPlayerId: targetId, toFriendId: targetFriendId, toName: targetName, createdAt }]);
+    await setDoc(doc(db, 'friendRequests', myId), { incoming: outData.incoming || [], outgoing }, { merge: true });
+
+    const inSnap = await getDoc(doc(db, 'friendRequests', targetId));
+    const inData = inSnap.exists() ? inSnap.data() : {};
+    const incoming = (inData.incoming || []).concat([{ reqId, fromPlayerId: myId, fromFriendId: myFriendId, fromName: myName, createdAt }]);
+    await setDoc(doc(db, 'friendRequests', targetId), { incoming, outgoing: inData.outgoing || [] }, { merge: true });
+
+    return { ok: true, reqId, targetId, targetName };
+  } catch (e) {
+    console.warn('フレンド申請の送信に失敗しました', e);
+    return { ok: false, reason: 'error' };
+  }
+}
+
+// 申請を両者の一覧から取り除く（取消・拒否どちらにも使う共通処理）
+async function removeFriendRequest(reqId, playerIdA, playerIdB) {
+  try {
+    for (const pid of [playerIdA, playerIdB]) {
+      if (!pid) continue;
+      const snap = await getDoc(doc(db, 'friendRequests', pid));
+      if (!snap.exists()) continue;
+      const data = snap.data();
+      const incoming = (data.incoming || []).filter(r => r.reqId !== reqId);
+      const outgoing = (data.outgoing || []).filter(r => r.reqId !== reqId);
+      await setDoc(doc(db, 'friendRequests', pid), { incoming, outgoing }, { merge: true });
+    }
+    return true;
+  } catch (e) {
+    console.warn('申請の削除に失敗しました', e);
+    return false;
+  }
+}
+
+async function addToFriendsList(playerId, friendEntry) {
+  const snap = await getDoc(doc(db, 'players', playerId));
+  const list = snap.exists() ? (snap.data().friendsList || []) : [];
+  if (!list.find(f => f.playerId === friendEntry.playerId)) list.push(friendEntry);
+  await setDoc(doc(db, 'players', playerId), { friendsList: list }, { merge: true });
+}
+
+async function removeFromFriendsList(playerId, otherPlayerId) {
+  const snap = await getDoc(doc(db, 'players', playerId));
+  if (!snap.exists()) return;
+  const list = (snap.data().friendsList || []).filter(f => f.playerId !== otherPlayerId);
+  await setDoc(doc(db, 'players', playerId), { friendsList: list }, { merge: true });
+}
+
+// ===== 申請を承認 → 相互フレンドになる =====
+async function acceptFriendRequest({ reqId, meId, meFriendId, meName, otherId, otherFriendId, otherName }) {
+  try {
+    await removeFriendRequest(reqId, meId, otherId);
+    await addToFriendsList(meId, { playerId: otherId, friendId: otherFriendId, name: otherName });
+    await addToFriendsList(otherId, { playerId: meId, friendId: meFriendId, name: meName });
+    return true;
+  } catch (e) {
+    console.warn('フレンド承認に失敗しました', e);
+    return false;
+  }
+}
+
+// ===== 相互フレンドの解除 =====
+async function removeFriendMutual(myId, otherId) {
+  try {
+    await removeFromFriendsList(myId, otherId);
+    await removeFromFriendsList(otherId, myId);
+    return true;
+  } catch (e) {
+    console.warn('フレンド削除に失敗しました', e);
+    return false;
+  }
+}
+
+// ===== 自分宛・自分発の申請一覧を取得 =====
+async function getFriendRequests(myId) {
+  try {
+    const snap = await getDoc(doc(db, 'friendRequests', myId));
+    if (!snap.exists()) return { incoming: [], outgoing: [] };
+    const d = snap.data();
+    return { incoming: d.incoming || [], outgoing: d.outgoing || [] };
+  } catch (e) {
+    console.warn('申請一覧の取得に失敗しました', e);
+    return { incoming: [], outgoing: [] };
+  }
+}
+
+// ===== フレンド一覧＋オンライン状態を取得 =====
+async function getFriendsWithStatus(myId) {
+  try {
+    const snap = await getDoc(doc(db, 'players', myId));
+    const list = snap.exists() ? (snap.data().friendsList || []) : [];
+    const now = Date.now();
+    const results = await Promise.all(list.map(async f => {
+      try {
+        const pSnap = await getDoc(doc(db, 'players', f.playerId));
+        let online = false;
+        if (pSnap.exists() && pSnap.data().lastActive) {
+          const ts = pSnap.data().lastActive.toMillis ? pSnap.data().lastActive.toMillis() : 0;
+          online = (now - ts) < ONLINE_THRESHOLD_MS;
+        }
+        return { ...f, online };
+      } catch (e) {
+        return { ...f, online: false };
+      }
+    }));
+    return results;
+  } catch (e) {
+    console.warn('フレンドリストの取得に失敗しました', e);
+    return [];
+  }
+}
+
+// ===== オンライン状態のハートビート =====
+let heartbeatTimer = null;
+function startPresenceHeartbeat(playerId) {
+  if (!playerId) return;
+  const beat = () => {
+    updateDoc(doc(db, 'players', playerId), { lastActive: serverTimestamp() }).catch(() => {
+      setDoc(doc(db, 'players', playerId), { lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
+    });
+  };
+  beat();
+  clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(beat, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) beat(); });
+}
+
+window.CloudSync = {
+  pushToCloud, queuePush, pullFromCloud, flushPush, setStatus,
+  ensureFriendIndex, sendFriendRequest, removeFriendRequest, acceptFriendRequest,
+  removeFriendMutual, getFriendRequests, getFriendsWithStatus, startPresenceHeartbeat
+};
 window.dispatchEvent(new Event('cloudsync-ready'));
 
 
