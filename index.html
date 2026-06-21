@@ -317,9 +317,231 @@
   }
   #homeSettingBtn:hover { background:rgba(255,255,255,0.2); }
 
+  /* ===== クエストクリア結果モーダル ===== */
+  .rs-modal {
+    position:fixed; inset:0; z-index:205;
+    background:rgba(0,0,10,0.78);
+    display:none; align-items:center; justify-content:center;
+    padding:20px; box-sizing:border-box;
+  }
+  .rs-modal.show { display:flex; }
+  .rs-card {
+    width:100%; max-width:360px;
+    background:linear-gradient(180deg,#13233f 0%,#1a2a4a 100%);
+    border:1px solid rgba(46,204,113,0.4); border-radius:20px;
+    padding:30px 24px 24px; box-sizing:border-box; text-align:center;
+    box-shadow:0 10px 40px rgba(0,0,0,0.6);
+    animation: rsCardPop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes rsCardPop {
+    0%   { transform:scale(0.85); opacity:0; }
+    100% { transform:scale(1);    opacity:1; }
+  }
+  .rs-title {
+    font-size:clamp(20px,6vw,28px); font-weight:900; color:#2ecc71;
+    letter-spacing:1px; margin-bottom:18px;
+    text-shadow:0 0 16px rgba(46,204,113,0.5);
+  }
+  .rs-row {
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:14px; padding:10px 4px; border-bottom:1px solid rgba(255,255,255,0.1);
+  }
+  .rs-row:last-of-type { border-bottom:none; }
+  .rs-label { color:#aac4e8; }
+  .rs-value { color:#fff; font-weight:bold; font-size:17px; }
+  .rs-value.rs-exp { color:#f0c040; }
+
+  /* ===== 宝箱開封モーダル ===== */
+  .chest-modal {
+    position:fixed; inset:0; z-index:206;
+    background:rgba(0,0,10,0.85);
+    display:none; align-items:center; justify-content:center;
+    padding:20px; box-sizing:border-box;
+  }
+  .chest-modal.show { display:flex; }
+  .chest-card {
+    width:100%; max-width:360px;
+    background:linear-gradient(180deg,#13233f 0%,#1a2a4a 100%);
+    border:1px solid rgba(240,192,64,0.4); border-radius:20px;
+    padding:28px 22px 24px; box-sizing:border-box; text-align:center;
+    box-shadow:0 10px 40px rgba(0,0,0,0.6);
+  }
+  .chest-title {
+    font-size:clamp(18px,5.5vw,24px); font-weight:900; color:#f0c040;
+    letter-spacing:1px; margin-bottom:16px;
+    text-shadow:0 0 14px rgba(240,192,64,0.5);
+  }
+  .chest-stage {
+    position:relative; min-height:200px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer;
+    perspective:600px;
+  }
+  /* 足元の影（箱に重み・存在感を出す） */
+  .chest-shadow {
+    position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
+    width:112px; height:20px; border-radius:50%;
+    background:radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 72%);
+    z-index:0;
+    animation: chestShadowPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes chestShadowPulse {
+    0%,100% { transform:translateX(-50%) scale(1);    opacity:0.6; }
+    50%     { transform:translateX(-50%) scale(0.86); opacity:0.4; }
+  }
+  .chest-box {
+    position:relative;
+    width:150px; height:128px;
+    transform-style:preserve-3d;
+    animation: chestIdle 1.1s ease-in-out infinite;
+    filter:drop-shadow(0 0 16px rgba(240,192,64,0.6));
+    z-index:1;
+  }
+  /* 蓋（ドーム型・金の縦リブ入り、てっぺんに髑髏） */
+  .chest-lid {
+    position:absolute; top:0; left:7px;
+    width:136px; height:56px;
+    background:
+      repeating-linear-gradient(90deg,
+        #8c1620 0px, #8c1620 17px,
+        #e0b04a 17px, #e0b04a 23px),
+      linear-gradient(180deg, #a3192a 0%, #7a1018 100%);
+    background-repeat:no-repeat;
+    border:3px solid #3a200c;
+    border-bottom:none;
+    border-radius: 68px 68px 6px 6px / 56px 56px 6px 6px;
+    box-shadow: inset 0 -16px 18px -8px rgba(0,0,0,0.55), inset 0 8px 10px -4px rgba(255,255,255,0.22);
+    transform-origin: 50% 100%;
+    transition: transform 1.0s cubic-bezier(.22,.85,.32,1);
+    z-index:2;
+  }
+  .chest-lid::before {
+    /* てっぺんの髑髏マーク */
+    content:'☠'; position:absolute; top:-13px; left:50%;
+    transform:translateX(-50%);
+    font-size:26px; line-height:1; color:#fff3c8;
+    -webkit-text-stroke:1px #5c3c08;
+    text-shadow:0 0 10px rgba(240,192,64,0.95), 0 2px 0 #3a200c;
+    z-index:5;
+  }
+  .chest-lid::after {
+    content:''; position:absolute; left:50%; top:0; bottom:0; width:10px;
+    transform:translateX(-50%);
+    background:linear-gradient(180deg,#fbe28a,#d4a838);
+    border-left:2px solid #8a6418; border-right:2px solid #8a6418;
+    box-shadow: inset 0 0 4px rgba(255,255,255,0.4);
+  }
+  /* 本体（四隅に金鋲＋縦の仕切り、深紅の木目） */
+  .chest-body {
+    position:absolute; bottom:0; left:0;
+    width:150px; height:72px;
+    background:
+      radial-gradient(circle 5px at 12px 12px, #f8dd80 92%, transparent 93%),
+      radial-gradient(circle 5px at calc(100% - 12px) 12px, #f8dd80 92%, transparent 93%),
+      radial-gradient(circle 5px at 12px calc(100% - 12px), #f8dd80 92%, transparent 93%),
+      radial-gradient(circle 5px at calc(100% - 12px) calc(100% - 12px), #f8dd80 92%, transparent 93%),
+      linear-gradient(90deg,
+        transparent 0 31%, #d4a838 31% 35%, transparent 35% 65%, #d4a838 65% 69%, transparent 69% 100%),
+      linear-gradient(180deg,#8a1620 0%,#5a0e16 55%,#34070d 100%);
+    background-repeat:no-repeat;
+    border:3px solid #2e1808;
+    border-radius:4px 4px 16px 16px;
+    box-shadow: inset 0 6px 0 rgba(255,255,255,0.12), inset 0 -8px 12px -6px rgba(0,0,0,0.5);
+    z-index:1;
+  }
+  .chest-body::before {
+    /* 下部の横帯（台座） */
+    content:''; position:absolute; left:-3px; right:-3px; bottom:8px; height:8px;
+    background:linear-gradient(180deg,#fbe28a,#d4a838);
+    border-top:2px solid #8a6418; border-bottom:2px solid #8a6418;
+  }
+  /* 留め金（紋章型の豪華なクラスプ） */
+  .chest-lock {
+    position:absolute; left:50%; top:40px; transform:translateX(-50%);
+    width:32px; height:50px;
+    background:linear-gradient(180deg,#fdf0b8 0%,#e6b54e 45%,#9c6a10 100%);
+    border:2px solid #5c3c08;
+    clip-path: polygon(50% 0%, 78% 12%, 92% 32%, 78% 46%, 88% 64%, 62% 100%, 38% 100%, 12% 64%, 22% 46%, 8% 32%, 22% 12%);
+    box-shadow:0 2px 8px rgba(0,0,0,0.5), 0 0 12px rgba(240,192,64,0.65);
+    z-index:3;
+    transition: opacity 0.25s ease;
+  }
+  .chest-lock::before {
+    /* 中央の宝石 */
+    content:''; position:absolute; left:50%; top:15px; transform:translate(-50%,0) rotate(45deg);
+    width:9px; height:9px; border-radius:2px;
+    background:radial-gradient(circle at 35% 30%, #ff9a9a, #c81c1c 60%, #6e0808 100%);
+    box-shadow:0 0 6px rgba(255,40,40,0.85), inset 0 0 2px rgba(255,255,255,0.6);
+  }
+  /* 開封時に内側からあふれる光 */
+  .chest-glow {
+    position:absolute; top:24px; left:50%;
+    width:160px; height:160px;
+    transform:translate(-50%,-50%) scale(0.2);
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,235,0.95) 0%, rgba(248,210,90,0.65) 32%, rgba(240,192,64,0) 70%);
+    opacity:0; pointer-events:none; z-index:4;
+  }
+  @keyframes chestIdle {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    50%     { transform: translateY(-5px) rotate(-3deg); }
+  }
+  .chest-box.opened {
+    animation: chestIdle 1.1s ease-in-out infinite, chestSettle 1.7s ease-out forwards;
+  }
+  .chest-box.opened .chest-lid {
+    transform: rotateX(-145deg) translateY(-6px);
+  }
+  .chest-box.opened .chest-lock {
+    opacity:0;
+    transition: opacity 0.2s ease 0.3s; /* 蓋が動き出してから少し遅れて消える */
+  }
+  .chest-box.opened .chest-glow {
+    animation: chestGlowBurst 1.0s ease-out forwards;
+    animation-delay: 0.65s; /* 蓋がある程度開いたタイミングで光がふきだす */
+  }
+  @keyframes chestGlowBurst {
+    0%   { transform:translate(-50%,-50%) scale(0.2); opacity:0; }
+    35%  { opacity:1; }
+    100% { transform:translate(-50%,-50%) scale(2.4); opacity:0; }
+  }
+  @keyframes chestSettle {
+    0%   { filter:drop-shadow(0 0 14px rgba(240,192,64,0.55)); }
+    55%  { filter:drop-shadow(0 0 14px rgba(240,192,64,0.55)); } /* 蓋がゆっくり開く間は箱自体は静かに保つ */
+    72%  { filter:drop-shadow(0 0 42px rgba(255,255,255,0.95)) brightness(1.5); }
+    100% { transform:scale(0.85); opacity:0; filter:drop-shadow(0 0 55px rgba(255,255,255,0.9)) brightness(1.8); }
+  }
+  .chest-tap-hint {
+    margin-top:16px; font-size:13px; color:#aac4e8;
+    animation: chestHintBlink 1.3s ease-in-out infinite;
+  }
+  @keyframes chestHintBlink {
+    0%,100% { opacity:0.45; }
+    50%     { opacity:1; }
+  }
+  .chest-reward {
+    display:none; flex-direction:column; align-items:center; gap:4px;
+    animation: chestRewardPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes chestRewardPop {
+    0%   { transform: scale(0.3); opacity:0; }
+    70%  { transform: scale(1.15); opacity:1; }
+    100% { transform: scale(1); opacity:1; }
+  }
+  .chest-rarity-badge {
+    font-size:12px; font-weight:bold; color:#fff;
+    padding:3px 16px; border-radius:12px; letter-spacing:1px;
+  }
+  .chest-weapon-icon { font-size:54px; margin:8px 0 2px; }
+  .chest-weapon-name { font-size:18px; font-weight:bold; color:#fff; }
+  .chest-weapon-sub  { font-size:13px; color:#f0c040; margin-top:2px; }
+  #chestCloseBtn { display:none; margin-top:20px; }
+
+
 
 </style>
 </head>
+<body>
 <body>
 
 <!-- ===== タイトル画面 ===== -->
@@ -525,6 +747,40 @@
   <button class="ov-back" id="backFromFriend">← ロビーへ戻る</button>
 </div>
 
+<!-- ===== クエストクリア結果モーダル ===== -->
+<div class="rs-modal" id="resultModal">
+  <div class="rs-card">
+    <div class="rs-title">🎉 QUEST CLEAR!</div>
+    <div class="rs-row"><span class="rs-label">スコア</span><span class="rs-value" id="resultScore">0</span></div>
+    <div class="rs-row"><span class="rs-label">獲得EXP</span><span class="rs-value rs-exp" id="resultExp">+0</span></div>
+    <button class="ov-btn ov-btn-green" id="resultNextBtn">次へ ➡</button>
+  </div>
+</div>
+
+<!-- ===== 宝箱開封モーダル ===== -->
+<div class="chest-modal" id="chestModal">
+  <div class="chest-card">
+    <div class="chest-title">🎁 宝箱を獲得した！</div>
+    <div class="chest-stage" id="chestStage">
+      <div class="chest-shadow"></div>
+      <div class="chest-box" id="chestBox">
+      <div class="chest-lid"></div>
+      <div class="chest-body"></div>
+      <div class="chest-lock"></div>
+      <div class="chest-glow"></div>
+    </div>
+      <div class="chest-tap-hint" id="chestTapHint">タップして開ける</div>
+    </div>
+    <div class="chest-reward" id="chestReward">
+      <div class="chest-rarity-badge" id="chestRarityBadge"></div>
+      <div class="chest-weapon-icon" id="chestWeaponIcon"></div>
+      <div class="chest-weapon-name" id="chestWeaponName"></div>
+      <div class="chest-weapon-sub" id="chestWeaponSub"></div>
+    </div>
+    <button class="ov-btn ov-btn-green" id="chestCloseBtn">ロビーへ戻る</button>
+  </div>
+</div>
+
 <!-- プレイ中メニューボタン -->
 <div id="menuBtn">☰</div>
 
@@ -551,9 +807,7 @@
   <div class="game-btn" id="attackBtn"><span style="font-size:22px">⚔️</span><span>攻撃</span></div>
   <div class="game-btn" id="jumpBtn"><span style="font-size:22px">↑</span><span>JUMP</span></div>
 </div>
-
-
-
+<!-- 01-core-setup.js -->
 <script>
 // ===== roundRectポリフィル =====
 // 古いAndroid WebView（Chrome 99未満相当）ではCanvasの roundRect() が未実装で、
@@ -717,7 +971,9 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
+
 </script>
+<!-- 02-input-controls.js -->
 <script>
 // ===== ボタン・タップゾーンのバインド =====
 // キーをホールド扱いにするユーティリティ
@@ -861,7 +1117,11 @@ function updateSkillBtn() {
   const cls = CLASS_DEFS[player.classId || 'none'] || CLASS_DEFS.none;
   const iconEl = document.getElementById('skillBtnIcon');
   if (cls.id === 'spear') {
-    iconEl.innerHTML = SPEAR_SVG_LG;
+    iconEl.innerHTML = getEquippedSpearSvg(22);
+  } else if (cls.id === 'shield') {
+    iconEl.innerHTML = getEquippedShieldSvg(22);
+  } else if (cls.id === 'bow') {
+    iconEl.innerHTML = getEquippedBowSvg(22);
   } else {
     iconEl.textContent = cls.skill.icon;
   }
@@ -929,6 +1189,7 @@ function drawSkillGauge() {
 
 
 </script>
+<!-- 03-class-defs.js -->
 <script>
 // ======================================================
 // ===== クラス定義 =====
@@ -1058,6 +1319,233 @@ const WEAPON_DB = {
   ],
 };
 
+// ===== 武器ビジュアル設定 =====
+// 武器IDごとの見た目（色・形状・発光効果）。ロビー画面・クエスト中の描画・UIアイコンで
+// すべてこのデータを参照することで、見た目を完全に同期させる。
+// 今後 槍以外（盾・弓）を見た目分岐させたい場合もこの形式でエントリを追加するだけでよい。
+const WEAPON_VISUALS = {
+  // --- 盾（タッテン：短剣＋盾のセット） ---
+  shield_n: {  // こわれかけの盾（ノーマル）：くすんだ灰色、刃もくすんでいる
+    shieldColor:'#7a8290', shieldColor2:'#565d68',
+    bladeColor:'#b8c0c8', bladeColor2:'#888',
+    accentColor:'#999', glowColor:null,
+  },
+  shield_r: {  // 鉄の盾（レア）：現状の青い鉄盾
+    shieldColor:'#3a5fbb', shieldColor2:'#88aaff',
+    bladeColor:'#d8e4ee', bladeColor2:'#888',
+    accentColor:'#5a8fe0', glowColor:null,
+  },
+  shield_sr: { // 騎士の盾（スーパーレア）：銀白の装飾盾、淡く発光
+    shieldColor:'#c8d4e0', shieldColor2:'#7e92ad',
+    bladeColor:'#eef4fa', bladeColor2:'#aab8c8',
+    accentColor:'#d0e0ff', glowColor:'rgba(190,215,255,0.45)',
+  },
+  shield_ur: { // 竜鱗の盾（ウルトラレア）：緑の竜鱗模様、強めの発光
+    shieldColor:'#2e8b57', shieldColor2:'#1c5c38',
+    bladeColor:'#bff0d0', bladeColor2:'#2e8b57',
+    accentColor:'#4ee08a', glowColor:'rgba(60,220,140,0.5)',
+  },
+  shield_l: {  // 聖なる大盾（レジェンド）：黄金の聖盾、強い光をまとう
+    shieldColor:'#ffd700', shieldColor2:'#c8a000',
+    bladeColor:'#fff8dc', bladeColor2:'#e8c860',
+    accentColor:'#fff0a0', glowColor:'rgba(255,225,110,0.6)',
+  },
+  // --- 弓（ユミカゼ） ---
+  bow_n: {  // 木の弓（ノーマル）
+    bowColor:'#8B5E2A', stringColor:'#e8e0d0',
+    headColor:'#c8d4dc', headColor2:'#777', fletchColor:'#88aa66',
+    glowColor:null,
+  },
+  bow_r: {  // 鉄の弓（レア）
+    bowColor:'#7a8a9a', stringColor:'#dde8f0',
+    headColor:'#d0d8e0', headColor2:'#5a6a7a', fletchColor:'#5aaad0',
+    glowColor:null,
+  },
+  bow_sr: { // 長弓（スーパーレア）：紫、淡く発光
+    bowColor:'#8a5fd8', stringColor:'#e6d8ff',
+    headColor:'#e6d8ff', headColor2:'#7a4fc0', fletchColor:'#a35ee0',
+    glowColor:'rgba(163,94,224,0.45)',
+  },
+  bow_ur: { // 疾風の弓（ウルトラレア）：エメラルド、風をまとう
+    bowColor:'#1fae84', stringColor:'#d0fff0',
+    headColor:'#c0fff0', headColor2:'#1fae84', fletchColor:'#2ecc9a',
+    glowColor:'rgba(60,255,200,0.5)',
+  },
+  bow_l: {  // 流星の神弓（レジェンド）：黄金、強い光をまとう
+    bowColor:'#ffb000', stringColor:'#fff6c8',
+    headColor:'#fff0a0', headColor2:'#e09000', fletchColor:'#ff8c00',
+    glowColor:'rgba(255,200,60,0.6)',
+  },
+  // --- 槍（ヤリーン） ---
+  spear_n: {  // 木の槍（ノーマル）
+    shaftColor:'#8b5a2b', shaftHighlight:'#c89a5a',
+    headColor:'#c9c9c9', headColor2:'#8a8a8a',
+    accentColor:'#999', glowColor:null, lengthMul:1.0,
+  },
+  spear_r: {  // 鉄の槍（レア）
+    shaftColor:'#5aaad0', shaftHighlight:'#8fd0ee',
+    headColor:'#d8e4ee', headColor2:'#999',
+    accentColor:'#5aaad0', glowColor:null, lengthMul:1.0,
+  },
+  spear_sr: { // 長槍（スーパーレア）：紫がかった長めの槍、淡い光をまとう
+    shaftColor:'#8a5fd8', shaftHighlight:'#b89af2',
+    headColor:'#e8dcff', headColor2:'#9a72d8',
+    accentColor:'#a35ee0', glowColor:'rgba(163,94,224,0.5)', lengthMul:1.18,
+  },
+  spear_ur: { // 雷光の槍（ウルトラレア）：金色の槍、電光をまとう
+    shaftColor:'#e0a83a', shaftHighlight:'#ffd866',
+    headColor:'#fff6c8', headColor2:'#d4a800',
+    accentColor:'#ffe066', glowColor:'rgba(255,224,80,0.55)', lengthMul:1.1,
+  },
+  spear_l: {  // 天穿の神槍（レジェンド）：紅と金の神々しい槍、強い光をまとう
+    shaftColor:'#ff5577', shaftHighlight:'#ffb0c0',
+    headColor:'#fff2e0', headColor2:'#ffcf80',
+    accentColor:'#ffd700', glowColor:'rgba(255,90,120,0.6)', lengthMul:1.3,
+  },
+};
+const DEFAULT_WEAPON_VISUAL = WEAPON_VISUALS.spear_n;
+
+// 武器IDから見た目設定を取得（未定義の武器はノーマル槍の見た目にフォールバック）
+function getWeaponVisual(weaponId) {
+  return WEAPON_VISUALS[weaponId] || DEFAULT_WEAPON_VISUAL;
+}
+// 指定クラスが現在装備している武器の見た目設定を取得
+function getEquippedWeaponVisual(classId) {
+  const w = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon(classId) : null;
+  return w ? getWeaponVisual(w.id) : DEFAULT_WEAPON_VISUAL;
+}
+
+// 槍アイコンSVGを武器IDの見た目で生成する（鍛冶屋リスト・スキルボタン・クラスカードなど共通で使用）
+function getSpearSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="10" r="9.5" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<line x1="3" y1="19" x2="1" y2="21" stroke="#aaa" stroke-width="2" stroke-linecap="round"/>`
+    + `<line x1="15" y1="7" x2="3" y2="19" stroke="${wv.shaftColor}" stroke-width="1.8" stroke-linecap="round"/>`
+    + `<line x1="13.5" y1="8.5" x2="15" y2="7" stroke="#aaa" stroke-width="3" stroke-linecap="round"/>`
+    + `<path d="M21,1 Q16,2 14,8 Q20,6 21,1Z" fill="${wv.headColor}" stroke="#444" stroke-width="0.8"/>`
+    + `<line x1="21" y1="1" x2="14" y2="8" stroke="${wv.headColor2}" stroke-width="0.6"/>`
+    + `<path d="M21,1 Q20,3 18,5 Q19,3 21,1Z" fill="${wv.shaftHighlight}" stroke="none"/>`
+    + `</svg>`;
+}
+// 盾アイコンSVGを武器IDの見た目で生成
+function getShieldSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<path d="M11,1 L19,5 L19,12 L11,21 L3,12 L3,5 Z" fill="${wv.shieldColor}" stroke="${wv.shieldColor2}" stroke-width="1"/>`
+    + `<line x1="11" y1="5" x2="11" y2="16" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>`
+    + `<line x1="6" y1="10.5" x2="16" y2="10.5" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>`
+    + `</svg>`;
+}
+// 弓アイコンSVGを武器IDの見た目で生成
+function getBowSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<path d="M6,2 Q17,11 6,20" fill="none" stroke="${wv.bowColor}" stroke-width="2.2" stroke-linecap="round"/>`
+    + `<line x1="6" y1="2" x2="6" y2="20" stroke="${wv.stringColor}" stroke-width="0.8"/>`
+    + `<line x1="3" y1="11" x2="14" y2="11" stroke="${wv.headColor2}" stroke-width="1.4" stroke-linecap="round"/>`
+    + `<path d="M14,11 L10,9 L10,13 Z" fill="${wv.headColor}"/>`
+    + `<line x1="3" y1="11" x2="0.5" y2="8.5" stroke="${wv.fletchColor}" stroke-width="1.2"/>`
+    + `<line x1="3" y1="11" x2="0.5" y2="13.5" stroke="${wv.fletchColor}" stroke-width="1.2"/>`
+    + `</svg>`;
+}
+// 現在タッテンが装備中の盾のアイコンSVGを取得
+function getEquippedShieldSvg(size) {
+  const w = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon('shield') : null;
+  return getShieldSvg(w ? w.id : 'shield_n', size);
+}
+// 現在ユミカゼが装備中の弓のアイコンSVGを取得
+function getEquippedBowSvg(size) {
+  const w = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon('bow') : null;
+  return getBowSvg(w ? w.id : 'bow_n', size);
+}
+// 現在ヤリーンが装備中の槍のアイコンSVGを取得（未装備時はノーマル槍にフォールバック）
+function getEquippedSpearSvg(size) {
+  const w = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon('spear') : null;
+  return getSpearSvg(w ? w.id : 'spear_n', size);
+}
+
+// ===== 武器ドロップ抽選 =====
+// レアリティ別の抽選重み（数値が大きいほど出やすい。合計は100でなくてもよい）
+const RARITY_DROP_WEIGHTS = {
+  normal:    60,
+  rare:      25,
+  superRare: 10,
+  ultraRare: 4,
+  legend:    1,
+};
+
+// 重み付き抽選でレアリティを1つ決定する
+function rollRarity() {
+  const total = RARITY_ORDER.reduce((sum, r) => sum + (RARITY_DROP_WEIGHTS[r] || 0), 0);
+  let r = Math.random() * total;
+  for (const rarity of RARITY_ORDER) {
+    r -= (RARITY_DROP_WEIGHTS[rarity] || 0);
+    if (r <= 0) return rarity;
+  }
+  return RARITY_ORDER[0];
+}
+
+// 指定クラスの武器種からのみ武器を1つ抽選する（武器を持たないクラスはnullを返す）
+function drawWeaponForClass(classId) {
+  const category = CLASS_WEAPON_CATEGORY[classId];
+  if (!category) return null;
+  const list = WEAPON_DB[category] || [];
+  if (list.length === 0) return null;
+  const rarity = rollRarity();
+  const candidates = list.filter(w => w.rarity === rarity);
+  const pool = candidates.length > 0 ? candidates : list; // 万一そのレアリティの武器が未定義なら全体から選ぶ
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ===== 所持武器の永続化（宝箱で入手した武器の一覧） =====
+const OWNED_WEAPON_SAVE_KEY = 'rr_owned_weapons';
+function loadOwnedWeapons() {
+  try { return JSON.parse(localStorage.getItem(OWNED_WEAPON_SAVE_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveOwnedWeapons(data) { localStorage.setItem(OWNED_WEAPON_SAVE_KEY, JSON.stringify(data)); window.CloudSync?.queuePush(typeof myProfile !== 'undefined' && myProfile ? myProfile.id : null); }
+
+let ownedWeaponsData = loadOwnedWeapons(); // { classId: [weaponId, ...] }
+
+// 各クラスの初期武器（ノーマル品）は最初から所持している扱いにする
+function ensureDefaultOwnedWeapons() {
+  let changed = false;
+  for (const classId of CLASS_ORDER) {
+    const category = CLASS_WEAPON_CATEGORY[classId];
+    if (!category) continue; // 武器なしクラスはスキップ
+    if (!ownedWeaponsData[classId]) ownedWeaponsData[classId] = [];
+    const list = WEAPON_DB[category] || [];
+    const defaultWeapon = list.find(w => w.rarity === 'normal') || list[0];
+    if (defaultWeapon && !ownedWeaponsData[classId].includes(defaultWeapon.id)) {
+      ownedWeaponsData[classId].push(defaultWeapon.id);
+      changed = true;
+    }
+  }
+  if (changed) saveOwnedWeapons(ownedWeaponsData);
+}
+
+// 指定クラスで指定武器を所持済みかどうか
+function isWeaponOwned(classId, weaponId) {
+  return (ownedWeaponsData[classId] || []).includes(weaponId);
+}
+
+// 宝箱獲得時などに武器を所持リストへ追加する。新規入手ならtrue、既に所持済み（重複）ならfalseを返す
+function addOwnedWeapon(classId, weaponId) {
+  if (!ownedWeaponsData[classId]) ownedWeaponsData[classId] = [];
+  if (ownedWeaponsData[classId].includes(weaponId)) return false;
+  ownedWeaponsData[classId].push(weaponId);
+  saveOwnedWeapons(ownedWeaponsData);
+  return true;
+}
+
 // 装備データ永続化
 const EQUIP_SAVE_KEY = 'rr_equipment';
 function loadEquipment() {
@@ -1085,6 +1573,7 @@ function ensureDefaultEquipment() {
   if (changed) saveEquipment(equipmentData);
 }
 ensureDefaultEquipment();
+ensureDefaultOwnedWeapons();
 
 // 現在装備している武器オブジェクトを取得
 function getEquippedWeapon(classId) {
@@ -1095,12 +1584,13 @@ function getEquippedWeapon(classId) {
   return list.find(w => w.id === weaponId) || list[0] || null;
 }
 
-// 武器を装備する
+// 武器を装備する（未所持の武器は装備できない）
 function equipWeapon(classId, weaponId) {
   const category = CLASS_WEAPON_CATEGORY[classId];
   if (!category) return false;
   const list = WEAPON_DB[category] || [];
   if (!list.find(w => w.id === weaponId)) return false;
+  if (!isWeaponOwned(classId, weaponId)) return false;
   equipmentData[classId] = weaponId;
   saveEquipment(equipmentData);
   return true;
@@ -1277,6 +1767,7 @@ function applyStageDifficulty(stageId) {
 
 
 </script>
+<!-- 04-robot-config.js -->
 <script>
 const ROBOT = {
   w: Math.round(TILE * 1.0),
@@ -1317,9 +1808,7 @@ const SAVE_KEY = 'rr_savedata';
 const QUEST_CLEAR_EXP = 100; // クエスト完了時のEXP
 const QUEST_FAIL_EXP  = 20;  // クエスト失敗時のEXP // セーブデータキー（update内で使うため先に定義）
 
-// 槍アイコン（SVG）
-const SPEAR_SVG_SM = `<svg width="16" height="16" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block"><line x1="3" y1="19" x2="1" y2="21" stroke="#aaa" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="7" x2="3" y2="19" stroke="#5aaad0" stroke-width="1.8" stroke-linecap="round"/><line x1="13.5" y1="8.5" x2="15" y2="7" stroke="#aaa" stroke-width="3" stroke-linecap="round"/><path d="M21,1 Q16,2 14,8 Q20,6 21,1Z" fill="#d0d8e0" stroke="#444" stroke-width="0.8"/><line x1="21" y1="1" x2="14" y2="8" stroke="#8899aa" stroke-width="0.6"/><path d="M21,1 Q20,3 18,5 Q19,3 21,1Z" fill="#eef4f8" stroke="none"/></svg>`;
-const SPEAR_SVG_LG = `<svg width="22" height="22" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block"><line x1="3" y1="19" x2="1" y2="21" stroke="#aaa" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="7" x2="3" y2="19" stroke="#5aaad0" stroke-width="1.8" stroke-linecap="round"/><line x1="13.5" y1="8.5" x2="15" y2="7" stroke="#aaa" stroke-width="3" stroke-linecap="round"/><path d="M21,1 Q16,2 14,8 Q20,6 21,1Z" fill="#d0d8e0" stroke="#444" stroke-width="0.8"/><line x1="21" y1="1" x2="14" y2="8" stroke="#8899aa" stroke-width="0.6"/><path d="M21,1 Q20,3 18,5 Q19,3 21,1Z" fill="#eef4f8" stroke="none"/></svg>`;
+// 槍アイコン（SVG）生成は 03-class-defs.js の getSpearSvg() / getEquippedSpearSvg() に統合済み
 
 let score = 0;
 let gameState = 'playing';
@@ -1338,10 +1827,11 @@ function rectsOverlap(a,b){
 
 
 </script>
+<!-- 05-game-loop.js -->
 <script>
 function update(dt){
   if (gameState !== 'playing') {
-    if (keys['Enter']) { goHome(); }
+    if (gameState === 'lose' && keys['Enter']) { goHome(); }
     return;
   }
 
@@ -1399,6 +1889,8 @@ function update(dt){
         player.attackAnim.spearsFired = true;
         const count = player.attackAnim.spearCount || 1;
         const spearAtk = player.attackAnim.spearAtk || 1;
+        const thrownWeapon = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon('spear') : null;
+        const thrownWeaponId = thrownWeapon ? thrownWeapon.id : 'spear_n';
         for (let i = 0; i < count; i++) {
           const spread = (i - (count-1)/2) * 0.3;
           arrows.push({
@@ -1410,6 +1902,7 @@ function update(dt){
             life: 1.5,
             trail: [],
             type: 'spear_throw',
+            weaponId: thrownWeaponId,
           });
         }
       }
@@ -1420,6 +1913,7 @@ function update(dt){
       const ta = player.attackAnim.t / player.attackAnim.duration;
       if (ta >= 0.55) {
         player.attackAnim.arrowFired = true;
+        const normalBow = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon('bow') : null;
         arrows.push({
           x: player.x + player.w/2,
           y: player.y + player.h * 0.35,
@@ -1429,6 +1923,7 @@ function update(dt){
           life: 1.6,
           trail: [],
           type: 'normal',
+          weaponId: normalBow ? normalBow.id : 'bow_n',
         });
       }
     }
@@ -1563,6 +2058,7 @@ function update(dt){
     fq.delay -= dt;
     if (fq.delay <= 0) {
       if (arrows.length < 60) {
+        const rainBow = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon('bow') : null;
         arrows.push({
           x: fq.landX + (Math.random()-0.5) * TILE * 1.5,
           y: player.y - TILE * 8, // 画面上端付近から降下開始
@@ -1572,6 +2068,7 @@ function update(dt){
           life: 2.0,
           trail: [],
           type: 'rain',
+          weaponId: rainBow ? rainBow.id : 'bow_n',
         });
       }
       window.fallingQueue.splice(i, 1);
@@ -1816,9 +2313,13 @@ function update(dt){
   if (goal && rectsOverlap(player, goal)) {
     gameState = 'win';
     const st = getStageDef(currentStageId);
-    gainExp(Math.round(QUEST_CLEAR_EXP * st.expMul));
+    const expGained = Math.round(QUEST_CLEAR_EXP * st.expMul);
+    gainExp(expGained);
     markStageCleared(currentStageId);
     localStorage.removeItem(SAVE_KEY);
+    // 宝箱の武器抽選（現在使用中のクラスに対応した武器種のみ。武器なしクラスはnull）
+    const droppedWeapon = drawWeaponForClass(player.classId);
+    showQuestResult(score, expGained, player.classId, droppedWeapon);
   }
 
   // 落下死
@@ -1871,6 +2372,7 @@ let animTime = 0;
 
 
 </script>
+<!-- 06-enemy-draw.js -->
 <script>
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
@@ -2143,6 +2645,7 @@ function drawBird(p, cfg){
 
 
 </script>
+<!-- 07-course-draw.js -->
 <script>
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
@@ -2353,6 +2856,13 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
     const slashT = isSlashing ? Math.min(1, attackAnim.t / attackAnim.duration) : 0;
     const isShieldBash = attackAnim && attackAnim.type === 'shield_bash';
     const bashT = isShieldBash ? Math.min(1, attackAnim.t / attackAnim.duration) : 0;
+    // 装備中の盾の見た目（色・発光）を取得
+    const shv = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('shield') : null;
+    const shColor  = shv ? shv.shieldColor  : '#3a5fbb';
+    const shColor2 = shv ? shv.shieldColor2 : cls.accentColor;
+    const shBlade  = shv ? shv.bladeColor   : '#d8e4ee';
+    const shBlade2 = shv ? shv.bladeColor2  : '#888';
+    const shGlow   = shv ? shv.glowColor    : null;
 
     if (isShieldBash) {
       // ===== スキル発動：盾を前方に構えて拡大 =====
@@ -2389,7 +2899,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.save();
       c.translate(shieldCenterX, shieldCenterY);
       c.scale(bashScale, bashScale);
-      c.fillStyle = '#3a5fbb';
+      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 8*u; }
+      c.fillStyle = shColor;
       c.beginPath();
       c.moveTo(0,      -11*u);
       c.lineTo(9*u,    -6*u);
@@ -2398,7 +2909,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.lineTo(-9*u,    7*u);
       c.lineTo(-9*u,   -6*u);
       c.closePath(); c.fill();
-      c.strokeStyle = cls.accentColor; c.lineWidth = 1.2*u; c.stroke();
+      c.shadowBlur = 0;
+      c.strokeStyle = shColor2; c.lineWidth = 1.2*u; c.stroke();
       c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1*u;
       c.beginPath(); c.moveTo(0, -5*u); c.lineTo(0, 6*u); c.stroke();
       c.beginPath(); c.moveTo(-4*u, 0); c.lineTo(8*u, 0); c.stroke();
@@ -2427,7 +2939,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.scale(persistScale, persistScale);
         c.translate(-scx, -scy);
       }
-      c.fillStyle = '#3a5fbb';
+      c.fillStyle = shColor;
+      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 6*u; }
       c.beginPath();
       c.moveTo(sX0,        sY0);
       c.lineTo(sX0 + 9*u,  sY0 + 5*u);
@@ -2436,7 +2949,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.lineTo(sX0 - 5*u,  sY0 + 18*u);
       c.lineTo(sX0 - 5*u,  sY0 + 5*u);
       c.closePath(); c.fill();
-      c.strokeStyle = cls.accentColor; c.lineWidth = 1.2*u; c.stroke();
+      c.shadowBlur = 0;
+      c.strokeStyle = shColor2; c.lineWidth = 1.2*u; c.stroke();
       c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1*u;
       c.beginPath(); c.moveTo(sX0 + 4*u, sY0 + 6*u); c.lineTo(sX0 + 4*u, sY0 + 17*u); c.stroke();
       c.beginPath(); c.moveTo(sX0 - 4*u, sY0 + 11*u); c.lineTo(sX0 + 8*u, sY0 + 11*u); c.stroke();
@@ -2481,7 +2995,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.save();
       c.translate(swordTipPivotX, swordTipPivotY);
       c.rotate(swordAngle);
-      c.fillStyle = '#d8e4ee';
+      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 6*u; }
+      c.fillStyle = shBlade;
       c.beginPath();
       c.moveTo(0, -1.5*u);
       c.lineTo(20*u, -2.5*u);
@@ -2489,7 +3004,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.lineTo(20*u, 2.5*u);
       c.lineTo(0, 1.5*u);
       c.closePath(); c.fill();
-      c.strokeStyle = '#888'; c.lineWidth = 0.6*u; c.stroke();
+      c.shadowBlur = 0;
+      c.strokeStyle = shBlade2; c.lineWidth = 0.6*u; c.stroke();
       c.fillStyle = '#c0a000'; c.fillRect(-2.5*u, -3.5*u, 2*u, 7*u);
       c.fillStyle = '#5a3a1e'; c.fillRect(-7*u, -1.3*u, 5*u, 2.6*u);
       c.restore();
@@ -2508,7 +3024,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       // 盾（左腕に保持・防御姿勢のまま）
       const sX = cx - bodyW/2 - W*0.12 - 9*u;
       const sY = bodyTop + bodyH*0.05;
-      c.fillStyle = '#3a5fbb';
+      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 6*u; }
+      c.fillStyle = shColor;
       c.beginPath();
       c.moveTo(sX,        sY);
       c.lineTo(sX - 9*u,  sY + 5*u);
@@ -2517,7 +3034,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.lineTo(sX + 5*u,  sY + 18*u);
       c.lineTo(sX + 5*u,  sY + 5*u);
       c.closePath(); c.fill();
-      c.strokeStyle = cls.accentColor; c.lineWidth = 1.2*u; c.stroke();
+      c.shadowBlur = 0;
+      c.strokeStyle = shColor2; c.lineWidth = 1.2*u; c.stroke();
       c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1*u;
       c.beginPath(); c.moveTo(sX - 4*u, sY + 6*u); c.lineTo(sX - 4*u, sY + 17*u); c.stroke();
       c.beginPath(); c.moveTo(sX - 8*u, sY + 11*u); c.lineTo(sX + 4*u, sY + 11*u); c.stroke();
@@ -2527,6 +3045,13 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
     const isThrusting = attackAnim && attackAnim.type === 'spear_thrust';
     const isThrowing  = attackAnim && attackAnim.type === 'spear_throw';
     const thrust = isThrusting ? Math.sin((attackAnim.t / attackAnim.duration) * Math.PI) : 0;
+    // 装備中の槍の見た目（色・発光）を取得。槍の種類ごとにここから配色が変わる
+    const wv = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('spear') : null;
+    const spShaft  = wv ? wv.shaftColor : '#5aaad0';
+    const spHead   = wv ? wv.headColor  : '#d8e4ee';
+    const spHead2  = wv ? wv.headColor2 : '#999';
+    const spAccent = wv ? wv.accentColor : '#aaddff';
+    const spGlow   = wv ? wv.glowColor : null;
 
     if (isThrowing) {
       const ta = attackAnim.t / attackAnim.duration;
@@ -2613,19 +3138,22 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
           c.save();
           c.translate(wristX, wristY + oy);
           c.rotate(spearAngle);
+          // レア武器は柄全体がほのかに発光する
+          if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 8*u; }
           // 柄
-          c.strokeStyle = '#5aaad0'; c.lineWidth = 2.5*u; c.lineCap = 'round';
+          c.strokeStyle = spShaft; c.lineWidth = 2.5*u; c.lineCap = 'round';
           c.beginPath(); c.moveTo(-22*u, 0); c.lineTo(16*u, 0); c.stroke();
+          c.shadowBlur = 0;
           // 石突き
           c.fillStyle = '#888';
           c.beginPath(); c.arc(-22*u, 0, 1.8*u, 0, Math.PI*2); c.fill();
           // 穂先
           const hw2 = 2.2*u;
-          c.fillStyle = '#d8e4ee';
+          c.fillStyle = spHead;
           c.beginPath();
           c.moveTo(21*u, 0); c.lineTo(15*u, -hw2); c.lineTo(13*u, 0); c.lineTo(15*u, hw2);
           c.closePath(); c.fill();
-          c.strokeStyle = '#999'; c.lineWidth = 0.5*u; c.stroke();
+          c.strokeStyle = spHead2; c.lineWidth = 0.5*u; c.stroke();
           c.restore();
           c.globalAlpha = 1;
         }
@@ -2638,7 +3166,7 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.save();
         c.translate(wristX, wristY);
         c.rotate(wristAngle);
-        c.strokeStyle = '#5aaad0'; c.lineWidth = 3*u; c.lineCap = 'round';
+        c.strokeStyle = spShaft; c.lineWidth = 3*u; c.lineCap = 'round';
         c.beginPath(); c.moveTo(-15*u, 0); c.lineTo(10*u, 0); c.stroke();
         c.restore();
         c.globalAlpha = 1;
@@ -2649,20 +3177,22 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       const spx1 = cx + bodyW/2;
       const spx2 = cx + bodyW/2 + 22*u + extend;
       const spy  = bodyTop + bodyH * 0.3;
-      c.strokeStyle = '#5aaad0'; c.lineWidth = 3.5*u; c.lineCap = 'round';
+      if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 6*u; }
+      c.strokeStyle = spShaft; c.lineWidth = 3.5*u; c.lineCap = 'round';
       c.beginPath(); c.moveTo(spx1, spy); c.lineTo(spx2, spy); c.stroke();
+      c.shadowBlur = 0;
       c.strokeStyle = '#aaa'; c.lineWidth = 4*u; c.lineCap = 'round';
       c.beginPath(); c.moveTo(spx1, spy); c.lineTo(spx1 - 4*u, spy); c.stroke();
       const hw = (3 + thrust*2)*u;
-      c.fillStyle = '#d8e4ee';
+      c.fillStyle = spHead;
       c.beginPath();
       c.moveTo(spx2 + 8*u, spy); c.lineTo(spx2 + 2*u, spy - hw);
       c.lineTo(spx2, spy);       c.lineTo(spx2 + 2*u, spy + hw);
       c.closePath(); c.fill();
-      c.strokeStyle = '#888'; c.lineWidth = 0.8*u; c.stroke();
+      c.strokeStyle = spHead2; c.lineWidth = 0.8*u; c.stroke();
       if (thrust > 0.4) {
         c.globalAlpha = (thrust - 0.4) * 0.7;
-        c.strokeStyle = '#aaddff'; c.lineWidth = 1.5*u;
+        c.strokeStyle = spAccent; c.lineWidth = 1.5*u;
         for (let k = 1; k <= 2; k++) {
           c.beginPath(); c.moveTo(spx1-k*5*u, spy-k*3*u); c.lineTo(spx1+8*u, spy-k*3*u); c.stroke();
           c.beginPath(); c.moveTo(spx1-k*5*u, spy+k*3*u); c.lineTo(spx1+8*u, spy+k*3*u); c.stroke();
@@ -2677,15 +3207,17 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       const spy1 = bodyTop + bodyH * 0.6;
       const spx2 = cx + bodyW/2 + 24*u;
       const spy2 = headTop - 10*u;
-      c.strokeStyle = '#5aaad0'; c.lineWidth = 3.5*u; c.lineCap = 'round';
+      if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 5*u; }
+      c.strokeStyle = spShaft; c.lineWidth = 3.5*u; c.lineCap = 'round';
       c.beginPath(); c.moveTo(spx1, spy1); c.lineTo(spx2, spy2); c.stroke();
+      c.shadowBlur = 0;
       c.fillStyle = '#888';
       c.beginPath(); c.arc(spx1, spy1 + 3*u, 2.5*u, 0, Math.PI*2); c.fill();
-      c.fillStyle = '#d8e4ee';
+      c.fillStyle = spHead;
       c.beginPath();
       c.moveTo(spx2, spy2); c.lineTo(spx2-6*u, spy2+10*u); c.lineTo(spx2+3*u, spy2+12*u);
       c.closePath(); c.fill();
-      c.strokeStyle = '#999'; c.lineWidth = 0.8*u; c.stroke();
+      c.strokeStyle = spHead2; c.lineWidth = 0.8*u; c.stroke();
     }
 
   } else if (cls.weapon === 'bow') {
@@ -2694,6 +3226,14 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
     const shotDur2  = isBowRain ? (attackAnim.perShotDuration || 0.13) : 0;
     const isSetupPhase = isBowRain && attackAnim.t < setupDur2;
     const setupP = isSetupPhase ? Math.min(1, attackAnim.t / setupDur2) : 1;
+    // 装備中の弓の見た目（色・発光）を取得
+    const bwv = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('bow') : null;
+    const bwBow    = bwv ? bwv.bowColor    : '#8B5E2A';
+    const bwString = bwv ? bwv.stringColor : '#e8e0d0';
+    const bwHead   = bwv ? bwv.headColor   : '#55ffcc';
+    const bwHead2  = bwv ? bwv.headColor2  : '#777';
+    const bwFletch = bwv ? bwv.fletchColor : '#88aa66';
+    const bwGlow   = bwv ? bwv.glowColor   : null;
 
     // 矢ごとのサイクル位置（0=引き始め, 0.7=最大に引いた状態, 1.0=放った直後）
     let shotCycleP = 0;
@@ -2731,16 +3271,18 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.translate(-bCXn, -bCYn);
 
       // 弓本体
-      c.strokeStyle = '#8B5E2A'; c.lineWidth = 2.5*u; c.lineCap = 'round';
+      if (bwGlow) { c.shadowColor = bwGlow; c.shadowBlur = 5*u; }
+      c.strokeStyle = bwBow; c.lineWidth = 2.5*u; c.lineCap = 'round';
       c.beginPath();
       c.arc(bCXn, bCYn, bRn, -Math.PI*0.6, Math.PI*0.6);
       c.stroke();
+      c.shadowBlur = 0;
 
       // 弦（引き具合に応じてしなる）
       const sTop = bCYn - bRn * Math.sin(Math.PI*0.6);
       const sMid = bCXn - bRn * (0.6 + drawAmount * 0.5);
       const sBot = bCYn + bRn * Math.sin(Math.PI*0.6);
-      c.strokeStyle = '#e8e0d0'; c.lineWidth = 1*u;
+      c.strokeStyle = bwString; c.lineWidth = 1*u;
       c.beginPath();
       c.moveTo(bCXn - bRn * Math.cos(Math.PI*0.6), sTop);
       c.quadraticCurveTo(sMid, bCYn, bCXn - bRn * Math.cos(Math.PI*0.6), sBot);
@@ -2757,13 +3299,13 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.beginPath();
         c.moveTo(bCXn - bRn*0.5 - arrowPullback, arrowY); c.lineTo(arrowBaseX, arrowY);
         c.stroke();
-        c.fillStyle = '#55ffcc';
+        c.fillStyle = bwHead;
         c.beginPath();
         c.moveTo(arrowBaseX,         arrowY);
         c.lineTo(arrowBaseX - 4*u,   arrowY - 2.3*u);
         c.lineTo(arrowBaseX - 4*u,   arrowY + 2.3*u);
         c.closePath(); c.fill();
-        c.strokeStyle = '#88aa66'; c.lineWidth = 1*u;
+        c.strokeStyle = bwFletch; c.lineWidth = 1*u;
         c.beginPath();
         c.moveTo(bCXn - bRn*0.5 - arrowPullback,       arrowY);
         c.lineTo(bCXn - bRn*0.5 - arrowPullback - 3*u, arrowY - 3*u);
@@ -2828,10 +3370,12 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.restore();
 
       // 弓本体
-      c.strokeStyle = '#8B5E2A'; c.lineWidth = 2.5*u; c.lineCap = 'round';
+      if (bwGlow) { c.shadowColor = bwGlow; c.shadowBlur = 5*u; }
+      c.strokeStyle = bwBow; c.lineWidth = 2.5*u; c.lineCap = 'round';
       c.beginPath();
       c.arc(bCX, bCY, bR, -Math.PI*0.6, Math.PI*0.6);
       c.stroke();
+      c.shadowBlur = 0;
 
       // draw中：引き絞りの緊張オーラ（軽量）
       if (nPhase === 'draw' && nPhaseT > 0.5) {
@@ -2844,7 +3388,7 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       const sTop = bCY - bR * Math.sin(Math.PI*0.6);
       const sMid = bCX - bR * (0.6 + nDrawAmount * 0.45);
       const sBot = bCY + bR * Math.sin(Math.PI*0.6);
-      c.strokeStyle = '#e8e0d0'; c.lineWidth = 1*u;
+      c.strokeStyle = bwString; c.lineWidth = 1*u;
       c.beginPath();
       c.moveTo(bCX - bR * Math.cos(Math.PI*0.6), sTop);
       c.quadraticCurveTo(sMid, bCY, bCX - bR * Math.cos(Math.PI*0.6), sBot);
@@ -2860,13 +3404,13 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.beginPath();
         c.moveTo(bCX - bR*0.5 - arrowPullback, arrowY); c.lineTo(arrowTip, arrowY);
         c.stroke();
-        c.fillStyle = '#ccc';
+        c.fillStyle = bwHead2;
         c.beginPath();
         c.moveTo(arrowTip,       arrowY);
         c.lineTo(arrowTip - 4*u, arrowY - 2.5*u);
         c.lineTo(arrowTip - 4*u, arrowY + 2.5*u);
         c.closePath(); c.fill();
-        c.strokeStyle = '#88aa66'; c.lineWidth = 1*u;
+        c.strokeStyle = bwFletch; c.lineWidth = 1*u;
         c.beginPath();
         c.moveTo(bCX - bR*0.5 - arrowPullback,       arrowY);
         c.lineTo(bCX - bR*0.5 - arrowPullback - 3*u, arrowY - 3*u);
@@ -2950,6 +3494,7 @@ function drawTorch(g){
 
 
 </script>
+<!-- 08-render.js -->
 <script>
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -3148,38 +3693,51 @@ function draw(){
     ctx.rotate(angle);
 
     if (a.type === 'spear_throw') {
-      // 槍投げ：オーラ付き槍
+      // 槍投げ：オーラ付き槍（装備中の武器の見た目に合わせる）
+      const wvFly = (typeof getWeaponVisual === 'function') ? getWeaponVisual(a.weaponId || 'spear_n') : null;
+      const flyShaft = wvFly ? wvFly.shaftColor : '#5aaad0';
+      const flyHead  = wvFly ? wvFly.headColor  : '#d0d8e0';
+      const flyAura  = wvFly && wvFly.glowColor ? wvFly.glowColor : 'rgba(255,136,0,0.4)';
       // オーラ
       ctx.globalAlpha = 0.4;
-      ctx.strokeStyle = '#ff8800'; ctx.lineWidth = 8; ctx.lineCap='round';
+      ctx.strokeStyle = flyAura; ctx.lineWidth = 8; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(-len*1.5, 0); ctx.lineTo(len, 0); ctx.stroke();
       ctx.globalAlpha = 1;
       // 柄
-      ctx.strokeStyle = '#5aaad0'; ctx.lineWidth = 3;
+      ctx.strokeStyle = flyShaft; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(-len*1.5, 0); ctx.lineTo(len*0.3, 0); ctx.stroke();
       // 穂先
-      ctx.fillStyle = '#d0d8e0';
+      ctx.fillStyle = flyHead;
       ctx.beginPath(); ctx.moveTo(len, 0); ctx.lineTo(len*0.3, 3); ctx.lineTo(len*0.3, -3); ctx.closePath(); ctx.fill();
     } else if (a.type === 'rain') {
-      // 雨矢：オーラ付き
+      // 雨矢：オーラ付き（装備中の弓の見た目に合わせる）
+      const wvRain = (typeof getWeaponVisual === 'function') ? getWeaponVisual(a.weaponId || 'bow_n') : null;
+      const rainAura  = wvRain && wvRain.glowColor ? wvRain.glowColor : '#88ffee';
+      const rainString = wvRain ? wvRain.stringColor : '#a07840';
+      const rainHead  = wvRain ? wvRain.headColor : '#55ffcc';
       ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = '#88ffee'; ctx.lineWidth = 5; ctx.lineCap='round';
+      ctx.strokeStyle = rainAura; ctx.lineWidth = 5; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len*0.5, 0); ctx.stroke();
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = '#a07840'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = rainString; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len*0.5, 0); ctx.stroke();
-      ctx.fillStyle = '#55ffcc';
+      ctx.fillStyle = rainHead;
       ctx.beginPath(); ctx.moveTo(len*0.5+7,0); ctx.lineTo(len*0.5,3); ctx.lineTo(len*0.5,-3); ctx.closePath(); ctx.fill();
     } else {
-      // 通常矢
-      ctx.strokeStyle = '#88aa66'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+      // 通常矢（装備中の弓の見た目に合わせる）
+      const wvNormal = (typeof getWeaponVisual === 'function') ? getWeaponVisual(a.weaponId || 'bow_n') : null;
+      const nFletch = wvNormal ? wvNormal.fletchColor : '#88aa66';
+      const nString = wvNormal ? wvNormal.stringColor : '#a07840';
+      const nHead   = wvNormal ? wvNormal.headColor   : '#c8d4dc';
+      const nHead2  = wvNormal ? wvNormal.headColor2  : '#777';
+      ctx.strokeStyle = nFletch; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(-len+5, -4); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(-len+5,  4); ctx.stroke();
-      ctx.strokeStyle = '#a07840'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = nString; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len*0.5, 0); ctx.stroke();
-      ctx.fillStyle = '#c8d4dc';
+      ctx.fillStyle = nHead;
       ctx.beginPath(); ctx.moveTo(len*0.5+6,0); ctx.lineTo(len*0.5,3); ctx.lineTo(len*0.5,-3); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#777'; ctx.lineWidth = 0.8; ctx.stroke();
+      ctx.strokeStyle = nHead2; ctx.lineWidth = 0.8; ctx.stroke();
     }
     ctx.restore();
   }
@@ -3277,29 +3835,8 @@ function draw(){
   }
 
   // ===== クリア画面 =====
-  if (gameState === 'win') {
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,40,0.75)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // タイトル
-    ctx.fillStyle = '#2ecc71';
-    ctx.font = `bold ${Math.round(canvas.width * 0.09)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText('QUEST CLEAR!', canvas.width/2, canvas.height * 0.35);
-    // スコア
-    ctx.fillStyle = '#fff';
-    ctx.font = `${Math.round(canvas.width * 0.04)}px sans-serif`;
-    ctx.fillText(`Score: ${score}`, canvas.width/2, canvas.height * 0.46);
-    // EXP
-    ctx.fillStyle = '#f0c040';
-    ctx.font = `bold ${Math.round(canvas.width * 0.038)}px sans-serif`;
-    ctx.fillText(`EXP + ${QUEST_CLEAR_EXP}`, canvas.width/2, canvas.height * 0.54);
-    // 操作案内
-    ctx.fillStyle = '#aac4e8';
-    ctx.font = `${Math.round(canvas.width * 0.033)}px sans-serif`;
-    ctx.fillText('画面タップ / Enter でロビーへ戻る', canvas.width/2, canvas.height * 0.66);
-    ctx.restore();
-  }
+  // ※クリア演出はDOM側のモーダル（resultModal / chestModal、11-quest-screen.js）に
+  //   置き換えたため、canvasへの描画は行わない。
 }
 
 let lastTime = performance.now();
@@ -3320,6 +3857,7 @@ function loop(now){
 
 
 </script>
+<!-- 09-profile-id.js -->
 <script>
 // ======================================================
 // ===== プロフィール・ID管理 =====
@@ -3465,15 +4003,16 @@ function startGameFromLobby() {
   }
 }
 
-// ゲームオーバー/クリア時のタップ → ロビーへ（documentレベルで検知）
+// ゲームオーバー時のタップ → ロビーへ（documentレベルで検知）
+// ※クエストクリア（win）時は結果モーダル／宝箱モーダルのボタン操作に統一するため対象外
 document.addEventListener('touchstart', (ev) => {
-  if (gameState !== 'playing' && loopRunning) {
+  if (gameState === 'lose' && loopRunning) {
     ev.preventDefault();
     goHome();
   }
 }, { passive: false });
 document.addEventListener('mousedown', () => {
-  if (gameState !== 'playing' && loopRunning) goHome();
+  if (gameState === 'lose' && loopRunning) goHome();
 });
 
 // ======================================================
@@ -3619,7 +4158,8 @@ document.getElementById('backFromSetting').addEventListener('click', () => {
 });
 document.getElementById('resetLocalBtn').addEventListener('click', () => {
   const oldId = myProfile.id;
-  const sure = confirm(`現在のID「${oldId}」のデータはクラウドに残ります。\nこの端末を新しいプレイヤーとして始めますか？`);
+  const sure = confirm(`現在のID「${oldId}」のデータはクラウドに残ります。
+この端末を新しいプレイヤーとして始めますか？`);
   if (!sure) return;
   const SYNC_KEYS = ['rr_profile','rr_savedata','rr_equipment','rr_levels','rr_skills','rr_class','rr_friends','rr_quest'];
   SYNC_KEYS.forEach(k => localStorage.removeItem(k));
@@ -3632,6 +4172,7 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 </script>
+<!-- 10-lobby-world.js -->
 <script>
 // ======================================================
 // ===== 2Dロビーワールド =====
@@ -4168,6 +4709,11 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
 
   // ===== 武器描画 =====
   if (cls.weapon === 'sword_shield') {
+    // 装備中の盾の見た目（色・発光）を取得
+    const shvLobby = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('shield') : null;
+    const lShColor  = shvLobby ? shvLobby.shieldColor  : '#3a5fbb';
+    const lShColor2 = shvLobby ? shvLobby.shieldColor2 : cls.accentColor;
+    const lShGlow   = shvLobby ? shvLobby.glowColor    : null;
     // 短剣（左腕の外側・後方）
     const kx = headCX - bodyW/2 - W*0.12 - 6*u;
     const ky = bodyTop + bodyH*0.08;
@@ -4178,7 +4724,8 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
     // 盾（右腕の外側・前方）
     const sX = headCX + bodyW/2 + W*0.12 + 9*u;
     const sY = bodyTop + bodyH*0.05;
-    lctx.fillStyle = '#3a5fbb';
+    if (lShGlow) { lctx.shadowColor = lShGlow; lctx.shadowBlur = 6*u; }
+    lctx.fillStyle = lShColor;
     lctx.beginPath();
     lctx.moveTo(sX,        sY);
     lctx.lineTo(sX + 9*u,  sY + 5*u);
@@ -4187,45 +4734,61 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
     lctx.lineTo(sX - 5*u,  sY + 18*u);
     lctx.lineTo(sX - 5*u,  sY + 5*u);
     lctx.closePath(); lctx.fill();
-    lctx.strokeStyle = cls.accentColor; lctx.lineWidth = 1.2*u; lctx.stroke();
+    lctx.shadowBlur = 0;
+    lctx.strokeStyle = lShColor2; lctx.lineWidth = 1.2*u; lctx.stroke();
     // 盾の紋章
     lctx.strokeStyle = 'rgba(255,255,255,0.5)'; lctx.lineWidth = 1*u;
     lctx.beginPath(); lctx.moveTo(sX + 4*u, sY + 6*u); lctx.lineTo(sX + 4*u, sY + 17*u); lctx.stroke();
     lctx.beginPath(); lctx.moveTo(sX - 4*u, sY + 11*u); lctx.lineTo(sX + 8*u, sY + 11*u); lctx.stroke();
 
   } else if (cls.weapon === 'spear') {
-    // 槍
+    // 槍（装備中の武器の見た目に合わせて配色を変える）
+    const wvLobby = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('spear') : null;
+    const lpShaft  = wvLobby ? wvLobby.shaftColor : '#8b5a2b';
+    const lpHead   = wvLobby ? wvLobby.headColor  : '#ddd';
+    const lpHead2  = wvLobby ? wvLobby.headColor2 : '#999';
+    const lpGlow   = wvLobby ? wvLobby.glowColor  : null;
     const spx1 = headCX + bodyW/2 + 2*u;
     const spy1 = bodyTop + bodyH * 0.6;
     const spx2 = headCX + bodyW/2 + 24*u;
     const spy2 = headTop - 10*u;
-    lctx.strokeStyle = '#8b5a2b'; lctx.lineWidth = 3.5*u; lctx.lineCap = 'round';
+    if (lpGlow) { lctx.shadowColor = lpGlow; lctx.shadowBlur = 6*u; }
+    lctx.strokeStyle = lpShaft; lctx.lineWidth = 3.5*u; lctx.lineCap = 'round';
     lctx.beginPath(); lctx.moveTo(spx1, spy1); lctx.lineTo(spx2, spy2); lctx.stroke();
+    lctx.shadowBlur = 0;
     lctx.fillStyle = '#888';
     lctx.beginPath(); lctx.arc(spx1, spy1 + 3*u, 2.5*u, 0, Math.PI*2); lctx.fill();
-    lctx.fillStyle = '#ddd';
+    lctx.fillStyle = lpHead;
     lctx.beginPath();
     lctx.moveTo(spx2, spy2);
     lctx.lineTo(spx2 - 6*u, spy2 + 10*u);
     lctx.lineTo(spx2 + 3*u, spy2 + 12*u);
     lctx.closePath(); lctx.fill();
-    lctx.strokeStyle = '#999'; lctx.lineWidth = 0.8*u; lctx.stroke();
+    lctx.strokeStyle = lpHead2; lctx.lineWidth = 0.8*u; lctx.stroke();
 
   } else if (cls.weapon === 'bow') {
-    // 弓（右腕外側・短い弓）
+    // 弓（右腕外側・短い弓、装備中の武器の見た目に合わせる）
+    const bwvLobby = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('bow') : null;
+    const lBwBow    = bwvLobby ? bwvLobby.bowColor    : '#8B5E2A';
+    const lBwString = bwvLobby ? bwvLobby.stringColor : '#e8e0d0';
+    const lBwHead   = bwvLobby ? bwvLobby.headColor2  : '#ccc';
+    const lBwFletch = bwvLobby ? bwvLobby.fletchColor : '#88aa66';
+    const lBwGlow   = bwvLobby ? bwvLobby.glowColor   : null;
     const bCX = headCX + bodyW/2 + W*0.14 + 8*u;
     const bCY = bodyTop + bodyH * 0.4;
     const bR  = bodyH * 0.28;
     // 弓本体
-    lctx.strokeStyle = '#8B5E2A'; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
+    if (lBwGlow) { lctx.shadowColor = lBwGlow; lctx.shadowBlur = 5*u; }
+    lctx.strokeStyle = lBwBow; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
     lctx.beginPath();
     lctx.arc(bCX, bCY, bR, -Math.PI*0.6, Math.PI*0.6);
     lctx.stroke();
+    lctx.shadowBlur = 0;
     // 弦
     const sTop = bCY - bR * Math.sin(Math.PI*0.6);
     const sMid = bCX - bR * 0.6;
     const sBot = bCY + bR * Math.sin(Math.PI*0.6);
-    lctx.strokeStyle = '#e8e0d0'; lctx.lineWidth = 1*u;
+    lctx.strokeStyle = lBwString; lctx.lineWidth = 1*u;
     lctx.beginPath();
     lctx.moveTo(bCX - bR * Math.cos(Math.PI*0.6), sTop);
     lctx.quadraticCurveTo(sMid, bCY, bCX - bR * Math.cos(Math.PI*0.6), sBot);
@@ -4237,14 +4800,14 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
     lctx.moveTo(bCX - bR*0.5, arrowY); lctx.lineTo(bCX + bR*0.5, arrowY);
     lctx.stroke();
     // 矢じり
-    lctx.fillStyle = '#ccc';
+    lctx.fillStyle = lBwHead;
     lctx.beginPath();
     lctx.moveTo(bCX + bR*0.5,       arrowY);
     lctx.lineTo(bCX + bR*0.5 - 4*u, arrowY - 2.5*u);
     lctx.lineTo(bCX + bR*0.5 - 4*u, arrowY + 2.5*u);
     lctx.closePath(); lctx.fill();
     // 矢羽根
-    lctx.strokeStyle = '#88aa66'; lctx.lineWidth = 1*u;
+    lctx.strokeStyle = lBwFletch; lctx.lineWidth = 1*u;
     lctx.beginPath();
     lctx.moveTo(bCX - bR*0.5,       arrowY);
     lctx.lineTo(bCX - bR*0.5 - 3*u, arrowY - 3*u);
@@ -4339,6 +4902,7 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 </script>
+<!-- 11-quest-screen.js -->
 <script>
 // ======================================================
 // ===== クエスト画面 =====
@@ -4445,7 +5009,7 @@ function renderClassScreen() {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="flex:1;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
-            <span style="font-size:18px;">${id==='spear' ? SPEAR_SVG_LG : cls.icon}</span>
+            <span style="font-size:18px;">${id==='spear' ? getEquippedSpearSvg(18) : id==='shield' ? getEquippedShieldSvg(18) : id==='bow' ? getEquippedBowSvg(18) : cls.icon}</span>
             <span style="font-size:15px;font-weight:bold;color:${cls.accentColor};">${cls.name}</span>
             <span style="font-size:11px;color:#7fa8c8;">${cls.label}</span>
           </div>
@@ -4464,7 +5028,7 @@ function renderClassScreen() {
           <!-- スキルレベル（タップで詳細表示） -->
           <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;cursor:pointer;" onclick="showSkillDetail('${id}')">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
-              <span style="font-size:14px;">${id==='spear' ? SPEAR_SVG_SM : cls.skill.icon}</span>
+              <span style="font-size:14px;">${id==='spear' ? getEquippedSpearSvg(14) : id==='shield' ? getEquippedShieldSvg(14) : id==='bow' ? getEquippedBowSvg(14) : cls.skill.icon}</span>
               <span style="font-size:12px;font-weight:bold;color:#ffaa44;">${cls.skill.name}</span>
               <span style="font-size:11px;color:#f0c040;margin-left:auto;">Skill Lv.${slvInfo.lv}${slvInfo.lv>=10?' <span style="color:#f39c12;">MAX</span>':''}</span>
             </div>
@@ -4547,7 +5111,7 @@ function showSkillDetail(classId) {
 
   document.getElementById('skillDetailContent').innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-      <span style="font-size:22px;">${classId==='spear' ? SPEAR_SVG_LG : cls.skill.icon}</span>
+      <span style="font-size:22px;">${classId==='spear' ? getEquippedSpearSvg(22) : classId==='shield' ? getEquippedShieldSvg(22) : classId==='bow' ? getEquippedBowSvg(22) : cls.skill.icon}</span>
       <div>
         <div style="font-size:16px;font-weight:bold;color:#ffaa44;">${cls.skill.name}</div>
         <div style="font-size:11px;color:#7fa8c8;">${cls.name}（${cls.label}）専用スキル</div>
@@ -4616,20 +5180,25 @@ function renderEquipScreen() {
   listEl.innerHTML = weapons.map(w => {
     const rarity = RARITY_DEFS[w.rarity];
     const isEquipped = w.id === equippedId;
+    const owned = isWeaponOwned(equipSelectedClassId, w.id);
+    const iconHtml = !owned ? '' : category === 'spear' ? getSpearSvg(w.id, 30) : category === 'shield' ? getShieldSvg(w.id, 30) : category === 'bow' ? getBowSvg(w.id, 30) : '';
     return `
-    <div class="ov-card" style="margin-bottom:10px;border-color:${isEquipped ? rarity.color : 'rgba(255,255,255,0.1)'};background:${isEquipped ? 'rgba(255,255,255,0.08)' : ''};">
+    <div class="ov-card" style="margin-bottom:10px;border-color:${isEquipped ? rarity.color : 'rgba(255,255,255,0.1)'};background:${isEquipped ? 'rgba(255,255,255,0.08)' : ''};opacity:${owned ? 1 : 0.55};">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <div style="flex:1;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+            ${iconHtml ? `<span style="display:inline-flex;flex-shrink:0;">${iconHtml}</span>` : ''}
             <span style="font-size:11px;font-weight:bold;padding:2px 8px;border-radius:10px;background:${rarity.color};color:#fff;">${rarity.label}</span>
-            <span style="font-size:14px;font-weight:bold;color:#fff;">${w.name}</span>
+            <span style="font-size:14px;font-weight:bold;color:#fff;">${owned ? w.name : '？？？'}</span>
           </div>
-          <div style="font-size:11px;color:#aac4e8;">攻撃倍率 ×${rarity.atkMul.toFixed(2)}</div>
+          <div style="font-size:11px;color:#aac4e8;">${owned ? '攻撃倍率 ×' + rarity.atkMul.toFixed(2) : '🔒 クエストクリアの宝箱で入手できます'}</div>
         </div>
         <div>
-          ${isEquipped
-            ? `<button class="ov-btn ov-btn-blue" style="width:80px;padding:7px 0;font-size:11px;" disabled>装備中 ✓</button>`
-            : `<button class="ov-btn ov-btn-gray" style="width:80px;padding:7px 0;font-size:11px;" onclick="equipWeaponClick('${equipSelectedClassId}','${w.id}')">装備する</button>`
+          ${!owned
+            ? `<button class="ov-btn ov-btn-gray" style="width:80px;padding:7px 0;font-size:11px;" disabled>未入手</button>`
+            : isEquipped
+              ? `<button class="ov-btn ov-btn-blue" style="width:80px;padding:7px 0;font-size:11px;" disabled>装備中 ✓</button>`
+              : `<button class="ov-btn ov-btn-gray" style="width:80px;padding:7px 0;font-size:11px;" onclick="equipWeaponClick('${equipSelectedClassId}','${w.id}')">装備する</button>`
           }
         </div>
       </div>
@@ -4646,6 +5215,83 @@ window.equipWeaponClick = (classId, weaponId) => {
   equipWeapon(classId, weaponId);
   renderEquipScreen();
 };
+
+// ======================================================
+// ===== クエスト結果モーダル・宝箱開封モーダル =====
+// ======================================================
+let pendingChestReward = null; // 宝箱に入っている武器情報 { classId, weapon } / 武器なしクラスはnull
+
+// クエストクリア時に呼び出す（05-game-loop.jsのwin判定から呼ばれる）
+function showQuestResult(finalScore, expGained, classId, droppedWeapon) {
+  document.getElementById('resultScore').textContent = finalScore;
+  document.getElementById('resultExp').textContent = '+' + expGained;
+  pendingChestReward = droppedWeapon ? { classId, weapon: droppedWeapon } : null;
+  document.getElementById('resultModal').classList.add('show');
+}
+window.showQuestResult = showQuestResult;
+
+document.getElementById('resultNextBtn').addEventListener('click', () => {
+  document.getElementById('resultModal').classList.remove('show');
+  if (pendingChestReward) {
+    openChestModal(pendingChestReward);
+  } else {
+    // ムメイ（武器なしクラス）でクリアした場合は宝箱なしでそのままロビーへ
+    goHome();
+  }
+});
+
+// 宝箱開封モーダルを開き、タップで開封できる状態にする
+function openChestModal(reward) {
+  const modal     = document.getElementById('chestModal');
+  const box       = document.getElementById('chestBox');
+  const stage     = document.getElementById('chestStage');
+  const hint      = document.getElementById('chestTapHint');
+  const rewardEl  = document.getElementById('chestReward');
+  const closeBtn  = document.getElementById('chestCloseBtn');
+
+  // 状態を初期化
+  box.classList.remove('opened');
+  hint.style.display = 'block';
+  rewardEl.style.display = 'none';
+  closeBtn.style.display = 'none';
+
+  modal.classList.add('show');
+
+  stage.onclick = () => {
+    stage.onclick = null; // 連打防止
+    hint.style.display = 'none';
+    box.classList.add('opened');
+
+    // 開封アニメーション(蓋がゆっくり開く→光が広がる→箱が消える、計約1.7s)が終わったタイミングで武器を表示
+    setTimeout(() => {
+      const rarity = RARITY_DEFS[reward.weapon.rarity];
+      const cls = CLASS_DEFS[reward.classId] || CLASS_DEFS.none;
+
+      const badge = document.getElementById('chestRarityBadge');
+      badge.textContent = rarity.label;
+      badge.style.background = rarity.color;
+
+      const iconEl = document.getElementById('chestWeaponIcon');
+      iconEl.textContent = cls.icon;
+      iconEl.style.textShadow = `0 0 26px ${rarity.color}`;
+
+      document.getElementById('chestWeaponName').textContent = reward.weapon.name;
+
+      const isNew = addOwnedWeapon(reward.classId, reward.weapon.id);
+      document.getElementById('chestWeaponSub').textContent = isNew
+        ? '✨ NEW！武器を入手した！'
+        : 'すでに持っている武器だった（重複）';
+
+      rewardEl.style.display = 'flex';
+      closeBtn.style.display = 'block';
+    }, 1500);
+  };
+}
+
+document.getElementById('chestCloseBtn').addEventListener('click', () => {
+  document.getElementById('chestModal').classList.remove('show');
+  goHome();
+});
 
 // ======================================================
 // ===== フレンド管理 =====
@@ -4897,6 +5543,7 @@ if (!myProfile.name) {
 
 
 </script>
+<!-- 12-cloud-sync.js -->
 <script type="module">
 /* ===== 12-cloud-sync.js =====
    Firebase Firestore を使って、セーブデータをクラウド（Googleのサーバー）に
@@ -4921,7 +5568,7 @@ const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
 // クラウドと同期する localStorage のキー一覧
-const SYNC_KEYS = ['rr_profile', 'rr_savedata', 'rr_equipment', 'rr_levels', 'rr_skills', 'rr_class', 'rr_friends', 'rr_quest'];
+const SYNC_KEYS = ['rr_profile', 'rr_savedata', 'rr_equipment', 'rr_owned_weapons', 'rr_levels', 'rr_skills', 'rr_class', 'rr_friends', 'rr_quest'];
 
 function collectLocalData() {
   const out = {};
@@ -5185,6 +5832,7 @@ window.CloudSync = {
   removeFriendMutual, getFriendRequests, getFriendsWithStatus, startPresenceHeartbeat
 };
 window.dispatchEvent(new Event('cloudsync-ready'));
+
 
 
 </script>
