@@ -284,6 +284,8 @@
 </head>
 <body>
 
+<body>
+
 <!-- ===== タイトル画面 ===== -->
 <div id="homeScreen">
   <button id="homeSettingBtn">⚙️ 設定</button>
@@ -470,12 +472,12 @@
 <!-- ===== フレンド画面 ===== -->
 <div class="overlay" id="friendScreen">
   <p class="ov-title">👥 フレンド</p>
-  <p class="ov-sub">IDを使ってフレンドを追加できます</p>
+  <p class="ov-sub">フレンドIDを使ってフレンドを追加できます</p>
   <div class="ov-card">
-    <h3>あなたのID</h3>
+    <h3>あなたのフレンドID</h3>
     <div class="pid-box">
       <div>
-        <div class="pid-label">プレイヤーID</div>
+        <div class="pid-label">フレンドID</div>
         <div class="pid-value" id="myPidFriend">----</div>
       </div>
       <button class="pid-copy" id="copyPidFriend">コピー</button>
@@ -483,7 +485,7 @@
   </div>
   <div class="ov-card">
     <h3>➕ フレンド追加</h3>
-    <input class="ov-input" id="addFriendInput" placeholder="相手のプレイヤーIDを入力">
+    <input class="ov-input" id="addFriendInput" placeholder="相手のフレンドIDを入力（FR-XXXX-XXXX）">
     <button class="ov-btn ov-btn-green" id="addFriendBtn">追加する</button>
     <p class="notice" id="addFriendMsg" style="display:none"></p>
   </div>
@@ -522,9 +524,9 @@
 </div>
 
 
-<script>
 
-/* ===== 01-core-setup.js ===== */
+
+<script>
 /* ===== 01-core-setup.js ===== */
 // ===== roundRectポリフィル =====
 // 古いAndroid WebView（Chrome 99未満相当）ではCanvasの roundRect() が未実装で、
@@ -685,7 +687,7 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-/* ===== 02-input-skills.js ===== */
+
 /* ===== 02-input-skills.js ===== */
 // ===== ボタン・タップゾーンのバインド =====
 // キーをホールド扱いにするユーティリティ
@@ -896,7 +898,7 @@ function drawSkillGauge() {
 
 
 
-/* ===== 03-classes-equipment.js ===== */
+
 /* ===== 03-classes-equipment.js ===== */
 // ======================================================
 // ===== クラス定義 =====
@@ -1168,7 +1170,7 @@ function gainExp(amount) {
 
 
 
-/* ===== 04-player-state.js ===== */
+
 /* ===== 04-player-state.js ===== */
 const ROBOT = {
   w: Math.round(TILE * 1.0),
@@ -1228,7 +1230,7 @@ function rectsOverlap(a,b){
 
 
 
-/* ===== 05-game-loop.js ===== */
+
 /* ===== 05-game-loop.js ===== */
 function update(dt){
   if (gameState !== 'playing') {
@@ -1757,7 +1759,7 @@ let animTime = 0;
 
 
 
-/* ===== 06-enemies-render.js ===== */
+
 /* ===== 06-enemies-render.js ===== */
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
@@ -2028,7 +2030,7 @@ function drawBird(p, cfg){
 
 
 
-/* ===== 07-course-render.js ===== */
+
 /* ===== 07-course-render.js ===== */
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
@@ -2834,7 +2836,7 @@ function drawTorch(g){
 
 
 
-/* ===== 08-draw-loop.js ===== */
+
 /* ===== 08-draw-loop.js ===== */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -3203,23 +3205,40 @@ function loop(now){
 
 
 
-/* ===== 09-profile-save.js ===== */
+
 /* ===== 09-profile-save.js ===== */
 // ======================================================
 // ===== プロフィール・ID管理 =====
 // ======================================================
 
 // 1億人対応: 英数字8桁 = 36^8 ≒ 2800億通り
+// ※ id（プレイヤーID）= クラウド引き継ぎコード。他人に渡すとセーブデータを書き換えられるため、
+//    フレンド登録など人に教える用途には絶対に使わない。
 function genPlayerId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const seg = () => Array.from({length:4}, ()=>chars[Math.random()*chars.length|0]).join('');
   return `RR-${seg()}-${seg()}`;
 }
 
+// フレンド登録専用ID。プレフィックスをFRにして引き継ぎコード(RR-)と
+// 見た目からして混同できないようにし、人に教えても安全な値にする。
+function genFriendId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const seg = () => Array.from({length:4}, ()=>chars[Math.random()*chars.length|0]).join('');
+  return `FR-${seg()}-${seg()}`;
+}
+
 let myProfile = JSON.parse(localStorage.getItem('rr_profile') || 'null');
 if (!myProfile) {
-  myProfile = { name:'', id: genPlayerId() };
+  myProfile = { name:'', id: genPlayerId(), friendId: genFriendId() };
   localStorage.setItem('rr_profile', JSON.stringify(myProfile));
+}
+// 既存プレイヤー（旧バージョンから引き継いだ端末）にfriendIdが無ければ追加発行する
+if (!myProfile.friendId) {
+  myProfile.friendId = genFriendId();
+  localStorage.setItem('rr_profile', JSON.stringify(myProfile));
+  // CloudSyncの初期化（モジュール読み込み）が完了してから同期する
+  window.addEventListener('cloudsync-ready', () => window.CloudSync?.queuePush(myProfile.id), { once: true });
 }
 let friends = JSON.parse(localStorage.getItem('rr_friends') || '[]');
 function saveFriends() { localStorage.setItem('rr_friends', JSON.stringify(friends)); }
@@ -3467,7 +3486,7 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-/* ===== 10-lobby.js ===== */
+
 /* ===== 10-lobby.js ===== */
 // ======================================================
 // ===== 2Dロビーワールド =====
@@ -4131,7 +4150,7 @@ function openNearFacility() {
 }
 function openFacility(screenId) {
   if (screenId === 'friendScreen') {
-    document.getElementById('myPidFriend').textContent = myProfile.id;
+    document.getElementById('myPidFriend').textContent = myProfile.friendId;
     document.getElementById('addFriendInput').value = '';
     document.getElementById('addFriendMsg').style.display = 'none';
     renderFriendList();
@@ -4149,7 +4168,7 @@ lobbyCanvas.addEventListener('click', () => { openNearFacility(); });
 
 // ホームへ戻るボタン
 document.getElementById('lobbyFriendBtn').addEventListener('click', () => {
-  document.getElementById('myPidFriend').textContent = myProfile.id;
+  document.getElementById('myPidFriend').textContent = myProfile.friendId;
   document.getElementById('addFriendInput').value = '';
   document.getElementById('addFriendMsg').style.display = 'none';
   renderFriendList();
@@ -4170,7 +4189,7 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-/* ===== 11-ui-screens.js ===== */
+
 /* ===== 11-ui-screens.js ===== */
 // ======================================================
 // ===== クエスト画面 =====
@@ -4378,7 +4397,7 @@ function renderFriendList() {
 window.removeFriend = (i) => { friends.splice(i,1); saveFriends(); renderFriendList(); };
 
 document.getElementById('copyPidFriend').addEventListener('click', () => {
-  navigator.clipboard?.writeText(myProfile.id).catch(()=>{});
+  navigator.clipboard?.writeText(myProfile.friendId).catch(()=>{});
   const b = document.getElementById('copyPidFriend');
   b.textContent = '✔'; setTimeout(() => b.textContent = 'コピー', 1500);
 });
@@ -4387,7 +4406,17 @@ document.getElementById('addFriendBtn').addEventListener('click', () => {
   const msg = document.getElementById('addFriendMsg');
   msg.style.display = 'block'; msg.style.color = '#f39c12';
   if (!id) { msg.textContent = 'IDを入力してください'; return; }
-  if (id === myProfile.id) { msg.textContent = '自分自身は追加できません'; return; }
+  if (/^RR-/.test(id)) {
+    msg.style.color = '#e74c3c';
+    msg.textContent = '⚠️ それはプレイヤーID（引き継ぎコード）です。フレンドIDをご入力ください';
+    return;
+  }
+  if (!/^FR-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(id)) {
+    msg.style.color = '#e74c3c';
+    msg.textContent = '⚠️ IDの形式が正しくありません（例：FR-XXXX-XXXX）';
+    return;
+  }
+  if (id === myProfile.friendId) { msg.textContent = '自分自身は追加できません'; return; }
   if (friends.find(f => f.id === id)) { msg.textContent = 'すでにフレンドです'; return; }
   const name = 'ロボ_' + id.slice(-4);
   friends.push({id, name}); saveFriends(); renderFriendList();
@@ -4500,6 +4529,7 @@ if (!myProfile.name) {
   homeScreen.style.display = 'none';
   showRegister();
 }
+
 
 
 
