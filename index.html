@@ -360,6 +360,14 @@
     <p class="notice" id="settingNameMsg" style="display:none"></p>
   </div>
   <button class="ov-back" id="backFromSetting">← ホームへ戻る</button>
+  <div class="ov-card" style="margin-top:20px;border-color:rgba(231,76,60,0.4);">
+    <h3 style="color:#e74c3c;">🆕 新しいデータで始める</h3>
+    <p style="font-size:12px;color:#7fa8c8;margin:4px 0 12px;line-height:1.6;">
+      この端末のデータを消して、新しいプレイヤーIDで最初から始めます。<br>
+      今のデータはクラウドに残るので、IDさえ覚えていれば後からいつでも「データを引き継ぐ」で復元できます。
+    </p>
+    <button class="ov-btn ov-btn-red" id="resetLocalBtn" style="max-width:360px;">🆕　新しいデータで始める</button>
+  </div>
 </div>
 
 <!-- ===== ロビー画面（2D横スクロール） ===== -->
@@ -3445,6 +3453,14 @@ document.getElementById('settingSaveName').addEventListener('click', () => {
 });
 document.getElementById('backFromSetting').addEventListener('click', () => {
   hideAllOverlays(); homeScreen.style.display = 'flex';
+});
+document.getElementById('resetLocalBtn').addEventListener('click', () => {
+  const oldId = myProfile.id;
+  const sure = confirm(`現在のID「${oldId}」のデータはクラウドに残ります。\nこの端末を新しいプレイヤーとして始めますか？`);
+  if (!sure) return;
+  const SYNC_KEYS = ['rr_profile','rr_savedata','rr_equipment','rr_levels','rr_skills','rr_class','rr_friends'];
+  SYNC_KEYS.forEach(k => localStorage.removeItem(k));
+  location.reload();
 });
 
 
