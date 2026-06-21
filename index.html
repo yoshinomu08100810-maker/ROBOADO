@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ロボ×アド</title>
 <style>
-  html, body {
+html, body {
     margin:0; padding:0; width:100%; height:100%;
     background:#000; font-family:sans-serif; color:#fff;
     overflow:hidden;
@@ -278,12 +278,8 @@
     transition:background 0.2s; white-space:nowrap;
   }
   #homeSettingBtn:hover { background:rgba(255,255,255,0.2); }
-
-
 </style>
 </head>
-<body>
-
 <body>
 
 <!-- ===== タイトル画面 ===== -->
@@ -315,6 +311,20 @@
     </div>
   </div>
   <button class="ov-btn ov-btn-green" id="regSaveBtn" style="max-width:360px;">✅　冒険を始める</button>
+
+  <div style="display:flex;align-items:center;gap:10px;max-width:360px;margin:22px auto 14px;">
+    <div style="flex:1;height:1px;background:rgba(255,255,255,0.15);"></div>
+    <span style="font-size:12px;color:#7fa8c8;">または</span>
+    <div style="flex:1;height:1px;background:rgba(255,255,255,0.15);"></div>
+  </div>
+  <div class="ov-card">
+    <h3>🔗 引き継ぎコードをお持ちの方</h3>
+    <input class="ov-input" id="regTakeoverInput" placeholder="例：RR-XXXX-XXXX" maxlength="11"
+      autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+      style="text-transform:uppercase;">
+    <p class="notice" id="regTakeoverMsg" style="display:none"></p>
+    <button class="ov-btn ov-btn-blue" id="regTakeoverBtn" style="max-width:360px;margin-top:10px;">🔄　このコードで引き継ぐ</button>
+  </div>
 </div>
 
 <!-- ===== データ引き継ぎ（ログイン）画面 ===== -->
@@ -525,9 +535,7 @@
 
 
 
-
 <script>
-/* ===== 01-core-setup.js ===== */
 // ===== roundRectポリフィル =====
 // 古いAndroid WebView（Chrome 99未満相当）ではCanvasの roundRect() が未実装で、
 // 呼び出すとエラーになり描画が途中で止まってしまう（タイトル画面のロボット顔が
@@ -688,7 +696,8 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-/* ===== 02-input-skills.js ===== */
+</script>
+<script>
 // ===== ボタン・タップゾーンのバインド =====
 // キーをホールド扱いにするユーティリティ
 function bindHoldButton(el, code){
@@ -899,7 +908,8 @@ function drawSkillGauge() {
 
 
 
-/* ===== 03-classes-equipment.js ===== */
+</script>
+<script>
 // ======================================================
 // ===== クラス定義 =====
 // ======================================================
@@ -1171,7 +1181,8 @@ function gainExp(amount) {
 
 
 
-/* ===== 04-player-state.js ===== */
+</script>
+<script>
 const ROBOT = {
   w: Math.round(TILE * 1.0),
   h: Math.round(TILE * 1.3),
@@ -1231,7 +1242,8 @@ function rectsOverlap(a,b){
 
 
 
-/* ===== 05-game-loop.js ===== */
+</script>
+<script>
 function update(dt){
   if (gameState !== 'playing') {
     if (keys['Enter']) { goHome(); }
@@ -1760,7 +1772,8 @@ let animTime = 0;
 
 
 
-/* ===== 06-enemies-render.js ===== */
+</script>
+<script>
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
   const cx = x + w/2;
@@ -2031,7 +2044,8 @@ function drawBird(p, cfg){
 
 
 
-/* ===== 07-course-render.js ===== */
+</script>
+<script>
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
   const u = W / 48;
@@ -2837,7 +2851,8 @@ function drawTorch(g){
 
 
 
-/* ===== 08-draw-loop.js ===== */
+</script>
+<script>
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.save();
@@ -3206,7 +3221,8 @@ function loop(now){
 
 
 
-/* ===== 09-profile-save.js ===== */
+</script>
+<script>
 // ======================================================
 // ===== プロフィール・ID管理 =====
 // ======================================================
@@ -3380,10 +3396,10 @@ document.getElementById('backFromLogin').addEventListener('click', () => {
 document.getElementById('loginIdInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('loginGoBtn').click();
 });
-document.getElementById('loginGoBtn').addEventListener('click', async () => {
-  const msg = document.getElementById('loginMsg');
-  const btn = document.getElementById('loginGoBtn');
-  const id = document.getElementById('loginIdInput').value.trim().toUpperCase();
+
+// 引き継ぎコードでのログイン処理（loginScreen / registerScreen 共通）
+async function takeoverWithCode(rawId, msg, btn) {
+  const id = rawId.trim().toUpperCase();
   msg.style.display = 'block'; msg.style.color = '#7fa8c8';
   if (!/^RR-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(id)) {
     msg.style.color = '#e74c3c';
@@ -3407,6 +3423,14 @@ document.getElementById('loginGoBtn').addEventListener('click', async () => {
   msg.style.color = '#2ecc71';
   msg.textContent = '✅ データを引き継ぎました。再読み込みします…';
   setTimeout(() => location.reload(), 800);
+}
+
+document.getElementById('loginGoBtn').addEventListener('click', () => {
+  takeoverWithCode(
+    document.getElementById('loginIdInput').value,
+    document.getElementById('loginMsg'),
+    document.getElementById('loginGoBtn')
+  );
 });
 
 // ======================================================
@@ -3415,6 +3439,8 @@ document.getElementById('loginGoBtn').addEventListener('click', async () => {
 function showRegister() {
   homeScreen.style.display = 'none';
   document.getElementById('regPidDisplay').textContent = myProfile.id;
+  document.getElementById('regTakeoverInput').value = '';
+  document.getElementById('regTakeoverMsg').style.display = 'none';
   showOverlay('registerScreen');
   setTimeout(() => document.getElementById('regNameInput').focus(), 150);
 }
@@ -3435,6 +3461,18 @@ document.getElementById('regSaveBtn').addEventListener('click', () => {
 });
 document.getElementById('regNameInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('regSaveBtn').click();
+});
+
+// 登録画面に常設の「引き継ぎコードをお持ちの方」欄
+document.getElementById('regTakeoverInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('regTakeoverBtn').click();
+});
+document.getElementById('regTakeoverBtn').addEventListener('click', () => {
+  takeoverWithCode(
+    document.getElementById('regTakeoverInput').value,
+    document.getElementById('regTakeoverMsg'),
+    document.getElementById('regTakeoverBtn')
+  );
 });
 
 // ======================================================
@@ -3475,7 +3513,8 @@ document.getElementById('backFromSetting').addEventListener('click', () => {
 });
 document.getElementById('resetLocalBtn').addEventListener('click', () => {
   const oldId = myProfile.id;
-  const sure = confirm(`現在のID「${oldId}」のデータはクラウドに残ります。\nこの端末を新しいプレイヤーとして始めますか？`);
+  const sure = confirm(`現在のID「${oldId}」のデータはクラウドに残ります。
+この端末を新しいプレイヤーとして始めますか？`);
   if (!sure) return;
   const SYNC_KEYS = ['rr_profile','rr_savedata','rr_equipment','rr_levels','rr_skills','rr_class','rr_friends'];
   SYNC_KEYS.forEach(k => localStorage.removeItem(k));
@@ -3487,7 +3526,8 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-/* ===== 10-lobby.js ===== */
+</script>
+<script>
 // ======================================================
 // ===== 2Dロビーワールド =====
 // ======================================================
@@ -4190,7 +4230,8 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-/* ===== 11-ui-screens.js ===== */
+</script>
+<script>
 // ======================================================
 // ===== クエスト画面 =====
 // ======================================================
@@ -4631,6 +4672,7 @@ async function pullFromCloud(playerId) {
 
 window.CloudSync = { pushToCloud, queuePush, pullFromCloud, flushPush, setStatus };
 window.dispatchEvent(new Event('cloudsync-ready'));
+
 
 </script>
 </body>
