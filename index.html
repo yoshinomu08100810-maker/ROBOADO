@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ロボ×アド</title>
 <style>
-<style>
   html, body {
     margin:0; padding:0; width:100%; height:100%;
     background:#000; font-family:sans-serif; color:#fff;
@@ -207,6 +206,37 @@
     box-sizing:border-box;
   }
   .overlay.show { display:flex; }
+
+  /* ===== スキル詳細モーダル ===== */
+  .sd-modal {
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,0.7);
+    display:none; align-items:center; justify-content:center;
+    padding:20px; box-sizing:border-box;
+  }
+  .sd-modal.show { display:flex; }
+  .sd-card {
+    width:100%; max-width:380px; max-height:80vh; overflow-y:auto;
+    background:linear-gradient(180deg,#13233f 0%,#1a2a4a 100%);
+    border:1px solid rgba(255,255,255,0.18); border-radius:18px;
+    padding:18px; box-sizing:border-box;
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
+  }
+  .sd-row {
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:13px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  .sd-row:last-child { border-bottom:none; }
+  .sd-row .sd-label { color:#7fa8c8; }
+  .sd-row .sd-value { color:#fff; font-weight:bold; }
+  .sd-section-title {
+    font-size:12px; color:#5be7ff; font-weight:bold; letter-spacing:1px;
+    margin:14px 0 6px;
+  }
+  .sd-note {
+    font-size:11px; color:#aac4e8; line-height:1.6; margin-top:4px;
+  }
+
   .ov-title {
     font-size:clamp(18px,5vw,26px); font-weight:900;
     margin:0 0 4px; color:#fff; letter-spacing:1px; text-align:center;
@@ -287,8 +317,6 @@
   }
   #homeSettingBtn:hover { background:rgba(255,255,255,0.2); }
 
-
-</style>
 
 </style>
 </head>
@@ -416,9 +444,9 @@
   <div id="lobbyHint" style="position:absolute;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);border:1px solid #5be7ff;border-radius:12px;padding:8px 18px;font-size:14px;color:#5be7ff;z-index:10;display:none;pointer-events:none;white-space:nowrap;"></div>
   <!-- ロビー移動ボタン -->
   <div style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:20px;z-index:10;">
-    <div id="lobbyBtnLeft"  class="game-btn" style="width:64px;height:64px;background:rgba(0,0,0,0.6);border:2px solid #446;">◀</div>
+    <div id="lobbyBtnLeft"  class="game-btn" style="width:64px;height:64px;background:rgba(0,0,0,0.6);border:2px solid #446;font-size:28px;color:#fff;line-height:1;">◀</div>
     <div id="lobbyBtnAction" class="game-btn" style="width:64px;height:64px;background:rgba(41,128,185,0.8);border:2px solid #5be7ff;font-size:11px;">決定<br>▲</div>
-    <div id="lobbyBtnRight" class="game-btn" style="width:64px;height:64px;background:rgba(0,0,0,0.6);border:2px solid #446;">▶</div>
+    <div id="lobbyBtnRight" class="game-btn" style="width:64px;height:64px;background:rgba(0,0,0,0.6);border:2px solid #446;font-size:28px;color:#fff;line-height:1;">▶</div>
   </div>
 </div>
 
@@ -436,6 +464,14 @@
   <p class="ov-sub">クラスを選択してください</p>
   <div id="classCardList" style="width:100%;max-width:400px;"></div>
   <button class="ov-back" id="backFromClass">← ロビーへ戻る</button>
+</div>
+
+<!-- ===== スキル詳細モーダル ===== -->
+<div class="sd-modal" id="skillDetailModal">
+  <div class="sd-card" id="skillDetailCard" onclick="event.stopPropagation()">
+    <div id="skillDetailContent"></div>
+    <button class="ov-btn ov-btn-gray" id="skillDetailCloseBtn" style="margin-top:14px;">閉じる</button>
+  </div>
 </div>
 
 <!-- ===== 鍛冶屋画面（Coming Soon） ===== -->
@@ -519,8 +555,6 @@
 
 
 <script>
-
-/* ===== 01-core-setup.js ===== */
 // ===== roundRectポリフィル =====
 // 古いAndroid WebView（Chrome 99未満相当）ではCanvasの roundRect() が未実装で、
 // 呼び出すとエラーになり描画が途中で止まってしまう（タイトル画面のロボット顔が
@@ -683,8 +717,8 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-
-/* ===== 02-input-skills.js ===== */
+</script>
+<script>
 // ===== ボタン・タップゾーンのバインド =====
 // キーをホールド扱いにするユーティリティ
 function bindHoldButton(el, code){
@@ -748,20 +782,19 @@ function fireSkill() {
   }
 
   const skillLv  = getSkillLevel(player.classId || 'none').lv;
-  const skillAtk = getSkillAtk(player.classId || 'none') * 3;
+  const skillAtk = getSkillAtk(player.classId || 'none') * SKILL_ATK_MULTIPLIER;
 
   // スキル発動確定：経験値+1を付与（発動1回につき1EXP）
   gainSkillExp(1, player.classId);
 
   if (player.classId === 'shield') {
-    const reduction = 0.10 + (skillLv - 1) * (0.40 / 9);
     shieldActive    = true;
     shieldDuration  = Infinity; // 永続（行動するまで解除されない）
-    shieldReduction = Math.min(0.5, reduction);
+    shieldReduction = getShieldReductionAtLevel(skillLv);
     player.attackAnim = { type:'shield_bash', t:0, duration:0.6 };
 
   } else if (player.classId === 'spear') {
-    const count = Math.min(11, 1 + skillLv);
+    const count = getSpearThrowCountAtLevel(skillLv);
     player.attackAnim = { type:'spear_throw', t:0, duration:1.2 };
     // 発射フラグ（投擲フェーズに入ったら1度だけ発射）
     player.attackAnim.spearsFired = false;
@@ -769,7 +802,7 @@ function fireSkill() {
     player.attackAnim.spearAtk    = skillAtk;
 
   } else if (player.classId === 'bow') {
-    const count = Math.min(15, 3 + Math.floor((skillLv - 1) * 12 / 9));
+    const count = getBowArrowCountAtLevel(skillLv);
     const setupDuration = 0.18;      // 構え(セット)にかかる時間
     const perShotDuration = 0.13;    // 1本あたりの引く→放つサイクル時間
     const totalDuration = setupDuration + count * perShotDuration;
@@ -895,8 +928,8 @@ function drawSkillGauge() {
 
 
 
-
-/* ===== 03-classes-equipment.js ===== */
+</script>
+<script>
 // ======================================================
 // ===== クラス定義 =====
 // ======================================================
@@ -1111,11 +1144,28 @@ function skillExpToNextLv(lv) {
   return 100 * (lv - 3); // Lv5→6:200, Lv6→7:300, Lv7→8:400, Lv8→9:500, Lv9→10:600
 }
 function getSkillAtk(classId) {
+  return getSkillAtkAtLevel(classId, getSkillLevel(classId).lv);
+}
+// 任意のスキルLvを指定してスキルATKを算出（クラスチェンジ画面の詳細表示などで使用）
+function getSkillAtkAtLevel(classId, lv) {
   const cls = CLASS_DEFS[classId] || CLASS_DEFS.none;
-  const slv = getSkillLevel(classId).lv;
-  const base = cls.skill.baseAtk + cls.skill.atkPerLv * (slv - 1);
+  const base = cls.skill.baseAtk + cls.skill.atkPerLv * (lv - 1);
   const weaponMul = (typeof getWeaponAtkMultiplier === 'function') ? getWeaponAtkMultiplier(classId) : 1.0;
   return Math.floor(base * weaponMul) || 1;
+}
+// スキル発動時に実際に乗算される倍率（fireSkill内のskillAtk算出と一致させること）
+const SKILL_ATK_MULTIPLIER = 3;
+// タッテン「インビジブルシールド」のダメージ軽減率（スキルLv1で10%→Lv10で50%、上限50%）
+function getShieldReductionAtLevel(lv) {
+  return Math.min(0.5, 0.10 + (lv - 1) * (0.40 / 9));
+}
+// ヤリーン「スローランス」の投擲本数（スキルLv1で2本→Lv10で11本）
+function getSpearThrowCountAtLevel(lv) {
+  return Math.min(11, 1 + lv);
+}
+// ユミカゼ「レインアロー」の矢の本数（スキルLv1で3本→Lv10で15本）
+function getBowArrowCountAtLevel(lv) {
+  return Math.min(15, 3 + Math.floor((lv - 1) * 12 / 9));
 }
 function gainSkillExp(amount, classId) {
   const id = classId || currentClassId;
@@ -1226,8 +1276,8 @@ function applyStageDifficulty(stageId) {
 
 
 
-
-/* ===== 04-player-state.js ===== */
+</script>
+<script>
 const ROBOT = {
   w: Math.round(TILE * 1.0),
   h: Math.round(TILE * 1.3),
@@ -1287,8 +1337,8 @@ function rectsOverlap(a,b){
 
 
 
-
-/* ===== 05-game-loop.js ===== */
+</script>
+<script>
 function update(dt){
   if (gameState !== 'playing') {
     if (keys['Enter']) { goHome(); }
@@ -1820,8 +1870,8 @@ let animTime = 0;
 
 
 
-
-/* ===== 06-enemies-render.js ===== */
+</script>
+<script>
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
   const cx = x + w/2;
@@ -2092,8 +2142,8 @@ function drawBird(p, cfg){
 
 
 
-
-/* ===== 07-course-render.js ===== */
+</script>
+<script>
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
   const u = W / 48;
@@ -2899,8 +2949,8 @@ function drawTorch(g){
 
 
 
-
-/* ===== 08-draw-loop.js ===== */
+</script>
+<script>
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.save();
@@ -3269,8 +3319,8 @@ function loop(now){
 
 
 
-
-/* ===== 09-profile-save.js ===== */
+</script>
+<script>
 // ======================================================
 // ===== プロフィール・ID管理 =====
 // ======================================================
@@ -3581,8 +3631,8 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-
-/* ===== 10-lobby.js ===== */
+</script>
+<script>
 // ======================================================
 // ===== 2Dロビーワールド =====
 // ======================================================
@@ -4288,8 +4338,8 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-
-/* ===== 11-ui-screens.js ===== */
+</script>
+<script>
 // ======================================================
 // ===== クエスト画面 =====
 // ======================================================
@@ -4411,8 +4461,8 @@ function renderClassScreen() {
             <div style="background:#5be7ff;width:${Math.floor(expRatio*100)}%;height:100%;border-radius:4px;"></div>
           </div>
 
-          <!-- スキルレベル -->
-          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;">
+          <!-- スキルレベル（タップで詳細表示） -->
+          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;cursor:pointer;" onclick="showSkillDetail('${id}')">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
               <span style="font-size:14px;">${id==='spear' ? SPEAR_SVG_SM : cls.skill.icon}</span>
               <span style="font-size:12px;font-weight:bold;color:#ffaa44;">${cls.skill.name}</span>
@@ -4428,6 +4478,7 @@ function renderClassScreen() {
             <div style="background:rgba(0,0,0,0.4);border-radius:4px;height:5px;overflow:hidden;">
               <div style="background:#f0c040;width:${Math.floor(skillExpRatio*100)}%;height:100%;border-radius:4px;"></div>
             </div>` : ''}
+            <div style="font-size:10px;color:#5be7ff;text-align:right;margin-top:4px;">👆 タップで詳細</div>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;">
@@ -4444,6 +4495,82 @@ window.selectClass = (id) => {
   setCurrentClass(id);
   renderClassScreen();
 };
+
+// ===== スキル詳細モーダル =====
+// クラスチェンジ画面でスキル欄をタップした際に、性能の詳細（ダメージ・本数・カット率等）を表示する
+function showSkillDetail(classId) {
+  const cls = CLASS_DEFS[classId];
+  if (!cls) return;
+  const slv = getSkillLevel(classId).lv;
+  const curAtk = getSkillAtkAtLevel(classId, slv) * SKILL_ATK_MULTIPLIER;
+  const maxAtk = getSkillAtkAtLevel(classId, 10) * SKILL_ATK_MULTIPLIER;
+
+  let mechanicRows = '';
+  let mechanicNote = '';
+
+  if (classId === 'shield') {
+    const curCut = Math.round(getShieldReductionAtLevel(slv) * 100);
+    const maxCut = Math.round(getShieldReductionAtLevel(10) * 100);
+    mechanicRows = `
+      <div class="sd-row"><span class="sd-label">ダメージカット率（現在 Lv.${slv}）</span><span class="sd-value">${curCut}%</span></div>
+      <div class="sd-row"><span class="sd-label">ダメージカット率（MAX Lv.10）</span><span class="sd-value">${maxCut}%</span></div>
+    `;
+    mechanicNote = '発動すると見えないシールドが展開され、移動・ジャンプ・通常攻撃のいずれかを行うまで効果が持続します。被弾ダメージをLv.1で10%、Lv.10で最大50%までカットします（このスキルは攻撃力の数値を使用しません）。';
+  } else if (classId === 'spear') {
+    const curCount = getSpearThrowCountAtLevel(slv);
+    const maxCount = getSpearThrowCountAtLevel(10);
+    mechanicRows = `
+      <div class="sd-row"><span class="sd-label">投擲本数（現在 Lv.${slv}）</span><span class="sd-value">${curCount}本</span></div>
+      <div class="sd-row"><span class="sd-label">投擲本数（MAX Lv.10）</span><span class="sd-value">${maxCount}本</span></div>
+      <div class="sd-row"><span class="sd-label">1本あたり直撃ダメージ（現在Lv）</span><span class="sd-value">${curAtk}</span></div>
+      <div class="sd-row"><span class="sd-label">1本あたり直撃ダメージ（MAX Lv.10）</span><span class="sd-value">${maxAtk}</span></div>
+      <div class="sd-row"><span class="sd-label">着弾時の爆発ダメージ（現在Lv）</span><span class="sd-value">${Math.floor(curAtk*0.5)}</span></div>
+    `;
+    mechanicNote = '槍を前方に連続投擲します。スキルLvが上がるほど投擲本数が増え（最大11本）、着弾地点では直撃ダメージの50%にあたる爆発ダメージが周囲の敵にも発生します。';
+  } else if (classId === 'bow') {
+    const curCount = getBowArrowCountAtLevel(slv);
+    const maxCount = getBowArrowCountAtLevel(10);
+    mechanicRows = `
+      <div class="sd-row"><span class="sd-label">矢の本数（現在 Lv.${slv}）</span><span class="sd-value">${curCount}本</span></div>
+      <div class="sd-row"><span class="sd-label">矢の本数（MAX Lv.10）</span><span class="sd-value">${maxCount}本</span></div>
+      <div class="sd-row"><span class="sd-label">1本あたりダメージ（現在Lv）</span><span class="sd-value">${curAtk}</span></div>
+      <div class="sd-row"><span class="sd-label">1本あたりダメージ（MAX Lv.10）</span><span class="sd-value">${maxAtk}</span></div>
+    `;
+    mechanicNote = '画面上の敵を狙って矢の雨を降らせます。スキルLvが上がるほど矢の本数が増え（最大15本）、それぞれの矢が着弾地点周辺に範囲ダメージを与えます。';
+  } else {
+    mechanicRows = `
+      <div class="sd-row"><span class="sd-label">攻撃力（現在 Lv.${slv}）</span><span class="sd-value">${curAtk}</span></div>
+      <div class="sd-row"><span class="sd-label">攻撃力（MAX Lv.10）</span><span class="sd-value">${maxAtk}</span></div>
+    `;
+    mechanicNote = '正面にいる敵をまとめて殴り飛ばす基本スキルです。射程内（約3キャラ分）にいる敵すべてに同時にダメージを与えます。';
+  }
+
+  document.getElementById('skillDetailContent').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <span style="font-size:22px;">${classId==='spear' ? SPEAR_SVG_LG : cls.skill.icon}</span>
+      <div>
+        <div style="font-size:16px;font-weight:bold;color:#ffaa44;">${cls.skill.name}</div>
+        <div style="font-size:11px;color:#7fa8c8;">${cls.name}（${cls.label}）専用スキル</div>
+      </div>
+    </div>
+    <div class="sd-note" style="margin-bottom:8px;">${cls.skill.desc}</div>
+    <div class="sd-section-title">📊 性能詳細</div>
+    <div class="sd-row"><span class="sd-label">クールダウン</span><span class="sd-value">${classId==='shield' ? 'なし（常時使用可）' : '3秒'}</span></div>
+    ${mechanicRows}
+    <div class="sd-section-title">📝 効果の説明</div>
+    <div class="sd-note">${mechanicNote}</div>
+  `;
+  document.getElementById('skillDetailModal').classList.add('show');
+}
+window.showSkillDetail = showSkillDetail;
+
+function closeSkillDetail() {
+  document.getElementById('skillDetailModal').classList.remove('show');
+}
+window.closeSkillDetail = closeSkillDetail;
+
+document.getElementById('skillDetailModal').addEventListener('click', closeSkillDetail);
+document.getElementById('skillDetailCloseBtn').addEventListener('click', closeSkillDetail);
 
 // ======================================================
 // ===== 装備変更（鍛冶屋）画面 =====
@@ -4764,7 +4891,6 @@ if (!myProfile.name) {
   homeScreen.style.display = 'none';
   showRegister();
 }
-
 
 
 
