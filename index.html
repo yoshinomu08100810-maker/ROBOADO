@@ -573,9 +573,12 @@
   #chestCloseBtn { display:none; margin-top:20px; }
 
 
+
 </style>
 </head>
 <body>
+<body>
+
 <!-- ===== タイトル画面 ===== -->
 <div id="homeScreen">
   <button id="homeSettingBtn">⚙️ 設定</button>
@@ -963,10 +966,8 @@
   <div class="game-btn" id="attackBtn"><span style="font-size:22px">⚔️</span><span>攻撃</span></div>
   <div class="game-btn" id="jumpBtn"><span style="font-size:22px">↑</span><span>JUMP</span></div>
 </div>
-
-
-<!-- ===== 01-core-setup.js ===== -->
 <script>
+// ===== 01-core-setup.js =====
 // ===== roundRectポリフィル =====
 // 古いAndroid WebView（Chrome 99未満相当）ではCanvasの roundRect() が未実装で、
 // 呼び出すとエラーになり描画が途中で止まってしまう（タイトル画面のロボット顔が
@@ -1181,10 +1182,9 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-</script>
 
-<!-- ===== 02-input-controls.js ===== -->
-<script>
+
+// ===== 02-input-controls.js =====
 // ===== ボタン・タップゾーンのバインド =====
 // キーをホールド扱いにするユーティリティ
 function bindHoldButton(el, code){
@@ -1321,7 +1321,7 @@ function fireSkill() {
 
   } else if (player.classId === 'horsegear') {
     // 騎馬突進：槍を構えて猛突進。触れている間3回継続ダメージ
-    player.attackAnim = { type:'horsegear_thrust', t:0, duration:1.2 };
+    player.attackAnim = { type:'horsegear_charge', t:0, duration:1.2 };
     const rangeH = TILE * 6.0;
     for (const e of enemies) {
       if (!e.alive) continue;
@@ -1601,10 +1601,9 @@ function drawSkillGauge() {
 
 
 
-</script>
 
-<!-- ===== 03-class-defs.js ===== -->
-<script>
+
+// ===== 03-class-defs.js =====
 // ======================================================
 // ===== クラス定義 =====
 // ======================================================
@@ -1918,6 +1917,77 @@ const WEAPON_DB = {
     { id:'bow_ur', name:'疾風の弓', rarity:'ultraRare' },
     { id:'bow_l',  name:'流星の神弓', rarity:'legend' },
   ],
+  // ===== 第2世代武器カテゴリ =====
+  long_spear: [
+    { id:'lsp_n',  name:'長い木槍',     rarity:'normal' },
+    { id:'lsp_r',  name:'鉄の大槍',     rarity:'rare' },
+    { id:'lsp_sr', name:'螺旋槍',       rarity:'superRare' },
+    { id:'lsp_ur', name:'嵐龍の大槍',   rarity:'ultraRare' },
+    { id:'lsp_l',  name:'天廻の神大槍', rarity:'legend' },
+  ],
+  lance: [
+    { id:'lance_n',  name:'木の騎槍',     rarity:'normal' },
+    { id:'lance_r',  name:'鉄の騎槍',     rarity:'rare' },
+    { id:'lance_sr', name:'騎士の重槍',   rarity:'superRare' },
+    { id:'lance_ur', name:'雷轟の槍',     rarity:'ultraRare' },
+    { id:'lance_l',  name:'覇王の神槍',   rarity:'legend' },
+  ],
+  heavy_bow: [
+    { id:'hbow_n',  name:'重い木弓',     rarity:'normal' },
+    { id:'hbow_r',  name:'重鉄弓',       rarity:'rare' },
+    { id:'hbow_sr', name:'コンポジット弓', rarity:'superRare' },
+    { id:'hbow_ur', name:'岩砕の重弓',   rarity:'ultraRare' },
+    { id:'hbow_l',  name:'隕鉄の神弓',   rarity:'legend' },
+  ],
+  ballista: [
+    { id:'bls_n',  name:'木製バリスタ',   rarity:'normal' },
+    { id:'bls_r',  name:'鉄骨バリスタ',   rarity:'rare' },
+    { id:'bls_sr', name:'精密バリスタ',   rarity:'superRare' },
+    { id:'bls_ur', name:'烈風バリスタ',   rarity:'ultraRare' },
+    { id:'bls_l',  name:'神速バリスタ',   rarity:'legend' },
+  ],
+  hammer: [
+    { id:'ham_n',  name:'木のハンマー',   rarity:'normal' },
+    { id:'ham_r',  name:'鉄のハンマー',   rarity:'rare' },
+    { id:'ham_sr', name:'巨人の槌',       rarity:'superRare' },
+    { id:'ham_ur', name:'轟雷の大槌',     rarity:'ultraRare' },
+    { id:'ham_l',  name:'破滅の神槌',     rarity:'legend' },
+  ],
+  gloves: [
+    { id:'glv_n',  name:'布のグローブ',   rarity:'normal' },
+    { id:'glv_r',  name:'革のグローブ',   rarity:'rare' },
+    { id:'glv_sr', name:'鋼鉄グローブ',   rarity:'superRare' },
+    { id:'glv_ur', name:'爆撃グローブ',   rarity:'ultraRare' },
+    { id:'glv_l',  name:'拳神グローブ',   rarity:'legend' },
+  ],
+  axe_chariot: [
+    { id:'axc_n',  name:'木の斧戦車',     rarity:'normal' },
+    { id:'axc_r',  name:'鉄の斧戦車',     rarity:'rare' },
+    { id:'axc_sr', name:'強化戦車',       rarity:'superRare' },
+    { id:'axc_ur', name:'破城戦車',       rarity:'ultraRare' },
+    { id:'axc_l',  name:'覇道の神戦車',   rarity:'legend' },
+  ],
+  dual_sword: [
+    { id:'ds_n',  name:'二本の短剣',     rarity:'normal' },
+    { id:'ds_r',  name:'双鉄剣',         rarity:'rare' },
+    { id:'ds_sr', name:'双牙の剣',       rarity:'superRare' },
+    { id:'ds_ur', name:'魔刃ツインズ',   rarity:'ultraRare' },
+    { id:'ds_l',  name:'双星神剣',       rarity:'legend' },
+  ],
+  staff: [
+    { id:'stf_n',  name:'木の杖',         rarity:'normal' },
+    { id:'stf_r',  name:'魔導の杖',       rarity:'rare' },
+    { id:'stf_sr', name:'晶石の杖',       rarity:'superRare' },
+    { id:'stf_ur', name:'星霊の杖',       rarity:'ultraRare' },
+    { id:'stf_l',  name:'天命の神杖',     rarity:'legend' },
+  ],
+  heal_staff: [
+    { id:'hst_n',  name:'白木の杖',       rarity:'normal' },
+    { id:'hst_r',  name:'聖銀の杖',       rarity:'rare' },
+    { id:'hst_sr', name:'癒しの水晶杖',   rarity:'superRare' },
+    { id:'hst_ur', name:'天恵の聖杖',     rarity:'ultraRare' },
+    { id:'hst_l',  name:'女神の神杖',     rarity:'legend' },
+  ],
 };
 
 // ===== 武器ビジュアル設定 =====
@@ -1976,6 +2046,231 @@ const WEAPON_VISUALS = {
     bowColor:'#ffb000', stringColor:'#fff6c8',
     headColor:'#fff0a0', headColor2:'#e09000', fletchColor:'#ff8c00',
     glowColor:'rgba(255,200,60,0.6)',
+  },
+  // --- 大槍（スピラ） ---
+  lsp_n: {
+    shaftColor:'#7a5a28', shaftHighlight:'#c08840',
+    headColor:'#c0c0c0', headColor2:'#888',
+    accentColor:'#aaa', glowColor:null, lengthMul:1.8,
+  },
+  lsp_r: {
+    shaftColor:'#4a88c0', shaftHighlight:'#80c0e0',
+    headColor:'#d0e0f0', headColor2:'#5a7a9a',
+    accentColor:'#5aaad0', glowColor:null, lengthMul:1.8,
+  },
+  lsp_sr: {
+    shaftColor:'#cc44aa', shaftHighlight:'#ff88dd',
+    headColor:'#ffd0f0', headColor2:'#aa3399',
+    accentColor:'#ff66cc', glowColor:'rgba(255,100,200,0.5)', lengthMul:2.0,
+  },
+  lsp_ur: {
+    shaftColor:'#44aacc', shaftHighlight:'#88ddff',
+    headColor:'#d0f8ff', headColor2:'#2299bb',
+    accentColor:'#55eeff', glowColor:'rgba(80,230,255,0.5)', lengthMul:2.1,
+  },
+  lsp_l: {
+    shaftColor:'#ff5577', shaftHighlight:'#ffccdd',
+    headColor:'#fffbe0', headColor2:'#ffdd66',
+    accentColor:'#ffd700', glowColor:'rgba(255,80,160,0.6)', lengthMul:2.2,
+  },
+  // --- 騎馬槍（ホースギア） ---
+  lance_n: {
+    shaftColor:'#8b5a2b', shaftHighlight:'#c89050',
+    headColor:'#c8c8c8', headColor2:'#888',
+    accentColor:'#aaa', glowColor:null, lengthMul:1.6,
+  },
+  lance_r: {
+    shaftColor:'#6a8aaa', shaftHighlight:'#9abbd8',
+    headColor:'#d8e8f4', headColor2:'#607a90',
+    accentColor:'#6699cc', glowColor:null, lengthMul:1.6,
+  },
+  lance_sr: {
+    shaftColor:'#886644', shaftHighlight:'#ddaa77',
+    headColor:'#f8eecc', headColor2:'#aa8844',
+    accentColor:'#ddaa44', glowColor:'rgba(220,180,60,0.45)', lengthMul:1.8,
+  },
+  lance_ur: {
+    shaftColor:'#cc7700', shaftHighlight:'#ffbb44',
+    headColor:'#fff0cc', headColor2:'#cc8800',
+    accentColor:'#ffcc00', glowColor:'rgba(255,200,0,0.55)', lengthMul:1.8,
+  },
+  lance_l: {
+    shaftColor:'#cc2244', shaftHighlight:'#ff8899',
+    headColor:'#fff5f0', headColor2:'#ff4466',
+    accentColor:'#ff2255', glowColor:'rgba(255,40,100,0.6)', lengthMul:2.0,
+  },
+  // --- 重弓（ミーティア） ---
+  hbow_n: {
+    bowColor:'#6b4820', stringColor:'#d8d0c0',
+    headColor:'#bbbbb', headColor2:'#666', fletchColor:'#778866',
+    glowColor:null,
+  },
+  hbow_r: {
+    bowColor:'#556677', stringColor:'#cce0f0',
+    headColor:'#c0ccdc', headColor2:'#445566', fletchColor:'#5577aa',
+    glowColor:null,
+  },
+  hbow_sr: {
+    bowColor:'#664488', stringColor:'#eebbff',
+    headColor:'#eeccff', headColor2:'#8833aa', fletchColor:'#9944cc',
+    glowColor:'rgba(160,80,220,0.45)',
+  },
+  hbow_ur: {
+    bowColor:'#557700', stringColor:'#ccff88',
+    headColor:'#ddff99', headColor2:'#446600', fletchColor:'#88cc00',
+    glowColor:'rgba(140,220,0,0.5)',
+  },
+  hbow_l: {
+    bowColor:'#884400', stringColor:'#ffcc88',
+    headColor:'#ffeecc', headColor2:'#cc6600', fletchColor:'#ff8800',
+    glowColor:'rgba(255,140,0,0.6)',
+  },
+  // --- バリスタ（ハンター） ---
+  bls_n: {
+    frameColor:'#7a6a50', boltColor:'#c0c0c0', railColor:'#5a4a30',
+    glowColor:null,
+  },
+  bls_r: {
+    frameColor:'#5a6a7a', boltColor:'#d0d8e8', railColor:'#3a4a5a',
+    glowColor:null,
+  },
+  bls_sr: {
+    frameColor:'#6644aa', boltColor:'#ddc8ff', railColor:'#4433aa',
+    glowColor:'rgba(140,80,220,0.45)',
+  },
+  bls_ur: {
+    frameColor:'#226688', boltColor:'#aaeeff', railColor:'#114466',
+    glowColor:'rgba(40,200,255,0.5)',
+  },
+  bls_l: {
+    frameColor:'#cc4400', boltColor:'#ffdd88', railColor:'#aa2200',
+    glowColor:'rgba(255,100,0,0.6)',
+  },
+  // --- 大槌（グラード） ---
+  ham_n: {
+    handleColor:'#7a5a28', headColor:'#909090', headColor2:'#606060',
+    accentColor:'#888', glowColor:null,
+  },
+  ham_r: {
+    handleColor:'#4a6888', headColor:'#9ab8d8', headColor2:'#3a5878',
+    accentColor:'#5a88cc', glowColor:null,
+  },
+  ham_sr: {
+    handleColor:'#885522', headColor:'#e8b880', headColor2:'#664411',
+    accentColor:'#cc8833', glowColor:'rgba(200,140,50,0.45)',
+  },
+  ham_ur: {
+    handleColor:'#224466', headColor:'#44ccff', headColor2:'#114455',
+    accentColor:'#22aaee', glowColor:'rgba(40,200,255,0.55)',
+  },
+  ham_l: {
+    handleColor:'#440022', headColor:'#ff4477', headColor2:'#220011',
+    accentColor:'#ff2255', glowColor:'rgba(255,40,100,0.6)',
+  },
+  // --- グローブ（レックス） ---
+  glv_n: {
+    gloveColor:'#cc8844', knuckleColor:'#888',
+    accentColor:'#aaa', glowColor:null,
+  },
+  glv_r: {
+    gloveColor:'#5577bb', knuckleColor:'#aabbdd',
+    accentColor:'#6699dd', glowColor:null,
+  },
+  glv_sr: {
+    gloveColor:'#884488', knuckleColor:'#ddaadd',
+    accentColor:'#cc55cc', glowColor:'rgba(200,80,200,0.45)',
+  },
+  glv_ur: {
+    gloveColor:'#116644', knuckleColor:'#44ff99',
+    accentColor:'#22cc77', glowColor:'rgba(40,220,130,0.5)',
+  },
+  glv_l: {
+    gloveColor:'#cc2222', knuckleColor:'#ffdd66',
+    accentColor:'#ff4444', glowColor:'rgba(255,60,60,0.6)',
+  },
+  // --- 斧戦車（センジン） ---
+  axc_n: {
+    axeColor:'#909090', axeColor2:'#606060', wheelColor:'#5a4a30',
+    accentColor:'#888', glowColor:null,
+  },
+  axc_r: {
+    axeColor:'#7799bb', axeColor2:'#4466aa', wheelColor:'#3a5070',
+    accentColor:'#5588cc', glowColor:null,
+  },
+  axc_sr: {
+    axeColor:'#bb8833', axeColor2:'#885500', wheelColor:'#664422',
+    accentColor:'#dd9944', glowColor:'rgba(200,150,60,0.45)',
+  },
+  axc_ur: {
+    axeColor:'#44ccdd', axeColor2:'#119988', wheelColor:'#115566',
+    accentColor:'#33bbcc', glowColor:'rgba(60,200,220,0.55)',
+  },
+  axc_l: {
+    axeColor:'#ff3333', axeColor2:'#cc0000', wheelColor:'#440000',
+    accentColor:'#ff6600', glowColor:'rgba(255,50,0,0.6)',
+  },
+  // --- 双剣（シュナイザー） ---
+  ds_n: {
+    blade1Color:'#c0c0c0', blade2Color:'#a0a0a0', guardColor:'#888',
+    accentColor:'#aaa', glowColor:null,
+  },
+  ds_r: {
+    blade1Color:'#7799cc', blade2Color:'#5577aa', guardColor:'#446688',
+    accentColor:'#6688bb', glowColor:null,
+  },
+  ds_sr: {
+    blade1Color:'#dd66bb', blade2Color:'#bb4499', guardColor:'#883377',
+    accentColor:'#ff55cc', glowColor:'rgba(220,80,180,0.45)',
+  },
+  ds_ur: {
+    blade1Color:'#44ffcc', blade2Color:'#22ccaa', guardColor:'#119966',
+    accentColor:'#33eebb', glowColor:'rgba(50,240,200,0.5)',
+  },
+  ds_l: {
+    blade1Color:'#ff5577', blade2Color:'#cc0033', guardColor:'#880011',
+    accentColor:'#ffdd00', glowColor:'rgba(255,50,80,0.6)',
+  },
+  // --- 攻撃魔法杖（アステリオン） ---
+  stf_n: {
+    shaftColor:'#8b6a3a', crystalColor:'#88aacc', crystal2Color:'#5588aa',
+    accentColor:'#8899bb', glowColor:null,
+  },
+  stf_r: {
+    shaftColor:'#556688', crystalColor:'#9966ff', crystal2Color:'#6633cc',
+    accentColor:'#8855ee', glowColor:null,
+  },
+  stf_sr: {
+    shaftColor:'#7755aa', crystalColor:'#ddbbff', crystal2Color:'#9966ee',
+    accentColor:'#cc88ff', glowColor:'rgba(180,100,255,0.45)',
+  },
+  stf_ur: {
+    shaftColor:'#224488', crystalColor:'#44bbff', crystal2Color:'#2288dd',
+    accentColor:'#55ccff', glowColor:'rgba(50,180,255,0.55)',
+  },
+  stf_l: {
+    shaftColor:'#441122', crystalColor:'#ff66bb', crystal2Color:'#cc2277',
+    accentColor:'#ff88dd', glowColor:'rgba(255,80,180,0.6)',
+  },
+  // --- 回復杖（セラフィ） ---
+  hst_n: {
+    shaftColor:'#c8b87a', crystalColor:'#d0eecc', crystal2Color:'#88cc88',
+    accentColor:'#aaccaa', glowColor:null,
+  },
+  hst_r: {
+    shaftColor:'#aabbaa', crystalColor:'#aaffcc', crystal2Color:'#55dd99',
+    accentColor:'#77eebb', glowColor:null,
+  },
+  hst_sr: {
+    shaftColor:'#cc9944', crystalColor:'#ffffaa', crystal2Color:'#ddcc44',
+    accentColor:'#ffee88', glowColor:'rgba(255,240,100,0.45)',
+  },
+  hst_ur: {
+    shaftColor:'#888800', crystalColor:'#ffffcc', crystal2Color:'#cccc00',
+    accentColor:'#eeff66', glowColor:'rgba(200,255,50,0.5)',
+  },
+  hst_l: {
+    shaftColor:'#cc9900', crystalColor:'#ffffff', crystal2Color:'#ffee88',
+    accentColor:'#fffabb', glowColor:'rgba(255,255,180,0.65)',
   },
   // --- 槍（ヤリーン） ---
   spear_n: {  // 木の槍（ノーマル）
@@ -2058,6 +2353,152 @@ function getBowSvg(weaponId, size) {
     + `<line x1="3" y1="11" x2="0.5" y2="13.5" stroke="${wv.fletchColor}" stroke-width="1.2"/>`
     + `</svg>`;
 }
+// --- 第2世代武器アイコンSVG ---
+// 大槍（スピラ）アイコン
+function getLongSpearSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<line x1="2" y1="20" x2="20" y2="2" stroke="${wv.shaftColor||'#8b5a2b'}" stroke-width="2.2" stroke-linecap="round"/>`
+    + `<path d="M20,2 Q16,4 14,10 Q19,6 20,2Z" fill="${wv.headColor||'#ccc'}" stroke="#444" stroke-width="0.7"/>`
+    + `<circle cx="3" cy="19" r="1.5" fill="${wv.headColor2||'#888'}"/>`
+    + `</svg>`;
+}
+// 騎馬槍（ホースギア）アイコン
+function getLanceSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<line x1="2" y1="20" x2="19" y2="3" stroke="${wv.shaftColor||'#8b5a2b'}" stroke-width="2.8" stroke-linecap="round"/>`
+    + `<polygon points="19,3 16,8 20,9" fill="${wv.headColor||'#ccc'}" stroke="#444" stroke-width="0.7"/>`
+    + `</svg>`;
+}
+// 重弓（ミーティア）アイコン
+function getHeavyBowSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<path d="M5,2 Q18,11 5,20" fill="none" stroke="${wv.bowColor||'#6b4820'}" stroke-width="3" stroke-linecap="round"/>`
+    + `<line x1="5" y1="2" x2="5" y2="20" stroke="${wv.stringColor||'#d8d0c0'}" stroke-width="1"/>`
+    + `<line x1="2" y1="11" x2="15" y2="11" stroke="${wv.headColor2||'#666'}" stroke-width="1.8" stroke-linecap="round"/>`
+    + `<path d="M15,11 L11,8.5 L11,13.5 Z" fill="${wv.headColor||'#bbb'}"/>`
+    + `</svg>`;
+}
+// バリスタ（ハンター）アイコン
+function getBallistaSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<rect x="3" y="9" width="16" height="5" rx="1.5" fill="${wv.frameColor||'#7a6a50'}" stroke="#333" stroke-width="0.8"/>`
+    + `<line x1="3" y1="11.5" x2="19" y2="11.5" stroke="${wv.railColor||'#5a4a30'}" stroke-width="1"/>`
+    + `<line x1="6" y1="11.5" x2="20" y2="11.5" stroke="${wv.boltColor||'#c0c0c0'}" stroke-width="1.4" stroke-linecap="round"/>`
+    + `<polygon points="20,11.5 17,10 17,13" fill="${wv.boltColor||'#c0c0c0'}"/>`
+    + `</svg>`;
+}
+// 大槌（グラード）アイコン
+function getHammerSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<line x1="5" y1="17" x2="15" y2="7" stroke="${wv.handleColor||'#7a5a28'}" stroke-width="2.5" stroke-linecap="round"/>`
+    + `<rect x="12" y="3" width="8" height="7" rx="1.5" transform="rotate(45,16,6.5)" fill="${wv.headColor||'#909090'}" stroke="${wv.headColor2||'#606060'}" stroke-width="0.8"/>`
+    + `</svg>`;
+}
+// グローブ（レックス）アイコン
+function getGlovesSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<rect x="3" y="8" width="8" height="10" rx="3" fill="${wv.gloveColor||'#cc8844'}" stroke="#444" stroke-width="0.8"/>`
+    + `<rect x="11" y="9" width="8" height="10" rx="3" fill="${wv.gloveColor||'#cc8844'}" stroke="#444" stroke-width="0.8"/>`
+    + `<rect x="4" y="7" width="6" height="3" rx="1" fill="${wv.knuckleColor||'#888'}"/>`
+    + `<rect x="12" y="8" width="6" height="3" rx="1" fill="${wv.knuckleColor||'#888'}"/>`
+    + `</svg>`;
+}
+// 斧戦車（センジン）アイコン
+function getAxeChariotSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<circle cx="8" cy="15" r="5" fill="none" stroke="${wv.wheelColor||'#5a4a30'}" stroke-width="2"/>`
+    + `<line x1="8" y1="10" x2="8" y2="20" stroke="${wv.wheelColor||'#5a4a30'}" stroke-width="1"/>`
+    + `<line x1="3" y1="15" x2="13" y2="15" stroke="${wv.wheelColor||'#5a4a30'}" stroke-width="1"/>`
+    + `<path d="M13,5 Q16,2 18,4 L14,9 Z" fill="${wv.axeColor||'#909090'}" stroke="${wv.axeColor2||'#606060'}" stroke-width="0.8"/>`
+    + `</svg>`;
+}
+// 双剣（シュナイザー）アイコン
+function getDualSwordSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<line x1="4" y1="18" x2="12" y2="3" stroke="${wv.blade1Color||'#c0c0c0'}" stroke-width="1.8" stroke-linecap="round"/>`
+    + `<line x1="10" y1="18" x2="18" y2="3" stroke="${wv.blade2Color||'#a0a0a0'}" stroke-width="1.8" stroke-linecap="round"/>`
+    + `<line x1="2" y1="13" x2="14" y2="11" stroke="${wv.guardColor||'#888'}" stroke-width="1.5" stroke-linecap="round"/>`
+    + `<line x1="8" y1="13" x2="20" y2="11" stroke="${wv.guardColor||'#888'}" stroke-width="1.5" stroke-linecap="round"/>`
+    + `</svg>`;
+}
+// 攻撃魔法杖（アステリオン）アイコン
+function getStaffSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<line x1="5" y1="20" x2="15" y2="6" stroke="${wv.shaftColor||'#8b6a3a'}" stroke-width="2" stroke-linecap="round"/>`
+    + `<circle cx="16" cy="4" r="4" fill="${wv.crystalColor||'#88aacc'}" stroke="${wv.crystal2Color||'#5588aa'}" stroke-width="0.8"/>`
+    + `<line x1="14" y1="2" x2="18" y2="6" stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>`
+    + `</svg>`;
+}
+// 回復杖（セラフィ）アイコン
+function getHealStaffSvg(weaponId, size) {
+  const wv = getWeaponVisual(weaponId);
+  const s = size || 22;
+  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
+    + glow
+    + `<line x1="5" y1="20" x2="14" y2="7" stroke="${wv.shaftColor||'#c8b87a'}" stroke-width="2" stroke-linecap="round"/>`
+    + `<circle cx="15" cy="5" r="3.5" fill="${wv.crystalColor||'#d0eecc'}" stroke="${wv.crystal2Color||'#88cc88'}" stroke-width="0.8"/>`
+    + `<line x1="13" y1="5" x2="17" y2="5" stroke="rgba(255,255,255,0.7)" stroke-width="0.9"/>`
+    + `<line x1="15" y1="3" x2="15" y2="7" stroke="rgba(255,255,255,0.7)" stroke-width="0.9"/>`
+    + `</svg>`;
+}
+
+// 武器カテゴリ→SVG生成関数マップ
+function getWeaponSvgByCategory(category, weaponId, size) {
+  switch (category) {
+    case 'shield':     return getShieldSvg(weaponId, size);
+    case 'spear':      return getSpearSvg(weaponId, size);
+    case 'bow':        return getBowSvg(weaponId, size);
+    case 'long_spear': return getLongSpearSvg(weaponId, size);
+    case 'lance':      return getLanceSvg(weaponId, size);
+    case 'heavy_bow':  return getHeavyBowSvg(weaponId, size);
+    case 'ballista':   return getBallistaSvg(weaponId, size);
+    case 'hammer':     return getHammerSvg(weaponId, size);
+    case 'gloves':     return getGlovesSvg(weaponId, size);
+    case 'axe_chariot':return getAxeChariotSvg(weaponId, size);
+    case 'dual_sword': return getDualSwordSvg(weaponId, size);
+    case 'staff':      return getStaffSvg(weaponId, size);
+    case 'heal_staff': return getHealStaffSvg(weaponId, size);
+    default:           return getSpearSvg(weaponId, size);
+  }
+}
+
 // 現在タッテンが装備中の盾のアイコンSVGを取得
 function getEquippedShieldSvg(size) {
   const w = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon('shield') : null;
@@ -2375,10 +2816,9 @@ function applyStageDifficulty(stageId) {
 
 
 
-</script>
 
-<!-- ===== 04-robot-config.js ===== -->
-<script>
+
+// ===== 04-robot-config.js =====
 const ROBOT = {
   w: Math.round(TILE * 1.0),
   h: Math.round(TILE * 1.3),
@@ -2455,10 +2895,9 @@ function rectsOverlap(a,b){
 
 
 
-</script>
 
-<!-- ===== 05-game-loop.js ===== -->
-<script>
+
+// ===== 05-game-loop.js =====
 function update(dt){
   if (gameState !== 'playing') {
     if (gameState === 'lose' && keys['Enter']) { goHome(); }
@@ -3355,21 +3794,19 @@ function resetGame(){
   updateSkillBtn(); // スキルボタンのラベル・アイコンを即座に現在クラスへ更新
 }
 
+let animTime = 0;
+
 // ===== 第2世代スキル状態変数 =====
-// ★バグ修正: update()関数内で参照されるためupdate定義より前に宣言する
 let seraphFieldActive  = false; // セラフィ：セイントフィールド展開中フラグ
 let seraphHealTimer    = 0;     // セラフィ：回復インターバル用タイマー
 
-let animTime = 0;
 
 
 
 
 
-</script>
 
-<!-- ===== 06-enemy-draw.js ===== -->
-<script>
+// ===== 06-enemy-draw.js =====
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
   const cx = x + w/2;
@@ -4323,10 +4760,9 @@ function drawBird(p, cfg){
 
 
 
-</script>
 
-<!-- ===== 07-course-draw.js ===== -->
-<script>
+
+// ===== 07-course-draw.js =====
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
   const u = W / 48;
@@ -5169,6 +5605,552 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.globalAlpha = 1;
       }
     }
+
+  // ===== 第2世代武器描画 =====
+
+  } else if (cls.weapon === 'long_spear') {
+    // スピラ：身長の2倍の長槍（常時回転フラグ＋スピンアニメ）
+    const isSpinning = attackAnim && attackAnim.type === 'spira_spin';
+    const spinT = isSpinning ? attackAnim.t / attackAnim.duration : 0;
+    const wvLsp = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('spira') : null;
+    const lspShaft = wvLsp ? wvLsp.shaftColor : '#cc4488';
+    const lspHead  = wvLsp ? wvLsp.headColor  : '#ffd0f0';
+    const lspHead2 = wvLsp ? wvLsp.headColor2 : '#aa3399';
+    const lspGlow  = wvLsp ? wvLsp.glowColor  : null;
+    const lspLen   = H * 1.8; // 身長の1.8倍の大槍
+
+    if (isSpinning) {
+      // 大車輪：中心を軸に回転
+      const rotAngle = spinT * Math.PI * 4; // 2回転
+      if (lspGlow) { c.shadowColor = lspGlow; c.shadowBlur = 10*u; }
+      c.save();
+      c.translate(cx, baseY - H*0.5);
+      c.rotate(rotAngle);
+      c.strokeStyle = lspShaft; c.lineWidth = 3.5*u; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(-lspLen*0.55, 0); c.lineTo(lspLen*0.45, 0); c.stroke();
+      c.shadowBlur = 0;
+      // 穂先（正面端）
+      c.fillStyle = lspHead;
+      c.beginPath();
+      c.moveTo(lspLen*0.45 + 8*u, 0);
+      c.lineTo(lspLen*0.45, -4*u);
+      c.lineTo(lspLen*0.45 - 2*u, 0);
+      c.lineTo(lspLen*0.45, 4*u);
+      c.closePath(); c.fill();
+      c.strokeStyle = lspHead2; c.lineWidth = 0.5*u; c.stroke();
+      // 石突き（後方端）
+      c.fillStyle = '#888';
+      c.beginPath(); c.arc(-lspLen*0.55, 0, 2.5*u, 0, Math.PI*2); c.fill();
+      // スピン中の残像リング
+      if (spinT > 0.2 && spinT < 0.9) {
+        c.globalAlpha = (1 - Math.abs(spinT - 0.5) * 2) * 0.3;
+        c.strokeStyle = lspGlow || lspShaft; c.lineWidth = 2*u;
+        c.beginPath(); c.arc(0, 0, lspLen*0.5, 0, Math.PI*2); c.stroke();
+        c.globalAlpha = 1;
+      }
+      c.restore();
+    } else {
+      // 通常：斜め45度持ち（槍が長いので大きく斜めに）
+      const spx1 = cx + bodyW/2 + 2*u;
+      const spy1 = bodyTop + bodyH * 0.7;
+      const spx2 = cx + bodyW/2 + lspLen * 0.60;
+      const spy2 = headTop - lspLen * 0.32;
+      if (lspGlow) { c.shadowColor = lspGlow; c.shadowBlur = 6*u; }
+      c.strokeStyle = lspShaft; c.lineWidth = 4*u; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(spx1, spy1); c.lineTo(spx2, spy2); c.stroke();
+      c.shadowBlur = 0;
+      c.fillStyle = '#888';
+      c.beginPath(); c.arc(spx1, spy1 + 3*u, 3*u, 0, Math.PI*2); c.fill();
+      c.fillStyle = lspHead;
+      c.beginPath();
+      c.moveTo(spx2, spy2);
+      c.lineTo(spx2 - 8*u, spy2 + 12*u);
+      c.lineTo(spx2 + 5*u, spy2 + 14*u);
+      c.closePath(); c.fill();
+      c.strokeStyle = lspHead2; c.lineWidth = 0.8*u; c.stroke();
+    }
+
+  } else if (cls.weapon === 'lance') {
+    // ホースギア：騎馬槍（馬に乗った体制で前方水平構え）
+    const isThrusting = attackAnim && attackAnim.type === 'horsegear_thrust';
+    const thrustT2 = isThrusting ? attackAnim.t / attackAnim.duration : 0;
+    const thrust2 = Math.sin(Math.min(1, thrustT2) * Math.PI);
+    const wvLnc = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('horsegear') : null;
+    const lncShaft = wvLnc ? wvLnc.shaftColor : '#8b5a2b';
+    const lncHead  = wvLnc ? wvLnc.headColor  : '#c8c8c8';
+    const lncHead2 = wvLnc ? wvLnc.headColor2 : '#888';
+    const lncGlow  = wvLnc ? wvLnc.glowColor  : null;
+
+    // 馬の体（キャラクター下部に配置）
+    const horseBodyY = baseY - H * 0.22;
+    const horseW = W * 1.5, horseH = H * 0.32;
+    c.fillStyle = '#7a5a32';
+    c.beginPath();
+    c.ellipse(cx + W*0.12, horseBodyY, horseW*0.5, horseH*0.42, 0, 0, Math.PI*2);
+    c.fill();
+    c.strokeStyle = '#5a3a18'; c.lineWidth = 1.5*u; c.stroke();
+    // 馬の頭部
+    c.fillStyle = '#7a5a32';
+    c.beginPath();
+    c.ellipse(cx + W*0.72, horseBodyY - horseH*0.3, W*0.18, horseH*0.32, -0.3, 0, Math.PI*2);
+    c.fill();
+    c.strokeStyle = '#5a3a18'; c.lineWidth = 1*u; c.stroke();
+    // 馬の脚（4本）
+    c.strokeStyle = '#5a3a18'; c.lineWidth = 2.5*u; c.lineCap = 'round';
+    const legOffsets = [-0.4, -0.1, 0.2, 0.5];
+    legOffsets.forEach(offset => {
+      const lx = cx + W*offset;
+      c.beginPath(); c.moveTo(lx, horseBodyY + horseH*0.35); c.lineTo(lx, baseY); c.stroke();
+    });
+
+    // 騎馬槍（前方水平構え・長め）
+    const lanceLen = H * 1.4;
+    const lanceExtend = thrust2 * TILE * 1.2;
+    const lpx1 = cx - bodyW/2 - W*0.1;
+    const lpy  = bodyTop + bodyH * 0.25;
+    const lpx2 = cx + bodyW/2 + lanceLen + lanceExtend;
+    if (lncGlow) { c.shadowColor = lncGlow; c.shadowBlur = 6*u; }
+    c.strokeStyle = lncShaft; c.lineWidth = 4*u; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(lpx1, lpy); c.lineTo(lpx2, lpy); c.stroke();
+    c.shadowBlur = 0;
+    // 穂先
+    c.fillStyle = lncHead;
+    c.beginPath();
+    c.moveTo(lpx2 + 10*u, lpy);
+    c.lineTo(lpx2, lpy - 4.5*u);
+    c.lineTo(lpx2 - 3*u, lpy);
+    c.lineTo(lpx2, lpy + 4.5*u);
+    c.closePath(); c.fill();
+    c.strokeStyle = lncHead2; c.lineWidth = 0.7*u; c.stroke();
+    // 突進時の風切り線
+    if (thrust2 > 0.4) {
+      c.globalAlpha = (thrust2 - 0.4) * 0.7;
+      c.strokeStyle = lncGlow || '#ffee88'; c.lineWidth = 1.5*u;
+      for (let k = 1; k <= 3; k++) {
+        c.beginPath();
+        c.moveTo(lpx1 - k*4*u, lpy - k*2.5*u); c.lineTo(lpx1+10*u, lpy - k*2.5*u); c.stroke();
+        c.beginPath();
+        c.moveTo(lpx1 - k*4*u, lpy + k*2.5*u); c.lineTo(lpx1+10*u, lpy + k*2.5*u); c.stroke();
+      }
+      c.globalAlpha = 1;
+    }
+
+  } else if (cls.weapon === 'heavy_bow') {
+    // ミーティア：重弓（ヤリーンの弓より太く大きい）
+    const isShooting = attackAnim && attackAnim.type === 'meteor_heavy';
+    const shotT = isShooting ? attackAnim.t / attackAnim.duration : 0;
+    const wvHbow = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('meteor') : null;
+    const hbBow    = wvHbow ? wvHbow.bowColor    : '#6b4820';
+    const hbString = wvHbow ? wvHbow.stringColor : '#d8d0c0';
+    const hbHead   = wvHbow ? wvHbow.headColor   : '#bbb';
+    const hbHead2  = wvHbow ? wvHbow.headColor2  : '#666';
+    const hbFletch = wvHbow ? wvHbow.fletchColor : '#778866';
+    const hbGlow   = wvHbow ? wvHbow.glowColor   : null;
+
+    const bCX2 = cx + bodyW/2 + W*0.16 + 8*u;
+    const bCY2 = bodyTop + bodyH * 0.4;
+    const bR2  = bodyH * 0.35; // 重弓は半径大きめ
+
+    // 引き量（射撃時のみ）
+    const hDrawAmt = isShooting && shotT < 0.5 ? shotT / 0.5 : Math.max(0, 1 - (shotT-0.5)*4);
+
+    if (hbGlow) { c.shadowColor = hbGlow; c.shadowBlur = 6*u; }
+    c.strokeStyle = hbBow; c.lineWidth = 3.5*u; c.lineCap = 'round';
+    c.beginPath();
+    c.arc(bCX2, bCY2, bR2, -Math.PI*0.65, Math.PI*0.65);
+    c.stroke();
+    c.shadowBlur = 0;
+    // 弦
+    const hsTop = bCY2 - bR2 * Math.sin(Math.PI*0.65);
+    const hsMid = bCX2 - bR2 * (0.55 + hDrawAmt * 0.4);
+    const hsBot = bCY2 + bR2 * Math.sin(Math.PI*0.65);
+    c.strokeStyle = hbString; c.lineWidth = 1.2*u;
+    c.beginPath();
+    c.moveTo(bCX2 - bR2*Math.cos(Math.PI*0.65), hsTop);
+    c.quadraticCurveTo(hsMid, bCY2, bCX2 - bR2*Math.cos(Math.PI*0.65), hsBot);
+    c.stroke();
+    // 重矢（太め・短め）
+    const showHArrow = !isShooting || shotT < 0.45;
+    if (showHArrow) {
+      const arY = bCY2 - 1*u;
+      const arPull = hDrawAmt * bR2 * 0.4;
+      const arTip = bCX2 + bR2*0.5 + 3*u;
+      c.strokeStyle = '#806040'; c.lineWidth = 2*u;
+      c.beginPath(); c.moveTo(bCX2 - bR2*0.5 - arPull, arY); c.lineTo(arTip, arY); c.stroke();
+      c.fillStyle = hbHead2;
+      c.beginPath();
+      c.moveTo(arTip+5*u, arY); c.lineTo(arTip, arY-4*u); c.lineTo(arTip, arY+4*u);
+      c.closePath(); c.fill();
+      c.strokeStyle = hbFletch; c.lineWidth = 1.2*u;
+      c.beginPath();
+      c.moveTo(bCX2 - bR2*0.5 - arPull, arY);
+      c.lineTo(bCX2 - bR2*0.5 - arPull - 4*u, arY - 4*u);
+      c.moveTo(bCX2 - bR2*0.5 - arPull, arY);
+      c.lineTo(bCX2 - bR2*0.5 - arPull - 4*u, arY + 4*u);
+      c.stroke();
+    }
+    // 発射瞬間フラッシュ
+    if (isShooting && shotT >= 0.45 && shotT < 0.55) {
+      c.globalAlpha = (0.55 - shotT) / 0.10 * 0.8;
+      c.fillStyle = hbGlow || '#ffffcc';
+      c.beginPath(); c.arc(bCX2 + bR2*0.5, bCY2, 5*u, 0, Math.PI*2); c.fill();
+      c.globalAlpha = 1;
+    }
+
+  } else if (cls.weapon === 'ballista') {
+    // ハンター：巨大バリスタ（地面に固定して高速連射）
+    const isBursting = attackAnim && attackAnim.type === 'hunter_burst';
+    const wvBls = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('hunter') : null;
+    const blsFrame = wvBls ? wvBls.frameColor : '#7a6a50';
+    const blsBolt  = wvBls ? wvBls.boltColor  : '#c0c0c0';
+    const blsRail  = wvBls ? wvBls.railColor  : '#5a4a30';
+    const blsGlow  = wvBls ? wvBls.glowColor  : null;
+
+    // バリスタ本体（三脚付き）
+    const blX = cx + bodyW/2 + 2*u;
+    const blY = bodyTop + bodyH * 0.20;
+    const blLen = H * 0.65;
+    const blH2  = H * 0.14;
+
+    // 三脚
+    c.strokeStyle = blsFrame; c.lineWidth = 2.5*u; c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(blX + blLen*0.3, blY + blH2);
+    c.lineTo(blX + blLen*0.1, baseY);
+    c.moveTo(blX + blLen*0.3, blY + blH2);
+    c.lineTo(blX + blLen*0.5, baseY);
+    c.stroke();
+    // バリスタ本体
+    if (blsGlow) { c.shadowColor = blsGlow; c.shadowBlur = 6*u; }
+    c.fillStyle = blsFrame;
+    c.beginPath(); c.roundRect(blX, blY, blLen, blH2, 3*u); c.fill();
+    c.shadowBlur = 0;
+    c.strokeStyle = blsRail; c.lineWidth = 1.5*u; c.stroke();
+    // レール
+    c.strokeStyle = blsRail; c.lineWidth = 1*u;
+    c.beginPath(); c.moveTo(blX + 4*u, blY + blH2*0.5); c.lineTo(blX + blLen - 2*u, blY + blH2*0.5); c.stroke();
+    // ボルト（発射中は点滅）
+    const showBolt = !isBursting || (attackAnim.t % 0.18) < 0.09;
+    if (showBolt) {
+      c.fillStyle = blsBolt;
+      c.beginPath();
+      c.moveTo(blX + blLen + 5*u, blY + blH2*0.5);
+      c.lineTo(blX + blLen - 4*u, blY + blH2*0.5 - 2.5*u);
+      c.lineTo(blX + blLen - 4*u, blY + blH2*0.5 + 2.5*u);
+      c.closePath(); c.fill();
+      c.strokeStyle = '#888888'; c.lineWidth = 1.2*u;
+      c.beginPath();
+      c.moveTo(blX + 8*u, blY + blH2*0.5);
+      c.lineTo(blX + blLen - 4*u, blY + blH2*0.5);
+      c.stroke();
+    }
+    // 発射エフェクト
+    if (isBursting && (attackAnim.t % 0.09) < 0.045) {
+      const flashAlpha = Math.max(0, 1 - (attackAnim.t % 0.09) / 0.09 * 2);
+      c.globalAlpha = flashAlpha * 0.6;
+      c.fillStyle = blsGlow || '#fff';
+      c.beginPath(); c.arc(blX + blLen + 4*u, blY + blH2*0.5, 4*u, 0, Math.PI*2); c.fill();
+      c.globalAlpha = 1;
+    }
+
+  } else if (cls.weapon === 'hammer') {
+    // グラード：大槌を両手で振り回す
+    const isVortex = attackAnim && attackAnim.type === 'grard_vortex';
+    const vortexT = isVortex ? attackAnim.t / attackAnim.duration : 0;
+    const wvHam = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('grard') : null;
+    const hamHandle = wvHam ? wvHam.handleColor : '#7a5a28';
+    const hamHead   = wvHam ? wvHam.headColor   : '#909090';
+    const hamHead2  = wvHam ? wvHam.headColor2  : '#606060';
+    const hamGlow   = wvHam ? wvHam.glowColor   : null;
+
+    const hamPivotX = cx;
+    const hamPivotY = bodyTop + bodyH * 0.15;
+
+    if (isVortex) {
+      // 大振り：槌が円弧を描く（0→1の間に上→前方に大きく振り下ろし）
+      const swingAngle = -Math.PI*0.6 + vortexT * Math.PI * 1.4;
+      const hamLen = H * 0.85;
+      const hamHeadW = H * 0.24, hamHeadH = H * 0.16;
+
+      c.save();
+      c.translate(hamPivotX, hamPivotY);
+      c.rotate(swingAngle);
+      if (hamGlow) { c.shadowColor = hamGlow; c.shadowBlur = 8*u; }
+      // 柄
+      c.strokeStyle = hamHandle; c.lineWidth = 3.5*u; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(hamLen, 0); c.stroke();
+      c.shadowBlur = 0;
+      // 頭
+      c.fillStyle = hamHead;
+      c.beginPath(); c.roundRect(hamLen - 3*u, -hamHeadH, hamHeadW, hamHeadH*2, 3*u); c.fill();
+      c.strokeStyle = hamHead2; c.lineWidth = 1*u; c.stroke();
+      // 振り中の残像
+      if (vortexT > 0.25 && vortexT < 0.85) {
+        c.globalAlpha = (1 - Math.abs(vortexT - 0.55) * 2.5) * 0.3;
+        c.strokeStyle = hamGlow || '#ffaa55'; c.lineWidth = 2*u;
+        const arcStart = -Math.PI*0.6;
+        c.beginPath(); c.arc(0, 0, hamLen, arcStart, swingAngle - 0.1); c.stroke();
+        c.globalAlpha = 1;
+      }
+      c.restore();
+    } else {
+      // 通常：肩に担いで持つ
+      const hamLen = H * 0.8;
+      const hamHeadW = H * 0.22, hamHeadH = H * 0.15;
+      const hx1 = cx + bodyW/2 + 2*u;
+      const hy1 = baseY - H * 0.55;
+      if (hamGlow) { c.shadowColor = hamGlow; c.shadowBlur = 5*u; }
+      c.strokeStyle = hamHandle; c.lineWidth = 3.5*u; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(hx1, hy1 + hamLen*0.3); c.lineTo(hx1 + hamLen*0.25, hy1 - hamLen*0.1); c.stroke();
+      c.shadowBlur = 0;
+      c.fillStyle = hamHead;
+      c.beginPath(); c.roundRect(hx1 + hamLen*0.25 - 2*u, hy1 - hamLen*0.1 - hamHeadH, hamHeadW, hamHeadH*2, 3*u); c.fill();
+      c.strokeStyle = hamHead2; c.lineWidth = 1*u; c.stroke();
+    }
+
+  } else if (cls.weapon === 'gloves') {
+    // レックス：両グローブを構える（高速パンチ連打）
+    const isRushing = attackAnim && attackAnim.type === 'rex_rush';
+    const rushT = isRushing ? attackAnim.t / attackAnim.duration : 0;
+    const wvGlv = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('rex') : null;
+    const glvColor   = wvGlv ? wvGlv.gloveColor   : '#cc8844';
+    const glvKnuckle = wvGlv ? wvGlv.knuckleColor : '#888';
+    const glvGlow    = wvGlv ? wvGlv.glowColor    : null;
+
+    const glvR = W * 0.15; // グローブサイズ
+    const punchProgress = isRushing ? Math.sin(Math.min(1, rushT) * Math.PI) : 0;
+    const punchExt = punchProgress * W * 0.55;
+    const altPunch  = isRushing && (Math.floor(rushT * 8) % 2 === 1); // 交互パンチ演出
+
+    // 左グローブ（後ろ引き側）
+    const lgx = cx - bodyW/2 - W*0.12 - (altPunch ? 0 : glvR*0.5);
+    const lgy = bodyTop + bodyH*0.2;
+    if (glvGlow) { c.shadowColor = glvGlow; c.shadowBlur = 5*u; }
+    c.fillStyle = glvColor;
+    c.beginPath(); c.arc(lgx, lgy, glvR, 0, Math.PI*2); c.fill();
+    c.shadowBlur = 0;
+    c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
+    c.fillStyle = glvKnuckle;
+    for (let k = 0; k < 3; k++) {
+      c.beginPath(); c.arc(lgx - glvR*0.45 + k*glvR*0.45, lgy - glvR*0.5, glvR*0.18, 0, Math.PI*2); c.fill();
+    }
+
+    // 右グローブ（前方突き出し側）
+    const rgx = cx + bodyW/2 + W*0.12 + (altPunch ? punchExt : 0);
+    const rgy = bodyTop + bodyH*0.2;
+    if (glvGlow) { c.shadowColor = glvGlow; c.shadowBlur = 5*u; }
+    c.fillStyle = glvColor;
+    c.beginPath(); c.arc(rgx, rgy, glvR, 0, Math.PI*2); c.fill();
+    c.shadowBlur = 0;
+    c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
+    c.fillStyle = glvKnuckle;
+    for (let k = 0; k < 3; k++) {
+      c.beginPath(); c.arc(rgx + glvR*0.45 - k*glvR*0.45, rgy - glvR*0.5, glvR*0.18, 0, Math.PI*2); c.fill();
+    }
+    // 衝撃ライン
+    if (isRushing && punchProgress > 0.5) {
+      c.globalAlpha = (punchProgress - 0.5) * 1.4;
+      c.strokeStyle = glvGlow || '#ffdd44'; c.lineWidth = 1.8*u; c.lineCap = 'round';
+      for (let k = 0; k < 3; k++) {
+        const ang = -0.3 + k*0.3;
+        c.beginPath();
+        c.moveTo(rgx + Math.cos(ang)*glvR*1.1, rgy + Math.sin(ang)*glvR*1.1);
+        c.lineTo(rgx + Math.cos(ang)*glvR*1.8, rgy + Math.sin(ang)*glvR*1.8);
+        c.stroke();
+      }
+      c.globalAlpha = 1;
+    }
+
+  } else if (cls.weapon === 'axe_chariot') {
+    // センジン：斧戦車（スパイク付き車輪＋斧を前方に構える）
+    const isAssaulting = attackAnim && attackAnim.type === 'senjin_assault';
+    const assT = isAssaulting ? attackAnim.t / attackAnim.duration : 0;
+    const wvAxc = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('senjin') : null;
+    const axcAxe    = wvAxc ? wvAxc.axeColor    : '#909090';
+    const axcAxe2   = wvAxc ? wvAxc.axeColor2   : '#606060';
+    const axcWheel  = wvAxc ? wvAxc.wheelColor  : '#5a4a30';
+    const axcGlow   = wvAxc ? wvAxc.glowColor   : null;
+
+    // 車輪（右前方、スパイク付き）
+    const wheelR = H * 0.38;
+    const wheelX = cx + bodyW/2 + wheelR + 4*u;
+    const wheelY = baseY - wheelR;
+    const wheelRot = isAssaulting ? assT * Math.PI * 6 : 0;
+
+    c.save();
+    c.translate(wheelX, wheelY);
+    c.rotate(wheelRot);
+    // ホイール
+    c.strokeStyle = axcWheel; c.lineWidth = 3*u;
+    c.beginPath(); c.arc(0, 0, wheelR, 0, Math.PI*2); c.stroke();
+    c.strokeStyle = axcWheel; c.lineWidth = 1.5*u;
+    for (let k = 0; k < 6; k++) {
+      const a = k * Math.PI/3;
+      c.beginPath(); c.moveTo(0,0); c.lineTo(Math.cos(a)*wheelR, Math.sin(a)*wheelR); c.stroke();
+    }
+    // スパイク（8本）
+    if (axcGlow) { c.shadowColor = axcGlow; c.shadowBlur = 5*u; }
+    c.fillStyle = axcAxe;
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI/4 + wheelRot * 0;
+      const sx = Math.cos(a) * wheelR;
+      const sy = Math.sin(a) * wheelR;
+      c.save();
+      c.translate(sx, sy);
+      c.rotate(a);
+      c.beginPath();
+      c.moveTo(0, 0); c.lineTo(5*u, -2*u); c.lineTo(6*u, 0); c.lineTo(5*u, 2*u);
+      c.closePath(); c.fill();
+      c.restore();
+    }
+    c.shadowBlur = 0;
+    c.restore();
+
+    // 斧（右手前方）
+    const axX = cx + bodyW/2 + 6*u;
+    const axY = bodyTop + bodyH*0.1;
+    const axHoldY = bodyTop + bodyH*0.35;
+    if (axcGlow) { c.shadowColor = axcGlow; c.shadowBlur = 5*u; }
+    c.strokeStyle = axcWheel; c.lineWidth = 2.5*u; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(axX, axHoldY); c.lineTo(axX + 2*u, axY); c.stroke();
+    c.shadowBlur = 0;
+    c.fillStyle = axcAxe;
+    c.beginPath();
+    c.moveTo(axX + 2*u, axY);
+    c.lineTo(axX + 12*u, axY + 5*u);
+    c.lineTo(axX + 8*u, axY + 14*u);
+    c.lineTo(axX - 2*u, axY + 6*u);
+    c.closePath(); c.fill();
+    c.strokeStyle = axcAxe2; c.lineWidth = 0.8*u; c.stroke();
+
+  } else if (cls.weapon === 'dual_sword') {
+    // シュナイザー：双剣超速連撃
+    const isRushing2 = attackAnim && attackAnim.type === 'schneizer_rush';
+    const rushT2 = isRushing2 ? attackAnim.t / attackAnim.duration : 0;
+    const wvDs = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('schneizer') : null;
+    const dsBlade1 = wvDs ? wvDs.blade1Color : '#c0c0c0';
+    const dsBlade2 = wvDs ? wvDs.blade2Color : '#a0a0a0';
+    const dsGuard  = wvDs ? wvDs.guardColor  : '#888';
+    const dsGlow   = wvDs ? wvDs.glowColor   : null;
+
+    // 超速連撃：2本の剣が素早く交差する動き
+    const slashPhase = isRushing2 ? (rushT2 * 6 % 1) : 0; // 高速サイクル
+    const s1Angle = isRushing2 ? Math.sin(slashPhase * Math.PI * 2) * 0.5 : -0.3;
+    const s2Angle = isRushing2 ? -Math.sin(slashPhase * Math.PI * 2) * 0.5 : 0.3;
+    const swordLen = H * 0.55;
+
+    // 剣1（上から下への斬り下ろし）
+    if (dsGlow) { c.shadowColor = dsGlow; c.shadowBlur = 6*u; }
+    c.save();
+    const s1PivotX = cx + bodyW/2 + armW/2;
+    const s1PivotY = bodyTop + bodyH*0.12;
+    c.translate(s1PivotX, s1PivotY);
+    c.rotate(s1Angle);
+    c.strokeStyle = dsBlade1; c.lineWidth = 2.5*u; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(swordLen, 0); c.stroke();
+    c.fillStyle = dsGuard;
+    c.beginPath(); c.roundRect(-2*u, -3*u, 3*u, 6*u, 1*u); c.fill();
+    c.restore();
+
+    // 剣2（下から上への斬り上げ）
+    c.save();
+    const s2PivotX = cx + bodyW/2 + armW*0.5;
+    const s2PivotY = bodyTop + bodyH*0.35;
+    c.translate(s2PivotX, s2PivotY);
+    c.rotate(s2Angle);
+    c.strokeStyle = dsBlade2; c.lineWidth = 2.5*u; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(swordLen, 0); c.stroke();
+    c.fillStyle = dsGuard;
+    c.beginPath(); c.roundRect(-2*u, -3*u, 3*u, 6*u, 1*u); c.fill();
+    c.restore();
+    c.shadowBlur = 0;
+
+    // 高速斬撃の軌跡
+    if (isRushing2 && rushT2 < 0.85) {
+      c.globalAlpha = (1 - rushT2) * 0.4;
+      c.strokeStyle = dsGlow || '#ff88cc'; c.lineWidth = 1.5*u;
+      c.beginPath();
+      c.arc(s1PivotX, s1PivotY, swordLen*0.6, s1Angle - 0.4, s1Angle + 0.1);
+      c.stroke();
+      c.globalAlpha = 1;
+    }
+
+  } else if (cls.weapon === 'staff') {
+    // アステリオン：攻撃魔法の杖（杖先から魔法弾を発射）
+    const isCasting = attackAnim && attackAnim.type === 'punch'; // punch animをキャスト演出として流用
+    const castT = isCasting ? attackAnim.t / attackAnim.duration : 0;
+    const wvStf = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('asterion') : null;
+    const stfShaft   = wvStf ? wvStf.shaftColor   : '#7755aa';
+    const stfCrystal = wvStf ? wvStf.crystalColor : '#ddbbff';
+    const stfCrys2   = wvStf ? wvStf.crystal2Color: '#9966ee';
+    const stfGlow    = wvStf ? wvStf.glowColor     : null;
+
+    const stfAngle = -Math.PI*0.35 + (isCasting ? Math.sin(castT*Math.PI)*0.2 : 0);
+    const stfX1 = cx + bodyW/2;
+    const stfY1 = bodyTop + bodyH*0.55;
+    const stfLen = H * 0.95;
+    const stfX2 = stfX1 + Math.cos(stfAngle)*stfLen;
+    const stfY2 = stfY1 + Math.sin(stfAngle)*stfLen;
+
+    c.strokeStyle = stfShaft; c.lineWidth = 2.5*u; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(stfX1, stfY1); c.lineTo(stfX2, stfY2); c.stroke();
+    // 先端の魔法クリスタル
+    if (stfGlow) { c.shadowColor = stfGlow; c.shadowBlur = 8*u; }
+    c.fillStyle = stfCrystal;
+    c.beginPath(); c.arc(stfX2, stfY2, 5*u, 0, Math.PI*2); c.fill();
+    c.shadowBlur = 0;
+    c.strokeStyle = stfCrys2; c.lineWidth = 0.8*u; c.stroke();
+    // 発動時：輝き
+    if (isCasting && castT > 0.3 && castT < 0.7) {
+      const gAlpha = Math.sin((castT - 0.3) / 0.4 * Math.PI);
+      c.globalAlpha = gAlpha * 0.7;
+      c.fillStyle = stfGlow || '#cc88ff';
+      c.beginPath(); c.arc(stfX2, stfY2, 10*u, 0, Math.PI*2); c.fill();
+      c.globalAlpha = 1;
+    }
+
+  } else if (cls.weapon === 'heal_staff') {
+    // セラフィ：回復杖（常時温かい光をまとう）
+    const isCasting2 = attackAnim && attackAnim.type === 'punch';
+    const castT2 = isCasting2 ? attackAnim.t / attackAnim.duration : 0;
+    const wvHst = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('seraph') : null;
+    const hstShaft   = wvHst ? wvHst.shaftColor   : '#cc9944';
+    const hstCrystal = wvHst ? wvHst.crystalColor : '#ffffff';
+    const hstCrys2   = wvHst ? wvHst.crystal2Color: '#ffee88';
+    const hstGlow    = wvHst ? wvHst.glowColor     : null;
+
+    const hstAngle = -Math.PI*0.35;
+    const hstX1 = cx + bodyW/2;
+    const hstY1 = bodyTop + bodyH*0.55;
+    const hstLen = H * 0.95;
+    const hstX2 = hstX1 + Math.cos(hstAngle)*hstLen;
+    const hstY2 = hstY1 + Math.sin(hstAngle)*hstLen;
+
+    c.strokeStyle = hstShaft; c.lineWidth = 2.5*u; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(hstX1, hstY1); c.lineTo(hstX2, hstY2); c.stroke();
+    // 十字型クリスタル（回復のシンボル）
+    if (hstGlow) { c.shadowColor = hstGlow; c.shadowBlur = 10*u; }
+    c.fillStyle = hstCrystal;
+    c.beginPath(); c.arc(hstX2, hstY2, 5*u, 0, Math.PI*2); c.fill();
+    c.shadowBlur = 0;
+    c.strokeStyle = hstCrys2; c.lineWidth = 0.8*u; c.stroke();
+    // 十字装飾
+    c.strokeStyle = hstCrys2; c.lineWidth = 1.5*u; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(hstX2 - 4*u, hstY2); c.lineTo(hstX2 + 4*u, hstY2); c.stroke();
+    c.beginPath(); c.moveTo(hstX2, hstY2 - 4*u); c.lineTo(hstX2, hstY2 + 4*u); c.stroke();
+    // 常時発光オーラ
+    const pulseAlpha = 0.15 + Math.sin(Date.now() / 600) * 0.08;
+    c.globalAlpha = pulseAlpha;
+    c.fillStyle = hstGlow || '#ffffcc';
+    c.beginPath(); c.arc(hstX2, hstY2, 12*u, 0, Math.PI*2); c.fill();
+    c.globalAlpha = 1;
+    // 回復フィールドのオーラリング（seraphFieldActive時）
+    if ((typeof seraphFieldActive !== 'undefined') && seraphFieldActive) {
+      c.globalAlpha = 0.25 + Math.sin(Date.now()/300) * 0.1;
+      c.strokeStyle = hstGlow || '#ffffaa'; c.lineWidth = 2*u;
+      c.beginPath(); c.arc(cx, baseY - H*0.5, H * 2.5, 0, Math.PI*2); c.stroke();
+      c.globalAlpha = 1;
+    }
   }
 }
 
@@ -5232,10 +6214,9 @@ function drawTorch(g){
 
 
 
-</script>
 
-<!-- ===== 08-render.js ===== -->
-<script>
+
+// ===== 08-render.js =====
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.save();
@@ -5430,7 +6411,7 @@ function draw(){
       ctx.strokeStyle = '#ff55aa'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(px, py, armLen * 1.15, 0, Math.PI*2); ctx.stroke();
 
-    } else if (anim.type === 'horsegear_thrust') {
+    } else if (anim.type === 'horsegear_charge') {
       // ホースギア：騎馬突進 - 槍に触れた敵は継続ダメージ
       const chargeLen = TILE * 3.5 * Math.min(1, t * 1.5);
       // 突進の風圧オーラ
@@ -5998,10 +6979,9 @@ function loop(now){
 
 
 
-</script>
 
-<!-- ===== 09-profile-id.js ===== -->
-<script>
+
+// ===== 09-profile-id.js =====
 // ======================================================
 // ===== プロフィール・ID管理 =====
 // ======================================================
@@ -6312,10 +7292,9 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-</script>
 
-<!-- ===== 10-lobby-world.js ===== -->
-<script>
+
+// ===== 10-lobby-world.js =====
 // ======================================================
 // ===== 2Dロビーワールド =====
 // ======================================================
@@ -6751,6 +7730,61 @@ function drawLobbyRobotMumei(p, cx, baseY, W, H, flipped) {
   drawCourseMumei(lctx, cx, baseY, W, H, flipped, null);
 }
 
+// ===== （フォールバック用）Canvas描画でピクセルアート風完全再現 =====
+function drawLobbyRobotMumeiVector(p, cx, baseY, W, H, flipped) {
+  const u = W / 48;
+  const headW = W * 0.55, headH = H * 0.32;
+  const bodyW = W * 0.38;
+  const armW  = W * 0.12, armH  = H * 0.20;
+  const headTop = baseY - H;
+  const bodyTop = headTop + headH + 2*u;
+  const bodyH = baseY - bodyTop;
+
+  // 腕（左右）
+  lctx.fillStyle = '#c8d4de';
+  lctx.beginPath(); lctx.roundRect(cx - bodyW/2 - armW, bodyTop + bodyH*0.08, armW, armH, 3*u); lctx.fill();
+  lctx.strokeStyle = '#555'; lctx.lineWidth = 1.5*u; lctx.stroke();
+  lctx.beginPath(); lctx.roundRect(cx + bodyW/2, bodyTop + bodyH*0.08, armW, armH, 3*u); lctx.fill();
+  lctx.stroke();
+
+  // 胴体
+  lctx.fillStyle = '#dde8f0';
+  lctx.beginPath(); lctx.roundRect(cx - bodyW/2, bodyTop, bodyW, bodyH, 5*u); lctx.fill();
+  lctx.strokeStyle = '#444'; lctx.lineWidth = 2*u; lctx.stroke();
+  // コア
+  const cr = bodyW * 0.13;
+  lctx.fillStyle = '#5be7ff';
+  lctx.beginPath(); lctx.arc(cx, bodyTop + bodyH*0.5, cr, 0, Math.PI*2); lctx.fill();
+  lctx.strokeStyle = '#0099cc'; lctx.lineWidth = 1*u; lctx.stroke();
+
+  // 頭
+  lctx.fillStyle = '#eef2f6';
+  lctx.beginPath(); lctx.roundRect(cx - headW/2, headTop, headW, headH, 5*u); lctx.fill();
+  lctx.strokeStyle = '#333'; lctx.lineWidth = 2.5*u; lctx.stroke();
+
+  // バイザー
+  const vizTop = headTop + headH * 0.28;
+  const vizH   = headH * 0.55;
+  lctx.save();
+  lctx.beginPath(); lctx.roundRect(cx - headW/2, headTop, headW, headH, 5*u); lctx.clip();
+  lctx.fillStyle = '#111';
+  lctx.fillRect(cx - headW/2, vizTop, headW, vizH);
+  lctx.restore();
+
+  // 目（大きく）
+  const eyeW = headW * 0.28, eyeH = vizH * 0.80, eyeY = vizTop + vizH * 0.10;
+  lctx.fillStyle = '#5be7ff';
+  lctx.fillRect(cx - eyeW - 2*u, eyeY, eyeW, eyeH);
+  lctx.fillRect(cx + 2*u,        eyeY, eyeW, eyeH);
+  lctx.fillStyle = 'rgba(255,255,255,0.85)';
+  lctx.fillRect(cx - eyeW - 2*u + 1.5*u, eyeY + 1.5*u, eyeW*0.35, eyeH*0.32);
+  lctx.fillRect(cx + 2*u + 1.5*u,        eyeY + 1.5*u, eyeW*0.35, eyeH*0.32);
+
+  // ハイライト
+  lctx.fillStyle = 'rgba(255,255,255,0.4)';
+  lctx.beginPath(); lctx.roundRect(cx - headW/2 + 3*u, headTop + 3*u, headW*0.5, headH*0.28, 3*u); lctx.fill();
+}
+
 
 function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
   const u = W / 48;
@@ -6941,6 +7975,283 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
     lctx.moveTo(bCX - bR*0.5,       arrowY);
     lctx.lineTo(bCX - bR*0.5 - 3*u, arrowY + 3*u);
     lctx.stroke();
+
+  } else if (cls.weapon === 'long_spear') {
+    // スピラ：身長の2倍の大槍（斜め持ち）
+    const wvLsp = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('spira') : null;
+    const lspShaft = wvLsp ? wvLsp.shaftColor : '#cc4488';
+    const lspHead  = wvLsp ? wvLsp.headColor  : '#ffd0f0';
+    const lspHead2 = wvLsp ? wvLsp.headColor2 : '#aa3399';
+    const lspGlow  = wvLsp ? wvLsp.glowColor  : null;
+    const lspLen = H * 1.8;
+    const spx1 = headCX + bodyW/2 + 2*u;
+    const spy1 = bodyTop + bodyH*0.7;
+    const spx2 = headCX + bodyW/2 + lspLen*0.58;
+    const spy2 = headTop - lspLen*0.30;
+    if (lspGlow) { lctx.shadowColor = lspGlow; lctx.shadowBlur = 7*u; }
+    lctx.strokeStyle = lspShaft; lctx.lineWidth = 4*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.moveTo(spx1, spy1); lctx.lineTo(spx2, spy2); lctx.stroke();
+    lctx.shadowBlur = 0;
+    lctx.fillStyle = '#888';
+    lctx.beginPath(); lctx.arc(spx1, spy1+3*u, 3*u, 0, Math.PI*2); lctx.fill();
+    lctx.fillStyle = lspHead;
+    lctx.beginPath();
+    lctx.moveTo(spx2, spy2); lctx.lineTo(spx2-8*u, spy2+12*u); lctx.lineTo(spx2+5*u, spy2+14*u);
+    lctx.closePath(); lctx.fill();
+    lctx.strokeStyle = lspHead2; lctx.lineWidth = 0.8*u; lctx.stroke();
+
+  } else if (cls.weapon === 'lance') {
+    // ホースギア：騎馬槍（馬体＋前方水平槍）
+    const wvLnc = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('horsegear') : null;
+    const lncShaft = wvLnc ? wvLnc.shaftColor : '#8b5a2b';
+    const lncHead  = wvLnc ? wvLnc.headColor  : '#c8c8c8';
+    const lncHead2 = wvLnc ? wvLnc.headColor2 : '#888';
+    const lncGlow  = wvLnc ? wvLnc.glowColor  : null;
+    // 馬体
+    const horseBodyY = baseY - H*0.22;
+    const horseH = H*0.30;
+    lctx.fillStyle = '#7a5a32';
+    lctx.beginPath();
+    lctx.ellipse(headCX + W*0.12, horseBodyY, W*0.75, horseH*0.42, 0, 0, Math.PI*2);
+    lctx.fill();
+    lctx.strokeStyle = '#5a3a18'; lctx.lineWidth = 1.5*u; lctx.stroke();
+    // 脚（2本だけ簡略）
+    lctx.strokeStyle = '#5a3a18'; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
+    [headCX - W*0.25, headCX + W*0.4].forEach(lx => {
+      lctx.beginPath(); lctx.moveTo(lx, horseBodyY + horseH*0.35); lctx.lineTo(lx, baseY); lctx.stroke();
+    });
+    // 騎馬槍
+    const lanceLen = H*1.35;
+    const lpx1 = headCX - bodyW/2 - W*0.08;
+    const lpy  = bodyTop + bodyH*0.25;
+    const lpx2 = headCX + bodyW/2 + lanceLen;
+    if (lncGlow) { lctx.shadowColor = lncGlow; lctx.shadowBlur = 6*u; }
+    lctx.strokeStyle = lncShaft; lctx.lineWidth = 4*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.moveTo(lpx1, lpy); lctx.lineTo(lpx2, lpy); lctx.stroke();
+    lctx.shadowBlur = 0;
+    lctx.fillStyle = lncHead;
+    lctx.beginPath();
+    lctx.moveTo(lpx2+10*u, lpy); lctx.lineTo(lpx2, lpy-4*u); lctx.lineTo(lpx2-2*u, lpy);
+    lctx.lineTo(lpx2, lpy+4*u); lctx.closePath(); lctx.fill();
+    lctx.strokeStyle = lncHead2; lctx.lineWidth = 0.7*u; lctx.stroke();
+
+  } else if (cls.weapon === 'heavy_bow') {
+    // ミーティア：重弓（通常弓より太く大きい）
+    const wvHbow = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('meteor') : null;
+    const hbBow    = wvHbow ? wvHbow.bowColor    : '#6b4820';
+    const hbString = wvHbow ? wvHbow.stringColor : '#d8d0c0';
+    const hbHead   = wvHbow ? wvHbow.headColor2  : '#666';
+    const hbFletch = wvHbow ? wvHbow.fletchColor : '#778866';
+    const hbGlow   = wvHbow ? wvHbow.glowColor   : null;
+    const hbCX = headCX + bodyW/2 + W*0.16 + 8*u;
+    const hbCY = bodyTop + bodyH*0.4;
+    const hbR  = bodyH*0.34;
+    if (hbGlow) { lctx.shadowColor = hbGlow; lctx.shadowBlur = 6*u; }
+    lctx.strokeStyle = hbBow; lctx.lineWidth = 3.5*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.arc(hbCX, hbCY, hbR, -Math.PI*0.65, Math.PI*0.65); lctx.stroke();
+    lctx.shadowBlur = 0;
+    const hsTop = hbCY - hbR*Math.sin(Math.PI*0.65);
+    const hsMid = hbCX - hbR*0.55;
+    const hsBot = hbCY + hbR*Math.sin(Math.PI*0.65);
+    lctx.strokeStyle = hbString; lctx.lineWidth = 1.2*u;
+    lctx.beginPath();
+    lctx.moveTo(hbCX - hbR*Math.cos(Math.PI*0.65), hsTop);
+    lctx.quadraticCurveTo(hsMid, hbCY, hbCX - hbR*Math.cos(Math.PI*0.65), hsBot);
+    lctx.stroke();
+    const harY = hbCY - 1*u;
+    lctx.strokeStyle = '#806040'; lctx.lineWidth = 2*u;
+    lctx.beginPath(); lctx.moveTo(hbCX - hbR*0.5, harY); lctx.lineTo(hbCX + hbR*0.6, harY); lctx.stroke();
+    lctx.fillStyle = hbHead;
+    lctx.beginPath();
+    lctx.moveTo(hbCX+hbR*0.6+5*u, harY); lctx.lineTo(hbCX+hbR*0.6, harY-4*u); lctx.lineTo(hbCX+hbR*0.6, harY+4*u);
+    lctx.closePath(); lctx.fill();
+    lctx.strokeStyle = hbFletch; lctx.lineWidth = 1.2*u;
+    lctx.beginPath();
+    lctx.moveTo(hbCX - hbR*0.5, harY); lctx.lineTo(hbCX - hbR*0.5 - 4*u, harY - 4*u);
+    lctx.moveTo(hbCX - hbR*0.5, harY); lctx.lineTo(hbCX - hbR*0.5 - 4*u, harY + 4*u);
+    lctx.stroke();
+
+  } else if (cls.weapon === 'ballista') {
+    // ハンター：バリスタ（三脚付き）
+    const wvBls = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('hunter') : null;
+    const blsFrame = wvBls ? wvBls.frameColor : '#7a6a50';
+    const blsBolt  = wvBls ? wvBls.boltColor  : '#c0c0c0';
+    const blsRail  = wvBls ? wvBls.railColor  : '#5a4a30';
+    const blsGlow  = wvBls ? wvBls.glowColor  : null;
+    const blX = headCX + bodyW/2 + 2*u;
+    const blY = bodyTop + bodyH*0.20;
+    const blLen = H*0.65, blH2 = H*0.14;
+    lctx.strokeStyle = blsFrame; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
+    lctx.beginPath();
+    lctx.moveTo(blX+blLen*0.3, blY+blH2); lctx.lineTo(blX+blLen*0.1, baseY);
+    lctx.moveTo(blX+blLen*0.3, blY+blH2); lctx.lineTo(blX+blLen*0.5, baseY);
+    lctx.stroke();
+    if (blsGlow) { lctx.shadowColor = blsGlow; lctx.shadowBlur = 5*u; }
+    lctx.fillStyle = blsFrame;
+    lctx.beginPath(); lctx.roundRect(blX, blY, blLen, blH2, 3*u); lctx.fill();
+    lctx.shadowBlur = 0;
+    lctx.strokeStyle = blsRail; lctx.lineWidth = 1.5*u; lctx.stroke();
+    lctx.strokeStyle = blsRail; lctx.lineWidth = 1*u;
+    lctx.beginPath(); lctx.moveTo(blX+4*u, blY+blH2*0.5); lctx.lineTo(blX+blLen-2*u, blY+blH2*0.5); lctx.stroke();
+    lctx.fillStyle = blsBolt;
+    lctx.beginPath();
+    lctx.moveTo(blX+blLen+5*u, blY+blH2*0.5); lctx.lineTo(blX+blLen-4*u, blY+blH2*0.5-2.5*u);
+    lctx.lineTo(blX+blLen-4*u, blY+blH2*0.5+2.5*u); lctx.closePath(); lctx.fill();
+
+  } else if (cls.weapon === 'hammer') {
+    // グラード：大槌を肩担ぎ
+    const wvHam = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('grard') : null;
+    const hamHandle = wvHam ? wvHam.handleColor : '#7a5a28';
+    const hamHead   = wvHam ? wvHam.headColor   : '#909090';
+    const hamHead2  = wvHam ? wvHam.headColor2  : '#606060';
+    const hamGlow   = wvHam ? wvHam.glowColor   : null;
+    const hamLen = H*0.8, hamHW = H*0.22, hamHH = H*0.15;
+    const hx1 = headCX + bodyW/2 + 2*u;
+    const hy1 = baseY - H*0.55;
+    if (hamGlow) { lctx.shadowColor = hamGlow; lctx.shadowBlur = 5*u; }
+    lctx.strokeStyle = hamHandle; lctx.lineWidth = 3.5*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.moveTo(hx1, hy1+hamLen*0.3); lctx.lineTo(hx1+hamLen*0.25, hy1-hamLen*0.1); lctx.stroke();
+    lctx.shadowBlur = 0;
+    lctx.fillStyle = hamHead;
+    lctx.beginPath(); lctx.roundRect(hx1+hamLen*0.25-2*u, hy1-hamLen*0.1-hamHH, hamHW, hamHH*2, 3*u); lctx.fill();
+    lctx.strokeStyle = hamHead2; lctx.lineWidth = 1*u; lctx.stroke();
+
+  } else if (cls.weapon === 'gloves') {
+    // レックス：両グローブを前方に構える
+    const wvGlv = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('rex') : null;
+    const glvColor   = wvGlv ? wvGlv.gloveColor   : '#cc8844';
+    const glvKnuckle = wvGlv ? wvGlv.knuckleColor : '#888';
+    const glvGlow    = wvGlv ? wvGlv.glowColor    : null;
+    const glvR = W*0.15;
+    if (glvGlow) { lctx.shadowColor = glvGlow; lctx.shadowBlur = 5*u; }
+    // 左グローブ
+    lctx.fillStyle = glvColor;
+    lctx.beginPath(); lctx.arc(headCX - bodyW/2 - W*0.12, bodyTop + bodyH*0.2, glvR, 0, Math.PI*2); lctx.fill();
+    lctx.strokeStyle = '#333'; lctx.lineWidth = 1.5*u; lctx.stroke();
+    // 右グローブ
+    lctx.beginPath(); lctx.arc(headCX + bodyW/2 + W*0.16, bodyTop + bodyH*0.2, glvR, 0, Math.PI*2); lctx.fill();
+    lctx.stroke();
+    lctx.shadowBlur = 0;
+    lctx.fillStyle = glvKnuckle;
+    [-1, 1].forEach(side => {
+      const gx = side < 0 ? (headCX - bodyW/2 - W*0.12) : (headCX + bodyW/2 + W*0.16);
+      const gy = bodyTop + bodyH*0.2;
+      for (let k = 0; k < 3; k++) {
+        lctx.beginPath(); lctx.arc(gx + side*(k*glvR*0.35 - glvR*0.35), gy - glvR*0.5, glvR*0.16, 0, Math.PI*2); lctx.fill();
+      }
+    });
+
+  } else if (cls.weapon === 'axe_chariot') {
+    // センジン：車輪と斧
+    const wvAxc = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('senjin') : null;
+    const axcAxe   = wvAxc ? wvAxc.axeColor   : '#909090';
+    const axcAxe2  = wvAxc ? wvAxc.axeColor2  : '#606060';
+    const axcWheel = wvAxc ? wvAxc.wheelColor : '#5a4a30';
+    const axcGlow  = wvAxc ? wvAxc.glowColor  : null;
+    const wheelR = H*0.36;
+    const wheelX = headCX + bodyW/2 + wheelR + 4*u;
+    const wheelY = baseY - wheelR;
+    if (axcGlow) { lctx.shadowColor = axcGlow; lctx.shadowBlur = 5*u; }
+    lctx.strokeStyle = axcWheel; lctx.lineWidth = 3*u;
+    lctx.beginPath(); lctx.arc(wheelX, wheelY, wheelR, 0, Math.PI*2); lctx.stroke();
+    lctx.strokeStyle = axcWheel; lctx.lineWidth = 1.5*u;
+    for (let k = 0; k < 6; k++) {
+      const a = k*Math.PI/3;
+      lctx.beginPath(); lctx.moveTo(wheelX, wheelY);
+      lctx.lineTo(wheelX+Math.cos(a)*wheelR, wheelY+Math.sin(a)*wheelR); lctx.stroke();
+    }
+    lctx.fillStyle = axcAxe;
+    for (let k = 0; k < 6; k++) {
+      const a = k*Math.PI/3 + Math.PI/6;
+      const sx = wheelX + Math.cos(a)*wheelR;
+      const sy = wheelY + Math.sin(a)*wheelR;
+      lctx.save(); lctx.translate(sx, sy); lctx.rotate(a);
+      lctx.beginPath(); lctx.moveTo(0,0); lctx.lineTo(4*u,-2*u); lctx.lineTo(5*u,0); lctx.lineTo(4*u,2*u);
+      lctx.closePath(); lctx.fill(); lctx.restore();
+    }
+    lctx.shadowBlur = 0;
+    // 斧（右手）
+    const axX = headCX + bodyW/2 + 5*u;
+    const axY = bodyTop + bodyH*0.1;
+    lctx.strokeStyle = axcWheel; lctx.lineWidth = 2.5*u;
+    lctx.beginPath(); lctx.moveTo(axX, bodyTop+bodyH*0.35); lctx.lineTo(axX+2*u, axY); lctx.stroke();
+    if (axcGlow) { lctx.shadowColor = axcGlow; lctx.shadowBlur = 4*u; }
+    lctx.fillStyle = axcAxe;
+    lctx.beginPath();
+    lctx.moveTo(axX+2*u, axY); lctx.lineTo(axX+12*u, axY+5*u);
+    lctx.lineTo(axX+8*u, axY+14*u); lctx.lineTo(axX-2*u, axY+6*u);
+    lctx.closePath(); lctx.fill();
+    lctx.shadowBlur = 0;
+    lctx.strokeStyle = axcAxe2; lctx.lineWidth = 0.8*u; lctx.stroke();
+
+  } else if (cls.weapon === 'dual_sword') {
+    // シュナイザー：双剣を両手に構える
+    const wvDs = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('schneizer') : null;
+    const dsBlade1 = wvDs ? wvDs.blade1Color : '#c0c0c0';
+    const dsBlade2 = wvDs ? wvDs.blade2Color : '#a0a0a0';
+    const dsGuard  = wvDs ? wvDs.guardColor  : '#888';
+    const dsGlow   = wvDs ? wvDs.glowColor   : null;
+    const sLen = H*0.52;
+    if (dsGlow) { lctx.shadowColor = dsGlow; lctx.shadowBlur = 6*u; }
+    // 剣1（上段・前方）
+    lctx.save();
+    lctx.translate(headCX + bodyW/2 + armW/2, bodyTop + bodyH*0.12);
+    lctx.rotate(-0.3);
+    lctx.strokeStyle = dsBlade1; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.moveTo(0,0); lctx.lineTo(sLen,0); lctx.stroke();
+    lctx.fillStyle = dsGuard;
+    lctx.beginPath(); lctx.roundRect(-2*u,-3*u,3*u,6*u,1*u); lctx.fill();
+    lctx.restore();
+    // 剣2（下段）
+    lctx.save();
+    lctx.translate(headCX + bodyW/2 + armW*0.5, bodyTop + bodyH*0.36);
+    lctx.rotate(0.3);
+    lctx.strokeStyle = dsBlade2; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.moveTo(0,0); lctx.lineTo(sLen,0); lctx.stroke();
+    lctx.fillStyle = dsGuard;
+    lctx.beginPath(); lctx.roundRect(-2*u,-3*u,3*u,6*u,1*u); lctx.fill();
+    lctx.restore();
+    lctx.shadowBlur = 0;
+
+  } else if (cls.weapon === 'staff') {
+    // アステリオン：攻撃魔法杖
+    const wvStf = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('asterion') : null;
+    const stfShaft   = wvStf ? wvStf.shaftColor    : '#7755aa';
+    const stfCrystal = wvStf ? wvStf.crystalColor  : '#ddbbff';
+    const stfCrys2   = wvStf ? wvStf.crystal2Color : '#9966ee';
+    const stfGlow    = wvStf ? wvStf.glowColor     : null;
+    const stAngle = -Math.PI*0.35;
+    const stX1 = headCX + bodyW/2, stY1 = bodyTop + bodyH*0.55;
+    const stLen = H*0.95;
+    const stX2 = stX1 + Math.cos(stAngle)*stLen, stY2 = stY1 + Math.sin(stAngle)*stLen;
+    lctx.strokeStyle = stfShaft; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.moveTo(stX1, stY1); lctx.lineTo(stX2, stY2); lctx.stroke();
+    if (stfGlow) { lctx.shadowColor = stfGlow; lctx.shadowBlur = 8*u; }
+    lctx.fillStyle = stfCrystal;
+    lctx.beginPath(); lctx.arc(stX2, stY2, 5*u, 0, Math.PI*2); lctx.fill();
+    lctx.shadowBlur = 0;
+    lctx.strokeStyle = stfCrys2; lctx.lineWidth = 0.8*u; lctx.stroke();
+
+  } else if (cls.weapon === 'heal_staff') {
+    // セラフィ：回復杖（十字クリスタル）
+    const wvHst = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('seraph') : null;
+    const hstShaft   = wvHst ? wvHst.shaftColor    : '#cc9944';
+    const hstCrystal = wvHst ? wvHst.crystalColor  : '#ffffff';
+    const hstCrys2   = wvHst ? wvHst.crystal2Color : '#ffee88';
+    const hstGlow    = wvHst ? wvHst.glowColor     : null;
+    const haAngle = -Math.PI*0.35;
+    const haX1 = headCX + bodyW/2, haY1 = bodyTop + bodyH*0.55;
+    const haLen = H*0.95;
+    const haX2 = haX1 + Math.cos(haAngle)*haLen, haY2 = haY1 + Math.sin(haAngle)*haLen;
+    lctx.strokeStyle = hstShaft; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.moveTo(haX1, haY1); lctx.lineTo(haX2, haY2); lctx.stroke();
+    if (hstGlow) { lctx.shadowColor = hstGlow; lctx.shadowBlur = 10*u; }
+    lctx.fillStyle = hstCrystal;
+    lctx.beginPath(); lctx.arc(haX2, haY2, 5*u, 0, Math.PI*2); lctx.fill();
+    lctx.shadowBlur = 0;
+    lctx.strokeStyle = hstCrys2; lctx.lineWidth = 1.5*u; lctx.lineCap = 'round';
+    lctx.beginPath(); lctx.moveTo(haX2-4*u, haY2); lctx.lineTo(haX2+4*u, haY2); lctx.stroke();
+    lctx.beginPath(); lctx.moveTo(haX2, haY2-4*u); lctx.lineTo(haX2, haY2+4*u); lctx.stroke();
   }
 
   lctx.restore();
@@ -7032,10 +8343,9 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-</script>
 
-<!-- ===== 11-quest-screen.js ===== -->
-<script>
+
+// ===== 11-quest-screen.js =====
 // ======================================================
 // ===== クエスト画面 =====
 // ======================================================
@@ -7341,7 +8651,7 @@ function renderEquipScreen() {
     tabsEl.innerHTML = equipClasses.map(id => {
       const cls = CLASS_DEFS[id];
       const isSel = id === equipSelectedClassId;
-      return `<button class="ov-btn ${isSel ? 'ov-btn-blue' : 'ov-btn-gray'}" style="flex:1;min-width:70px;padding:8px 4px;font-size:12px;" onclick="selectEquipClass('${id}')">${cls.icon!==undefined && id!=='spear' ? cls.icon : '🗡️'} ${cls.name}</button>`;
+      return `<button class="ov-btn ${isSel ? 'ov-btn-blue' : 'ov-btn-gray'}" style="flex:1;min-width:70px;padding:8px 4px;font-size:12px;" onclick="selectEquipClass('${id}')">${cls.icon} ${cls.name}</button>`;
     }).join('');
   }
 
@@ -7364,7 +8674,9 @@ function renderEquipScreen() {
     const rarity = RARITY_DEFS[w.rarity];
     const isEquipped = w.id === equippedId;
     const owned = isWeaponOwned(equipSelectedClassId, w.id);
-    const iconHtml = !owned ? '' : category === 'spear' ? getSpearSvg(w.id, 30) : category === 'shield' ? getShieldSvg(w.id, 30) : category === 'bow' ? getBowSvg(w.id, 30) : '';
+    const iconHtml = !owned ? '' : (typeof getWeaponSvgByCategory === 'function')
+      ? getWeaponSvgByCategory(category, w.id, 30)
+      : (category === 'spear' ? getSpearSvg(w.id, 30) : category === 'shield' ? getShieldSvg(w.id, 30) : category === 'bow' ? getBowSvg(w.id, 30) : '');
     return `
     <div class="ov-card" style="margin-bottom:10px;border-color:${isEquipped ? rarity.color : 'rgba(255,255,255,0.1)'};background:${isEquipped ? 'rgba(255,255,255,0.08)' : ''};opacity:${owned ? 1 : 0.55};">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
@@ -7455,7 +8767,13 @@ function openChestModal(reward) {
       badge.style.background = rarity.color;
 
       const iconEl = document.getElementById('chestWeaponIcon');
-      iconEl.textContent = cls.icon;
+      const chestCategory = CLASS_WEAPON_CATEGORY[reward.classId];
+      if (chestCategory && typeof getWeaponSvgByCategory === 'function') {
+        iconEl.innerHTML = getWeaponSvgByCategory(chestCategory, reward.weapon.id, 52);
+        iconEl.textContent = '';
+      } else {
+        iconEl.textContent = cls.icon;
+      }
       iconEl.style.textShadow = `0 0 26px ${rarity.color}`;
 
       document.getElementById('chestWeaponName').textContent = reward.weapon.name;
@@ -7724,9 +9042,8 @@ if (!myProfile.name) {
 
 
 
-</script>
 
-<!-- ===== 12-cloud-sync.js ===== -->
+</script>
 <script type="module">
 /* ===== 12-cloud-sync.js =====
    Firebase Firestore を使って、セーブデータをクラウド（Googleのサーバー）に
@@ -8015,6 +9332,7 @@ window.CloudSync = {
   removeFriendMutual, getFriendRequests, getFriendsWithStatus, startPresenceHeartbeat
 };
 window.dispatchEvent(new Event('cloudsync-ready'));
+
 
 
 </script>
