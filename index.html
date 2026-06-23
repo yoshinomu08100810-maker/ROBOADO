@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ロボ×アド</title>
 <style>
-  html, body {
+html, body {
     margin:0; padding:0; width:100%; height:100%;
     background:#000; font-family:sans-serif; color:#fff;
     overflow:hidden;
@@ -571,9 +571,6 @@
   .chest-weapon-name { font-size:18px; font-weight:bold; color:#fff; }
   .chest-weapon-sub  { font-size:13px; color:#f0c040; margin-top:2px; }
   #chestCloseBtn { display:none; margin-top:20px; }
-
-
-
 </style>
 </head>
 <body>
@@ -686,13 +683,16 @@
   <div id="lobbyRight" style="position:absolute;top:0;right:0;width:40%;height:100%;z-index:5;-webkit-tap-highlight-color:transparent;user-select:none;"></div>
   <!-- ロビーUI上部 -->
   <div style="position:absolute;top:0;left:0;right:0;padding:10px 14px;display:flex;justify-content:space-between;align-items:flex-start;z-index:10;">
-    <div style="background:rgba(0,0,0,0.6);border-radius:12px;padding:8px 14px;pointer-events:none;">
+    <div style="display:inline-block;background:rgba(0,0,0,0.6);border-radius:12px;padding:8px 14px;pointer-events:none;">
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="lobbyPlayerName" style="font-size:14px;font-weight:bold;color:#5be7ff;"></span>
         <span style="font-size:11px;color:#aac4e8;" id="lobbyPlayerIdTag"></span>
       </div>
-      <button id="lobbyFriendBtn" style="pointer-events:auto;margin-top:6px;background:rgba(41,128,185,0.7);border:1px solid #5be7ff;color:#fff;border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer;width:100%;">👥 フレンド</button>
-    <button id="lobbyEquipBtn" style="pointer-events:auto;margin-top:6px;background:rgba(230,126,34,0.7);border:1px solid #f0c040;color:#fff;border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer;width:100%;">🗡️ 装備変更</button>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">
+        <button id="lobbyFriendBtn" style="pointer-events:auto;background:rgba(41,128,185,0.7);border:1px solid #5be7ff;color:#fff;border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;width:100%;white-space:nowrap;">👥 フレンド</button>
+        <button id="lobbyMultiBtn" style="pointer-events:auto;background:rgba(142,68,173,0.7);border:1px solid #d7bde2;color:#fff;border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;width:100%;white-space:nowrap;">🎮 マルチプレイ</button>
+        <button id="lobbyEquipBtn" style="pointer-events:auto;background:rgba(230,126,34,0.7);border:1px solid #f0c040;color:#fff;border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;width:100%;white-space:nowrap;">🗡️ 装備変更</button>
+      </div>
     </div>
     <div style="pointer-events:auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
       <button id="lobbyHomeBtn" style="background:rgba(0,0,0,0.6);border:1px solid #446;color:#fff;border-radius:12px;padding:6px 14px;font-size:13px;cursor:pointer;">🏠 タイトルへ</button>
@@ -905,6 +905,50 @@
   <button class="ov-back" id="backFromFriend">← ロビーへ戻る</button>
 </div>
 
+
+<!-- ===== マルチプレイルーム画面 ===== -->
+<div class="overlay" id="roomScreen">
+  <p class="ov-title">🎮 マルチプレイ</p>
+  <p class="ov-sub">フレンドと一緒にクエストに挑戦しよう！</p>
+  <div class="ov-card">
+    <h3>🏠 ルームを作る</h3>
+    <p style="font-size:12px;color:#7fa8c8;margin:0 0 10px;">ルームを作って友達に4桁のIDを教えよう</p>
+    <button class="ov-btn ov-btn-green" id="createRoomBtn">✨ ルームを作る</button>
+  </div>
+  <div class="ov-card">
+    <h3>🚪 ルームに参加する</h3>
+    <input class="ov-input" id="joinRoomInput" placeholder="ルームID（4文字）を入力"
+      maxlength="4" autocomplete="off" autocorrect="off"
+      autocapitalize="characters" spellcheck="false"
+      style="text-transform:uppercase;letter-spacing:6px;font-size:20px;text-align:center;">
+    <button class="ov-btn ov-btn-blue" id="joinRoomBtn">🚪 参加する</button>
+    <p class="notice" id="joinRoomMsg" style="display:none"></p>
+  </div>
+  <div class="ov-card" id="roomInfoCard" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;">📋 ルーム情報</h3>
+      <span id="roomMemberCount" style="font-size:12px;color:#7fa8c8;">0/4</span>
+    </div>
+    <div id="roomIdSection" style="display:none;">
+      <div style="font-size:12px;color:#7fa8c8;margin-bottom:4px;">ルームID（友達に教えよう）</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="invite-code" id="roomIdDisplay" style="flex:1;font-size:28px;letter-spacing:10px;">----</div>
+        <button class="pid-copy" id="copyRoomIdBtn" style="padding:8px 14px;font-size:13px;">コピー</button>
+      </div>
+    </div>
+    <div style="font-size:12px;color:#7fa8c8;margin:10px 0 6px;">参加中のプレイヤー</div>
+    <div class="lobby-players" id="roomMemberList"></div>
+    <p id="roomStatusMsg" style="font-size:13px;color:#7fa8c8;text-align:center;margin:10px 0 0;"></p>
+    <div id="roomInviteFriendSection" style="margin-top:12px;display:none;">
+      <div style="font-size:12px;color:#7fa8c8;margin-bottom:6px;">フレンドを招待する</div>
+      <div id="roomInviteFriendList"></div>
+    </div>
+    <button class="ov-btn ov-btn-purple" id="roomStartBtn" style="display:none;margin-top:12px;">
+      📋 クエストを選んで出発する
+    </button>
+  </div>
+  <button class="ov-back" id="backFromRoom">← ロビーへ戻る</button>
+</div>
 <!-- ===== クエストクリア結果モーダル ===== -->
 <div class="rs-modal" id="resultModal">
   <div class="rs-card">
@@ -966,8 +1010,12 @@
   <div class="game-btn" id="jumpBtn"><span style="font-size:22px">↑</span><span>JUMP</span></div>
 </div>
 
+
+<!-- ===== JavaScript (01〜11, 13: 通常スクリプト) ===== -->
 <script>
-// ↓↓ 01-core-setup.js を展開 ↓↓
+// ==================== 01-core-setup.js ====================
+// === 01-core-setup.js ===
+// ======================================================
 // ===== 01-core-setup.js =====
 // ===== roundRectポリフィル =====
 // 古いAndroid WebView（Chrome 99未満相当）ではCanvasの roundRect() が未実装で、
@@ -1192,7 +1240,10 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-// ↓↓ 02-input-controls.js を展開 ↓↓
+// ======================================================
+
+// ==================== 02-input-controls.js ====================
+// ======================================================
 // ===== 02-input-controls.js =====
 // ===== ボタン・タップゾーンのバインド =====
 // キーをホールド扱いにするユーティリティ
@@ -1614,7 +1665,10 @@ function drawSkillGauge() {
 
 
 
-// ↓↓ 03-class-defs.js を展開 ↓↓
+// ======================================================
+
+// ==================== 03-class-defs.js ====================
+// ======================================================
 // ===== 03-class-defs.js =====
 // ======================================================
 // ===== クラス定義 =====
@@ -2832,7 +2886,10 @@ function applyStageDifficulty(stageId) {
 
 
 
-// ↓↓ 04-robot-config.js を展開 ↓↓
+// ======================================================
+
+// ==================== 04-robot-config.js ====================
+// ======================================================
 // ===== 04-robot-config.js =====
 const ROBOT = {
   w: Math.round(TILE * 1.0),
@@ -2914,7 +2971,10 @@ function rectsOverlap(a,b){
 
 
 
-// ↓↓ 05-game-loop.js を展開 ↓↓
+// ======================================================
+
+// ==================== 05-game-loop.js ====================
+// ======================================================
 // ===== 05-game-loop.js =====
 function update(dt){
   if (gameState !== 'playing') {
@@ -2929,6 +2989,38 @@ function update(dt){
     gameState = 'lose';
     isTimeUpLose = true;
     return;
+  }
+
+  // ===== 自分が死亡中の場合はプレイヤー操作をスキップ =====
+  if (player.isDead) {
+    player.deathTimer = (player.deathTimer || 0) + dt;
+    // 蘇生判定：生存している他プレイヤーが近くにいるかチェック
+    player.canBeRevived = false;
+    if (window.RoomState && RoomState.roomId) {
+      for (const [pid, peer] of Object.entries(RoomState.peers)) {
+        if (!peer.online || peer.isDead || peer.x === undefined) continue;
+        const dx = Math.abs((peer.x + ROBOT.w/2) - (player.x + player.w/2));
+        const dy = Math.abs((peer.y + ROBOT.h/2) - (player.y + player.h/2));
+        if (dx < ROBOT.w * 1.5 && dy < ROBOT.h * 1.5) {
+          player.canBeRevived = true;
+          break;
+        }
+      }
+    }
+    // カメラ更新だけは行う
+    camX = player.x - canvas.width/2 + player.w/2;
+    camX = Math.max(0, Math.min(camX, WORLD_W - canvas.width));
+    return;
+  }
+
+  // ===== 生存プレイヤーが死亡プレイヤー（他プレイヤー）を蘇生できるかチェック =====
+  if (window.RoomState && RoomState.roomId) {
+    for (const [pid, peer] of Object.entries(RoomState.peers)) {
+      if (!peer.online || !peer.isDead || peer.x === undefined) continue;
+      const dx = Math.abs((player.x + player.w/2) - (peer.x + ROBOT.w/2));
+      const dy = Math.abs((player.y + player.h/2) - (peer.y + ROBOT.h/2));
+      peer.nearReviver = (dx < ROBOT.w * 1.5 && dy < ROBOT.h * 1.5);
+    }
   }
 
   const jumpKeyDown = (keys['Space'] || keys['ArrowUp'] || keys['KeyW']);
@@ -3721,7 +3813,15 @@ function update(dt){
         if (seraphFieldActive) { seraphFieldActive = false; seraphHealTimer = 0; } // 被弾でフィールド解除
         if (player.hp <= 0) {
           player.hp = 0;
-          gameState = 'lose';
+          // マルチプレイ中は死亡状態へ（即ゲームオーバーにしない）
+          if (window.RoomState && RoomState.roomId) {
+            player.isDead = true;
+            player.deathTimer = 0;
+            player.attackAnim = null;
+            checkAllPlayersDead();
+          } else {
+            gameState = 'lose';
+          }
         }
       }
     }
@@ -3763,11 +3863,27 @@ function update(dt){
     // 宝箱の武器抽選（現在使用中のクラスに対応した武器種のみ。武器なしクラスはnull）
     const droppedWeapon = drawWeaponForClass(player.classId);
     showQuestResult(score, expGained, player.classId, droppedWeapon);
+    // マルチプレイ：ホストが全員にクリアを通知
+    if (window.RoomState && RoomState.roomId && RoomState.isHost) {
+      window.broadcastQuestResult && broadcastQuestResult('win', currentStageId);
+    }
   }
 
   // 落下死
   if (player.y > WORLD_H + 100 && gameState === 'playing') {
-    gameState = 'lose';
+    if (window.RoomState && RoomState.roomId) {
+      if (!player.isDead) {
+        player.isDead = true;
+        player.deathTimer = 0;
+        player.attackAnim = null;
+        // 落下したら安全な位置（スタート地点）に戻す
+        player.x = startX; player.y = startY;
+        player.vx = 0; player.vy = 0;
+        checkAllPlayersDead();
+      }
+    } else {
+      gameState = 'lose';
+    }
   }
 
   // 定期セーブ（60フレームに1回）
@@ -3783,6 +3899,7 @@ function resetGame(){
   player.x = startX; player.y = startY;
   player.vx = 0; player.vy = 0;
   player.hp = player.maxHp; player.dmgFlash = 0; player.invTimer = 0;
+  player.isDead = false; player.deathTimer = 0; player.canBeRevived = false;
   player.skillHits = 0; player.skillGauge = 0; player.skillTimer = 0; player.skillReady = false;
   player.attackAnim = null; player.autoMove = null;
   player.pendingShots = [];
@@ -3818,6 +3935,51 @@ let animTime = 0;
 let seraphFieldActive  = false; // セラフィ：セイントフィールド展開中フラグ
 let seraphHealTimer    = 0;     // セラフィ：回復インターバル用タイマー
 
+// ======================================================
+// ===== マルチプレイ：死亡・蘇生システム =====
+// ======================================================
+
+// 全プレイヤーが死亡しているかチェック → 全員死亡でゲームオーバー
+function checkAllPlayersDead() {
+  if (!window.RoomState || !RoomState.roomId) return;
+  if (!player.isDead) return; // 自分が生きていれば継続
+  for (const [pid, peer] of Object.entries(RoomState.peers)) {
+    if (peer.online && !peer.isDead) return; // 生存者がいる
+  }
+  // 全員死亡 → ゲームオーバー
+  gameState = 'lose';
+}
+
+// 他プレイヤーを蘇生する（自分が実行）
+function revivePlayer(peerId) {
+  if (!window.RoomState || !RoomState.roomId) return;
+  const peer = RoomState.peers[peerId];
+  if (!peer || !peer.isDead) return;
+  broadcastToPeers({ type: 'revivePlayer', targetId: peerId, reviverId: RoomState.myPeerId });
+  // ホスト自身が蘇生する側なら即時反映
+  if (RoomState.isHost) {
+    peer.isDead = false;
+    peer.hp = Math.ceil((peer.maxHp || 1) * 0.5);
+  }
+}
+
+// 自分が蘇生される（他プレイヤーから通知が来た時）
+function onRevived(reviverName) {
+  player.isDead = false;
+  player.deathTimer = 0;
+  player.hp = Math.ceil(player.maxHp * 0.5);
+  player.invTimer = 2.0; // 蘇生後2秒無敵
+  player.dmgFlash = 0;
+  player.canBeRevived = false;
+  if (window.msgEl) {
+    msgEl.textContent = `✨ ${reviverName || '味方'} に蘇生された！`;
+    setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+  }
+}
+
+window.checkAllPlayersDead = checkAllPlayersDead;
+window.revivePlayer = revivePlayer;
+window.onRevived = onRevived;
 
 
 
@@ -3826,7 +3988,11 @@ let seraphHealTimer    = 0;     // セラフィ：回復インターバル用タ
 
 
 
-// ↓↓ 06-enemy-draw.js を展開 ↓↓
+
+// ======================================================
+
+// ==================== 06-enemy-draw.js ====================
+// ======================================================
 // ===== 06-enemy-draw.js =====
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
@@ -4785,7 +4951,10 @@ function drawBird(p, cfg){
 
 
 
-// ↓↓ 07-course-draw.js を展開 ↓↓
+// ======================================================
+
+// ==================== 07-course-draw.js ====================
+// ======================================================
 // ===== 07-course-draw.js =====
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
@@ -6242,10 +6411,15 @@ function drawTorch(g){
 
 
 
-// ↓↓ 08-render.js を展開 ↓↓
+// ======================================================
+
+// ==================== 08-render.js ====================
+// ======================================================
 // ===== 08-render.js =====
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  // 蘇生ボタンのタップ判定リストをリセット（毎フレーム更新）
+  window._reviveBtns = [];
   ctx.save();
   ctx.translate(-camX, 0);
 
@@ -6291,7 +6465,137 @@ function draw(){
   }
 
   if (goal) drawTorch(goal);
-  drawBird(player, ROBOT);
+
+  // ===== 自分が死亡中：死亡ポーズ描画 =====
+  if (player.isDead) {
+    const dpx = player.x, dpy = player.y;
+    const dpw = player.w, dph = player.h;
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.translate(dpx + dpw / 2, dpy + dph * 0.75);
+    ctx.rotate(Math.PI / 2);
+    // 体（赤みがかったグレー）
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath();
+    ctx.roundRect(-dph / 2, -dpw / 2, dph, dpw, 4);
+    ctx.fill();
+    // X目
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+    const dex = -dph * 0.15, dey = -dpw * 0.25, des = dpw * 0.12;
+    ctx.beginPath(); ctx.moveTo(dex-des, dey-des); ctx.lineTo(dex+des, dey+des); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(dex+des, dey-des); ctx.lineTo(dex-des, dey+des); ctx.stroke();
+    ctx.restore();
+    // 蘇生待ち表示
+    const waitPulse = 0.6 + Math.sin(animTime * 3) * 0.4;
+    ctx.save();
+    ctx.globalAlpha = waitPulse;
+    ctx.fillStyle = player.canBeRevived ? '#2ecc71' : '#e74c3c';
+    ctx.font = `bold ${Math.round(dpw * 0.5)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(player.canBeRevived ? '✨ 蘇生待ち...' : '💀 DEAD', dpx + dpw / 2, dpy - dpw * 0.3);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  } else {
+    drawBird(player, ROBOT);
+  }
+
+  // マルチプレイ中：他プレイヤーを描画
+  if (window.RoomState && RoomState.roomId) {
+    for (const [pid, peer] of Object.entries(RoomState.peers)) {
+      if (!peer.online || peer.x === undefined) continue;
+      const px = peer.x, py = peer.y;
+      const pw = ROBOT.w, ph = ROBOT.h;
+
+      if (peer.isDead) {
+        // ===== 死亡ポーズ：横たわるシルエット =====
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        ctx.translate(px + pw / 2, py + ph * 0.75);
+        ctx.rotate(Math.PI / 2); // 90度回転（横倒し）
+        // 体
+        ctx.fillStyle = '#888';
+        ctx.beginPath();
+        ctx.roundRect(-ph / 2, -pw / 2, ph, pw, 4);
+        ctx.fill();
+        // X目
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        const ex2 = -ph * 0.15, ey2 = -pw * 0.25, es2 = pw * 0.1;
+        ctx.beginPath(); ctx.moveTo(ex2-es2, ey2-es2); ctx.lineTo(ex2+es2, ey2+es2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ex2+es2, ey2-es2); ctx.lineTo(ex2-es2, ey2+es2); ctx.stroke();
+        ctx.restore();
+        // 名前（グレー）
+        ctx.save();
+        ctx.fillStyle = '#aaa';
+        ctx.font = `bold ${Math.round(pw * 0.45)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText((peer.name || '?') + ' 💀', px + pw / 2, py - pw * 0.15);
+        ctx.textAlign = 'left';
+        ctx.restore();
+        // 蘇生ボタン（自分が近くにいる場合）
+        if (peer.nearReviver) {
+          const btnW = pw * 2.2, btnH = ph * 0.55;
+          const btnX = px + pw / 2 - btnW / 2;
+          const btnY = py - ph * 1.1;
+          // ボタン背景
+          ctx.save();
+          const pulse4 = 0.75 + Math.sin(animTime * 5) * 0.25;
+          ctx.globalAlpha = pulse4;
+          ctx.fillStyle = '#27ae60';
+          ctx.beginPath();
+          ctx.roundRect(btnX, btnY, btnW, btnH, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#2ecc71';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          // テキスト
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${Math.round(btnH * 0.55)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText('🔆 蘇生 [E]', px + pw / 2, btnY + btnH * 0.72);
+          ctx.textAlign = 'left';
+          ctx.restore();
+          // タッチ用の当たり判定を window に保存（後でタップ判定に使用）
+          if (!window._reviveBtns) window._reviveBtns = [];
+          window._reviveBtns.push({ peerId: pid, x: btnX + camX, y: btnY, w: btnW, h: btnH });
+        }
+      } else {
+        // ===== 通常描画：半透明シルエット =====
+        ctx.save();
+        ctx.globalAlpha = 0.75;
+        ctx.fillStyle = peer.facing === -1 ? '#5be7ff' : '#f39c12';
+        ctx.beginPath();
+        ctx.roundRect(px, py, pw, ph, 4);
+        ctx.fill();
+        // 目
+        ctx.fillStyle = '#fff';
+        const eyeX = peer.facing === -1 ? px + pw * 0.25 : px + pw * 0.55;
+        ctx.beginPath();
+        ctx.arc(eyeX, py + ph * 0.28, pw * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // 名前
+        ctx.save();
+        ctx.fillStyle = '#5be7ff';
+        ctx.font = `bold ${Math.round(pw * 0.45)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(peer.name || '?', px + pw / 2, py - pw * 0.15);
+        ctx.textAlign = 'left';
+        ctx.restore();
+        // HPバー
+        if (peer.maxHp > 0) {
+          const bw = pw * 1.2, bh = 4;
+          const bx = px + pw / 2 - bw / 2, by2 = py - pw * 0.5;
+          const ratio = Math.max(0, peer.hp / peer.maxHp);
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(bx, by2, bw, bh);
+          ctx.fillStyle = ratio > 0.5 ? '#2ecc71' : ratio > 0.25 ? '#f39c12' : '#e74c3c';
+          ctx.fillRect(bx, by2, bw * ratio, bh);
+        }
+      }
+    }
+  }
 
   // プレイヤーHPバー（頭上）
   {
@@ -6999,7 +7303,49 @@ function loop(now){
   animTime += dt;
   update(dt);
   draw();
+  // マルチプレイ中：自分の状態を送信
+  if (window.RoomState && RoomState.roomId && window.sendMyPlayerState) {
+    sendMyPlayerState(dt);
+  }
   requestAnimationFrame(loop);
+}
+
+// ===== 蘇生：Eキー押下で近くの死亡プレイヤーを蘇生 =====
+document.addEventListener('keydown', function(e) {
+  if (e.code !== 'KeyE') return;
+  if (gameState !== 'playing') return;
+  if (player.isDead) return;
+  if (!window.RoomState || !RoomState.roomId) return;
+  for (const [pid, peer] of Object.entries(RoomState.peers)) {
+    if (peer.online && peer.isDead && peer.nearReviver) {
+      revivePlayer(pid);
+      break;
+    }
+  }
+});
+
+// ===== 蘇生：タッチで蘇生ボタンをタップ =====
+if (typeof canvas !== 'undefined') {
+  canvas.addEventListener('touchstart', function(e) {
+    if (gameState !== 'playing') return;
+    if (player.isDead) return;
+    if (!window._reviveBtns || window._reviveBtns.length === 0) return;
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const tx = (touch.clientX - rect.left) * scaleX;
+    const ty = (touch.clientY - rect.top) * scaleY;
+    for (const btn of window._reviveBtns) {
+      // _reviveBtnsのxはcamX込み、描画座標に変換して判定
+      const bx = btn.x - camX;
+      if (tx >= bx && tx <= bx + btn.w && ty >= btn.y && ty <= btn.y + btn.h) {
+        revivePlayer(btn.peerId);
+        e.preventDefault();
+        break;
+      }
+    }
+  }, { passive: false });
 }
 
 
@@ -7010,7 +7356,10 @@ function loop(now){
 
 
 
-// ↓↓ 09-profile-id.js を展開 ↓↓
+// ======================================================
+
+// ==================== 09-profile-id.js ====================
+// ======================================================
 // ===== 09-profile-id.js =====
 // ======================================================
 // ===== プロフィール・ID管理 =====
@@ -7061,7 +7410,7 @@ let friendRequestsOutgoing = []; // 自分が送って承認待ちの申請
 const homeScreen   = document.getElementById('homeScreen');
 const pauseScreen  = document.getElementById('pauseScreen');
 const menuBtn      = document.getElementById('menuBtn');
-const ALL_OVERLAYS = ['registerScreen','settingScreen','questScreen','classScreen','smithScreen','equipScreen','friendScreen','loginScreen'];
+const ALL_OVERLAYS = ['registerScreen','settingScreen','questScreen','classScreen','smithScreen','equipScreen','friendScreen','loginScreen','roomScreen'];
 
 function hideAllOverlays() {
   ALL_OVERLAYS.forEach(id => {
@@ -7326,7 +7675,10 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-// ↓↓ 10-lobby-world.js を展開 ↓↓
+// ======================================================
+
+// ==================== 10-lobby-world.js ====================
+// ======================================================
 // ===== 10-lobby-world.js =====
 // ======================================================
 // ===== 2Dロビーワールド =====
@@ -7455,6 +7807,22 @@ function updateLobby(dt) {
   } else {
     hintEl.style.display = 'none';
   }
+
+  // マルチプレイ中：自分のロビー座標を他プレイヤーに送信
+  if (window.RoomState && RoomState.roomId) {
+    if (!updateLobby._sendTimer) updateLobby._sendTimer = 0;
+    updateLobby._sendTimer += dt;
+    if (updateLobby._sendTimer >= 0.1) { // 10fpsで送信
+      updateLobby._sendTimer = 0;
+      window.broadcastToPeers && broadcastToPeers({
+        type: 'lobbyState',
+        lobbyX: lobbyPlayer.x,
+        lobbyY: lobbyPlayer.y,
+        lobbyFacing: lobbyPlayer.facing,
+        lobbyWalkTimer: lobbyPlayer.walkTimer,
+      });
+    }
+  }
 }
 
 function getNearFacility() {
@@ -7505,6 +7873,32 @@ function drawLobby() {
 
   // ロビープレイヤー（ロボット）
   drawLobbyRobot(lobbyPlayer);
+
+  // マルチプレイ中：他プレイヤーをロビーに描画
+  if (window.RoomState && RoomState.roomId) {
+    for (const [pid, peer] of Object.entries(RoomState.peers)) {
+      if (!peer.online || peer.lobbyX === undefined) continue;
+      // 他プレイヤーのロビー座標を描画（ghostモード）
+      const ghostP = {
+        x: peer.lobbyX ?? 200,
+        y: peer.lobbyY ?? (lobbyGround - 48),
+        w: 32, h: 48,
+        facing: peer.lobbyFacing ?? 1,
+        walkTimer: peer.lobbyWalkTimer ?? 0,
+      };
+      lctx.save();
+      lctx.globalAlpha = 0.75;
+      drawLobbyRobot(ghostP, peer.classId);
+      // 名前表示
+      lctx.globalAlpha = 0.9;
+      lctx.fillStyle = '#5be7ff';
+      lctx.font = 'bold 11px sans-serif';
+      lctx.textAlign = 'center';
+      lctx.fillText(peer.name || '?', ghostP.x + ghostP.w / 2, ghostP.y - 6);
+      lctx.textAlign = 'left';
+      lctx.restore();
+    }
+  }
 
   lctx.restore();
 }
@@ -8337,7 +8731,10 @@ function openFacility(screenId) {
     refreshFriendData();
   }
   if (screenId === 'classScreen') { renderClassScreen(); }
-  if (screenId === 'questScreen') renderQuestScreen();
+  if (screenId === 'questScreen') {
+    const isMulti = !!(window.RoomState && RoomState.roomId);
+    renderQuestScreen(isMulti);
+  }
   showOverlay(screenId);
   if (screenId === 'classScreen' && !isClassTutorialSeen()) showClassTutorial();
 }
@@ -8358,6 +8755,117 @@ document.getElementById('lobbyFriendBtn').addEventListener('click', () => {
   refreshFriendData();
   showOverlay('friendScreen');
 });
+
+// ===== マルチプレイボタン =====
+document.getElementById('lobbyMultiBtn').addEventListener('click', () => {
+  console.log('[DEBUG] lobbyMultiBtn clicked, showRoomScreen=', typeof showRoomScreen);
+  document.getElementById('lobbyScreen').style.display = 'none';
+  showRoomScreen();
+});
+
+// ===== ルーム画面のUI処理 =====
+document.getElementById('createRoomBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('createRoomBtn');
+  btn.disabled = true;
+  btn.textContent = '接続待機中...';
+  document.getElementById('roomInfoCard').style.display = 'block';
+  document.getElementById('roomIdSection').style.display = 'none';
+  document.getElementById('roomStatusMsg').style.color = '#7fa8c8';
+  document.getElementById('roomStatusMsg').textContent = 'Firebase接続中...';
+
+  btn.textContent = '作成中...';
+  document.getElementById('roomStatusMsg').textContent = '作成中...';
+  const roomId = await createRoom();
+  btn.disabled = false;
+  btn.textContent = '✨ ルームを作る';
+  if (!roomId) return;
+
+  // ルーム情報を表示
+  document.getElementById('roomInfoCard').style.display = 'block';
+  document.getElementById('roomIdSection').style.display = 'block';
+  document.getElementById('roomIdDisplay').textContent = roomId;
+  document.getElementById('roomStatusMsg').textContent = '友達がルームIDを入力して参加するのを待っています...';
+  document.getElementById('roomStartBtn').style.display = 'block';
+  renderRoomMemberList();
+
+  // フレンドへの招待リストを表示
+  renderRoomInviteFriendList();
+});
+
+document.getElementById('copyRoomIdBtn').addEventListener('click', () => {
+  const id = document.getElementById('roomIdDisplay').textContent;
+  navigator.clipboard?.writeText(id).catch(() => {});
+  const btn = document.getElementById('copyRoomIdBtn');
+  btn.textContent = '✔'; setTimeout(() => btn.textContent = 'コピー', 1500);
+});
+
+document.getElementById('joinRoomBtn').addEventListener('click', async () => {
+  const id = document.getElementById('joinRoomInput').value.trim().toUpperCase();
+  const msg = document.getElementById('joinRoomMsg');
+  msg.style.display = 'block';
+  if (!id || id.length !== 4) {
+    msg.style.color = '#e74c3c';
+    msg.textContent = '⚠️ 4文字のルームIDを入力してください';
+    return;
+  }
+  msg.style.color = '#7fa8c8';
+  msg.textContent = 'Firebase接続中...';
+  const btn = document.getElementById('joinRoomBtn');
+  btn.disabled = true;
+
+  msg.textContent = '接続中...';
+  const result = await joinRoom(id);
+  btn.disabled = false;
+  if (!result.ok) {
+    msg.style.color = '#e74c3c';
+    msg.textContent = result.reason === 'notfound' ? '⚠️ ルームが見つかりません'
+      : result.reason === 'full' ? '⚠️ ルームが満員です（4人まで）'
+      : result.reason === 'started' ? '⚠️ すでにクエスト中です'
+      : '⚠️ 接続できませんでした';
+    return;
+  }
+  msg.style.color = '#2ecc71';
+  msg.textContent = `✅ ${result.hostName} のルームに参加しました！`;
+  document.getElementById('roomInfoCard').style.display = 'block';
+  document.getElementById('roomIdSection').style.display = 'none';
+  document.getElementById('roomStatusMsg').textContent = 'ホストがクエストを選ぶのを待っています...';
+  renderRoomMemberList();
+});
+
+// ルームのクエスト出発ボタン（ホストのみ）
+document.getElementById('roomStartBtn').addEventListener('click', () => {
+  // クエスト画面を表示（ホストが選択する）
+  renderQuestScreen(true); // true = マルチモード
+  showOverlay('questScreen');
+});
+
+document.getElementById('backFromRoom').addEventListener('click', async () => {
+  if (RoomState.roomId) {
+    const sure = confirm('ルームを退出しますか？');
+    if (!sure) return;
+    await leaveRoom();
+  }
+  document.getElementById('roomInfoCard').style.display = 'none';
+  document.getElementById('joinRoomMsg').style.display = 'none';
+  hideAllOverlays();
+});
+
+// フレンドへの招待リスト描画
+function renderRoomInviteFriendList() {
+  const section = document.getElementById('roomInviteFriendSection');
+  const list = document.getElementById('roomInviteFriendList');
+  if (!friends || friends.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = friends.map(f => `
+    <div class="friend-item">
+      <div>
+        <div class="fi-name">${f.name}</div>
+        <div class="fi-id">${f.id}</div>
+      </div>
+      <button class="fi-invite" onclick="inviteFriendToRoom('${f.playerId}','${f.name}')">招待</button>
+    </div>`).join('');
+}
+window.renderRoomInviteFriendList = renderRoomInviteFriendList;
 document.getElementById('lobbyEquipBtn').addEventListener('click', () => {
   renderEquipScreen();
   showOverlay('equipScreen');
@@ -8381,16 +8889,29 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-// ↓↓ 11-quest-screen.js を展開 ↓↓
+// ======================================================
+
+// ==================== 11-quest-screen.js ====================
+// ======================================================
 // ===== 11-quest-screen.js =====
 // ======================================================
 // ===== クエスト画面 =====
 // ======================================================
 // ステージ一覧を解放状況に応じて動的に描画する
-function renderQuestScreen() {
+// isMultiMode=true のとき：ゲストは「待機中」表示、ホストのみ出発可能
+function renderQuestScreen(isMultiMode) {
   const list = document.getElementById('questCardList');
   const cleared = getClearedStageOrder();
-  list.innerHTML = STAGE_DEFS.map(st => {
+  const isGuest = isMultiMode && window.RoomState && RoomState.roomId && !RoomState.isHost;
+
+  // マルチモード時はゲスト向けの案内バナーを先頭に表示
+  const multiNotice = isGuest
+    ? `<div style="background:rgba(91,231,255,0.12);border:1px solid #5be7ff;border-radius:10px;padding:10px 14px;margin-bottom:10px;color:#5be7ff;font-size:13px;text-align:center;">
+        🎮 ホストがクエストを選択するのを待っています…
+       </div>`
+    : '';
+
+  list.innerHTML = multiNotice + STAGE_DEFS.map(st => {
     const unlocked = isStageUnlocked(st.id);
     const isCleared = cleared >= st.order;
 
@@ -8408,6 +8929,11 @@ function renderQuestScreen() {
       </div>`;
     }
 
+    // ゲストの場合は「出発する」ボタンをグレーアウト（クリック不可）
+    const btn = isGuest
+      ? `<button class="ov-btn ov-btn-gray" style="margin-top:12px;opacity:0.5;cursor:not-allowed;" disabled>⏳ ホスト待機中</button>`
+      : `<button class="ov-btn ov-btn-green" style="margin-top:12px;" onclick="startQuest('${st.id}')">出発する ➡</button>`;
+
     return `
     <div class="ov-card" style="border-color:rgba(255,215,0,0.4);">
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -8421,7 +8947,7 @@ function renderQuestScreen() {
           <div style="font-size:11px;color:#2ecc71;margin-top:4px;">難易度：${st.difficultyStars}</div>
         </div>
       </div>
-      <button class="ov-btn ov-btn-green" style="margin-top:12px;" onclick="startQuest('${st.id}')">出発する ➡</button>
+      ${btn}
     </div>`;
   }).join('');
 }
@@ -8429,11 +8955,17 @@ function renderQuestScreen() {
 // クエスト出発処理（解放済みステージのみ開始可能）
 function startQuest(stageId) {
   if (!isStageUnlocked(stageId)) return;
-  // ステージ1（最初のクエスト）かつ未読了の場合は、操作説明モーダルを表示するだけで出発はしない
-  // （モーダルを閉じた後、改めて「出発する」を押してもらう）
   const st = getStageDef(stageId);
   if (st.order === 1 && !isQuestTutorialSeen()) {
     showQuestTutorial();
+    return;
+  }
+  // マルチプレイ中はホストが全員を出発させる
+  if (window.RoomState && RoomState.roomId) {
+    if (RoomState.isHost) {
+      startQuestMulti(stageId);
+    }
+    // ゲストはボタンが押せない（ホストが選択する）
     return;
   }
   launchQuest(stageId);
@@ -9081,305 +9613,1234 @@ if (!myProfile.name) {
 
 
 
-</script>
-<script type="module">
-/* ===== 12-cloud-sync.js =====
-   Firebase Firestore を使って、セーブデータをクラウド（Googleのサーバー）に
-   自動保存し、別の端末からでも同じデータでプレイできるようにする仕組み。
-   ※ ここで処理が重くなるのはGoogle側のサーバーであり、プレイヤーの端末ではない。
-*/
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, getDoc, updateDoc, serverTimestamp, writeBatch
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAMmITxE83vvuGY3TWsZyKd9IgTERAmN54",
-  authDomain: "robo-ado.firebaseapp.com",
-  projectId: "robo-ado",
-  storageBucket: "robo-ado.firebasestorage.app",
-  messagingSenderId: "327802487106",
-  appId: "1:327802487106:web:2897661a8c23d72f8c88db"
+
+// ==================== 13-webrtc-room.js ====================
+// ===== 13-webrtc-room.js =====
+// ======================================================
+// ===== WebRTCマルチプレイルーム管理 =====
+// ======================================================
+// 仕組み：
+//   接続確立時だけFirestoreをシグナリング（伝言板）として使用
+//   接続後はWebRTC P2Pで直接通信（Firestoreを消費しない）
+//   ホストがゲーム状態（敵HP・死亡）を管理し全員に配信
+//   ゲスト同士はホスト経由でデータを受け取る（スター型）
+// ======================================================
+
+const STUN_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+];
+
+// ルーム状態
+window.RoomState = {
+  roomId: null,         // 現在のルームID（4文字英数字）
+  isHost: false,        // 自分がホストか
+  myPeerId: null,       // 自分のpeerId（playerId流用）
+  peers: {},            // { peerId: { conn, name, classId, x, y, hp, maxHp, facing, online } }
+  gameStarted: false,   // クエスト中かどうか
+  selectedStageId: null,// ホストが選んだステージ
 };
 
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+// FirestoreはCloudSyncが持っているので、それを流用する
+// シグナリング用Firestoreパス：
+//   rooms/{roomId}/host     → ホスト情報
+//   rooms/{roomId}/members/{peerId} → メンバー情報
+//   rooms/{roomId}/signals/{targetId}/{fromId} → ICE/SDP シグナル
 
-// クラウドと同期する localStorage のキー一覧
-const SYNC_KEYS = ['rr_profile', 'rr_savedata', 'rr_equipment', 'rr_owned_weapons', 'rr_levels', 'rr_skills', 'rr_class', 'rr_friends', 'rr_quest'];
+let _db = null; // 12-cloud-sync.js が初期化した後に取得
+let _firestoreFuncs = null;
+
+window.addEventListener('cloudsync-ready', () => {
+  // CloudSyncからFirestore関数を借用
+  _db = window._firestoreDb;
+  _firestoreFuncs = window._firestoreFuncs;
+  if (!_db || !_firestoreFuncs) {
+    console.warn('[Room] Firestore未初期化。シグナリング不可。');
+  }
+}, { once: true });
+
+// ======================================================
+// ===== ルームID生成 =====
+// ======================================================
+function genRoomId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 4 }, () => chars[Math.random() * chars.length | 0]).join('');
+}
+
+// ======================================================
+// ===== PeerConnection管理 =====
+// ======================================================
+function createPeerConnection(targetPeerId) {
+  const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+  const dc = pc.createDataChannel('game', { ordered: false, maxRetransmits: 0 });
+
+  dc.onopen = () => {
+    console.log(`[Room] DataChannel open → ${targetPeerId}`);
+    const peer = RoomState.peers[targetPeerId];
+    if (peer) peer.dcOpen = true;
+    // 接続直後に自己紹介を送る
+    sendToPeer(targetPeerId, {
+      type: 'hello',
+      name: myProfile.name || 'プレイヤー',
+      classId: localStorage.getItem('rr_class') || 'none',
+      peerId: RoomState.myPeerId,
+    });
+  };
+  dc.onclose = () => {
+    console.log(`[Room] DataChannel closed → ${targetPeerId}`);
+    const peer = RoomState.peers[targetPeerId];
+    if (peer) { peer.dcOpen = false; peer.online = false; }
+    renderRoomMemberList();
+  };
+  dc.onmessage = (ev) => handlePeerMessage(targetPeerId, JSON.parse(ev.data));
+
+  // ICE候補をFirestoreに書き込んで相手に届ける
+  pc.onicecandidate = async (ev) => {
+    if (!ev.candidate || !_db || !_firestoreFuncs) return;
+    const { doc, setDoc, serverTimestamp } = _firestoreFuncs;
+    const signalRef = doc(_db, 'rooms', RoomState.roomId,
+      'signals', targetPeerId, 'from', RoomState.myPeerId + '_ice_' + Date.now());
+    await setDoc(signalRef, {
+      type: 'ice',
+      candidate: JSON.stringify(ev.candidate),
+      from: RoomState.myPeerId,
+      createdAt: serverTimestamp(),
+    }).catch(() => {});
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log(`[Room] connection state → ${targetPeerId}: ${pc.connectionState}`);
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      const peer = RoomState.peers[targetPeerId];
+      if (peer) { peer.online = false; }
+      renderRoomMemberList();
+    }
+  };
+
+  // ゲスト側でホストからDataChannelを受信する場合
+  pc.ondatachannel = (ev) => {
+    const ch = ev.channel;
+    ch.onopen = () => {
+      console.log(`[Room] ondatachannel open ← ${targetPeerId}`);
+      const peer = RoomState.peers[targetPeerId];
+      if (peer) { peer.dc = ch; peer.dcOpen = true; }
+      sendToPeer(targetPeerId, {
+        type: 'hello',
+        name: myProfile.name || 'プレイヤー',
+        classId: localStorage.getItem('rr_class') || 'none',
+        peerId: RoomState.myPeerId,
+      });
+    };
+    ch.onclose = () => {
+      const peer = RoomState.peers[targetPeerId];
+      if (peer) { peer.dcOpen = false; peer.online = false; }
+      renderRoomMemberList();
+    };
+    ch.onmessage = (ev2) => handlePeerMessage(targetPeerId, JSON.parse(ev2.data));
+    // dc参照を保存
+    const peer = RoomState.peers[targetPeerId];
+    if (peer) peer.dc = ch;
+  };
+
+  return { pc, dc };
+}
+
+// ======================================================
+// ===== ピアへメッセージ送信 =====
+// ======================================================
+function sendToPeer(peerId, data) {
+  const peer = RoomState.peers[peerId];
+  if (!peer) return;
+  const dc = peer.dc;
+  if (!dc || dc.readyState !== 'open') return;
+  try { dc.send(JSON.stringify(data)); } catch (e) { /* 無視 */ }
+}
+
+function broadcastToPeers(data) {
+  for (const peerId of Object.keys(RoomState.peers)) {
+    sendToPeer(peerId, data);
+  }
+}
+
+// ======================================================
+// ===== ピアからのメッセージ処理 =====
+// ======================================================
+function handlePeerMessage(fromPeerId, msg) {
+  const peer = RoomState.peers[fromPeerId];
+  if (!peer) return;
+
+  switch (msg.type) {
+    case 'hello':
+      peer.name = msg.name;
+      peer.classId = msg.classId;
+      peer.online = true;
+      renderRoomMemberList();
+      break;
+
+    case 'lobbyState':
+      // 他プレイヤーのロビー座標を更新
+      peer.lobbyX = msg.lobbyX;
+      peer.lobbyY = msg.lobbyY;
+      peer.lobbyFacing = msg.lobbyFacing;
+      peer.lobbyWalkTimer = msg.lobbyWalkTimer;
+      peer.online = true;
+      break;
+
+    case 'playerState':
+      // 他プレイヤーの位置・HP更新
+      peer.x = msg.x;
+      peer.y = msg.y;
+      peer.hp = msg.hp;
+      peer.maxHp = msg.maxHp;
+      peer.facing = msg.facing;
+      peer.classId = msg.classId;
+      peer.isDead = msg.isDead || false;
+      peer.online = true;
+      // 他プレイヤーの死亡で自分が唯一の生存者か確認
+      if (window.checkAllPlayersDead) checkAllPlayersDead();
+      break;
+
+    case 'enemyState':
+      // ホストから敵の状態を受け取る（ゲスト用）
+      if (!RoomState.isHost && msg.enemies) {
+        msg.enemies.forEach((es, i) => {
+          if (!enemies[i]) return;
+          enemies[i].hp    = es.hp;
+          enemies[i].alive = es.alive;
+          enemies[i].x     = es.x;
+          enemies[i].dir   = es.dir;
+        });
+      }
+      break;
+
+    case 'enemyHit':
+      // ゲストが敵にダメージを与えたことをホストに通知
+      if (RoomState.isHost) {
+        const e = enemies[msg.idx];
+        if (e && e.alive) {
+          e.hp -= msg.dmg;
+          e.dmgFlash = 0.3;
+          if (e.hp <= 0) {
+            e.alive = false;
+            score += getEnemyKillScore(e);
+          }
+          // 全員に敵状態を即時配信
+          broadcastEnemyState();
+        }
+      }
+      break;
+
+    case 'questStart':
+      // ホストがクエスト開始を全員に通知
+      if (!RoomState.isHost) {
+        RoomState.selectedStageId = msg.stageId;
+        RoomState.gameStarted = true;
+        launchQuestMulti(msg.stageId);
+      }
+      break;
+
+    case 'questResult':
+      // ホストがクリア/失敗を通知
+      if (!RoomState.isHost) {
+        if (msg.result === 'win') {
+          gameState = 'win';
+          const st = getStageDef(msg.stageId);
+          const expGained = Math.round(QUEST_CLEAR_EXP * st.expMul);
+          gainExp(expGained);
+          markStageCleared(msg.stageId);
+          localStorage.removeItem(SAVE_KEY);
+          const droppedWeapon = drawWeaponForClass(player.classId);
+          showQuestResult(score, expGained, player.classId, droppedWeapon);
+        } else {
+          gameState = 'lose';
+        }
+      }
+      break;
+
+    case 'returnLobby':
+      // ホストがロビーへ戻ることを通知
+      if (!RoomState.isHost) {
+        RoomState.gameStarted = false;
+        goHome();
+      }
+      break;
+
+    case 'revivePlayer':
+      // 蘇生通知
+      {
+        const reviverId = msg.reviverId;
+        const targetId  = msg.targetId;
+        const reviverPeer = RoomState.peers[reviverId];
+        const reviverName = reviverPeer ? (reviverPeer.name || '味方') : '味方';
+        // 自分が対象なら蘇生処理
+        if (targetId === RoomState.myPeerId && window.onRevived) {
+          onRevived(reviverName);
+        }
+        // 対象が他プレイヤーならそのpeerのisDead更新
+        if (RoomState.peers[targetId]) {
+          RoomState.peers[targetId].isDead = false;
+          RoomState.peers[targetId].hp = Math.ceil((RoomState.peers[targetId].maxHp || 1) * 0.5);
+        }
+        // ホストは全員に再ブロードキャスト（まだ届いていないピアへ）
+        if (RoomState.isHost && reviverId !== RoomState.myPeerId) {
+          broadcastToPeers({ type: 'revivePlayer', targetId, reviverId });
+        }
+      }
+      break;
+  } // switch end
+}
+
+// ======================================================
+// ===== 敵状態をブロードキャスト（ホスト専用） =====
+// ======================================================
+function broadcastEnemyState() {
+  if (!RoomState.isHost) return;
+  broadcastToPeers({
+    type: 'enemyState',
+    enemies: enemies.map(e => ({
+      hp: e.hp,
+      alive: e.alive,
+      x: e.x,
+      dir: e.dir,
+    })),
+  });
+}
+
+// ======================================================
+// ===== 自分の状態を全員に送信 =====
+// ======================================================
+let _stateTimer = 0;
+function sendMyPlayerState(dt) {
+  if (Object.keys(RoomState.peers).length === 0) return;
+  _stateTimer += dt;
+  if (_stateTimer < 0.05) return; // 20fps（50msに1回）で送信
+  _stateTimer = 0;
+  broadcastToPeers({
+    type: 'playerState',
+    x: player.x,
+    y: player.y,
+    hp: player.hp,
+    maxHp: player.maxHp,
+    facing: player.facing,
+    classId: player.classId,
+    isDead: player.isDead || false,
+  });
+  // ホストは敵状態も送る（5フレームに1回程度）
+  if (RoomState.isHost) {
+    if (!sendMyPlayerState._enemyTimer) sendMyPlayerState._enemyTimer = 0;
+    sendMyPlayerState._enemyTimer += dt;
+    if (sendMyPlayerState._enemyTimer >= 0.1) { // 10fps
+      sendMyPlayerState._enemyTimer = 0;
+      broadcastEnemyState();
+    }
+  }
+}
+window.sendMyPlayerState = sendMyPlayerState;
+
+// ゲスト側が敵にダメージを与えた時にホストに通知
+function notifyEnemyHit(idx, dmg) {
+  if (RoomState.isHost) {
+    // ホストは自分でダメージ処理
+    const e = enemies[idx];
+    if (e && e.alive) {
+      e.hp -= dmg;
+      e.dmgFlash = 0.3;
+      if (e.hp <= 0) {
+        e.alive = false;
+        score += getEnemyKillScore(e);
+      }
+      broadcastEnemyState();
+    }
+  } else {
+    // ゲストはホストに通知（ホストが処理する）
+    const hostId = Object.keys(RoomState.peers).find(id => RoomState.peers[id].isHost);
+    if (hostId) sendToPeer(hostId, { type: 'enemyHit', idx, dmg });
+  }
+}
+window.notifyEnemyHit = notifyEnemyHit;
+
+// ======================================================
+// ===== Firestoreシグナリング: ルーム作成 =====
+// ======================================================
+async function createRoom() {
+  // _dbが未取得の場合、window経由で再取得を試みる（moduleの初期化タイミング対策）
+  if (!_db && window._firestoreDb) {
+    _db = window._firestoreDb;
+    _firestoreFuncs = window._firestoreFuncs;
+  }
+  if (!_db || !_firestoreFuncs) {
+    const msgEl = document.getElementById('roomStatusMsg');
+    if (msgEl) { msgEl.style.color='#e74c3c'; msgEl.textContent='⚠️ 通信の準備中です。少し待ってからお試しください。'; }
+    const btn = document.getElementById('createRoomBtn');
+    if (btn) { btn.disabled = false; btn.textContent = '✨ ルームを作る'; }
+    return null;
+  }
+  const { doc, setDoc, serverTimestamp } = _firestoreFuncs;
+  const roomId = genRoomId();
+  RoomState.roomId = roomId;
+  RoomState.isHost = true;
+  RoomState.myPeerId = myProfile.id;
+  RoomState.peers = {};
+  RoomState.gameStarted = false;
+
+  // Firestoreにルーム情報を登録
+  try {
+    console.log('[Room] rooms書き込み開始 roomId=', roomId, '_db=', _db, 'doc=', typeof doc, 'setDoc=', typeof setDoc);
+    await setDoc(doc(_db, 'rooms', roomId), {
+      host: myProfile.id,
+      hostName: myProfile.name || 'プレイヤー',
+      status: 'waiting',
+      createdAt: serverTimestamp(),
+    });
+    console.log('[Room] rooms書き込み完了');
+  } catch(e) {
+    console.error('[Room] rooms書き込みエラー:', e.message || e);
+    document.getElementById('roomStatusMsg').textContent = '❌ ' + (e.message || e);
+    document.getElementById('createRoomBtn').disabled = false;
+    document.getElementById('createRoomBtn').textContent = '✨ ルームを作る';
+    return null;
+  }
+
+  // 自分のメンバー情報を登録
+  try {
+    await setDoc(doc(_db, 'rooms', roomId, 'members', myProfile.id), {
+      name: myProfile.name || 'プレイヤー',
+      classId: localStorage.getItem('rr_class') || 'none',
+      isHost: true,
+      joinedAt: serverTimestamp(),
+    });
+    console.log('[Room] members書き込み完了');
+  } catch(e) {
+    console.error('[Room] members書き込みエラー:', e.message || e);
+    document.getElementById('roomStatusMsg').textContent = '❌ ' + (e.message || e);
+    document.getElementById('createRoomBtn').disabled = false;
+    document.getElementById('createRoomBtn').textContent = '✨ ルームを作る';
+    return null;
+  }
+
+  // 他のメンバーが参加してきた時のシグナルを監視
+  startSignalListener(roomId);
+  startMemberListener(roomId);
+
+  console.log(`[Room] ルーム作成: ${roomId}`);
+  return roomId;
+}
+window.createRoom = createRoom;
+
+// ======================================================
+// ===== Firestoreシグナリング: ルーム参加 =====
+// ======================================================
+async function joinRoom(roomId) {
+  // _dbが未取得の場合、window経由で再取得を試みる
+  if (!_db && window._firestoreDb) {
+    _db = window._firestoreDb;
+    _firestoreFuncs = window._firestoreFuncs;
+  }
+  if (!_db || !_firestoreFuncs) {
+    return { ok: false, reason: 'notready' };
+  }
+  const { doc, getDoc, setDoc, serverTimestamp } = _firestoreFuncs;
+
+  // ルーム存在確認
+  const roomSnap = await getDoc(doc(_db, 'rooms', roomId)).catch(() => null);
+  if (!roomSnap || !roomSnap.exists()) return { ok: false, reason: 'notfound' };
+  const roomData = roomSnap.data();
+  if (roomData.status !== 'waiting') return { ok: false, reason: 'started' };
+
+  // メンバー確認（4人制限）
+  const { collection, getDocs } = _firestoreFuncs;
+  const membersSnap = await getDocs(collection(_db, 'rooms', roomId, 'members')).catch(() => null);
+  if (membersSnap && membersSnap.size >= 4) return { ok: false, reason: 'full' };
+
+  RoomState.roomId = roomId;
+  RoomState.isHost = false;
+  RoomState.myPeerId = myProfile.id;
+  RoomState.peers = {};
+  RoomState.gameStarted = false;
+
+  // 自分のメンバー情報を登録
+  await setDoc(doc(_db, 'rooms', roomId, 'members', myProfile.id), {
+    name: myProfile.name || 'プレイヤー',
+    classId: localStorage.getItem('rr_class') || 'none',
+    isHost: false,
+    joinedAt: serverTimestamp(),
+  });
+
+  // ホストとのWebRTC接続を開始（ゲストがofferを出す）
+  const hostId = roomData.host;
+  await initiateConnectionTo(hostId, roomId);
+
+  startSignalListener(roomId);
+  startMemberListener(roomId);
+
+  console.log(`[Room] ルーム参加: ${roomId} ホスト: ${hostId}`);
+  return { ok: true, hostName: roomData.hostName };
+}
+window.joinRoom = joinRoom;
+
+// ======================================================
+// ===== WebRTC接続開始（参加者→ホスト） =====
+// ======================================================
+async function initiateConnectionTo(targetPeerId, roomId) {
+  if (!_db || !_firestoreFuncs) return;
+  const { doc, setDoc, serverTimestamp } = _firestoreFuncs;
+
+  const { pc, dc } = createPeerConnection(targetPeerId);
+  RoomState.peers[targetPeerId] = { pc, dc, name: '...', online: false, isHost: true };
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  // offerをFirestoreに書き込む
+  await setDoc(doc(_db, 'rooms', roomId, 'signals', targetPeerId, 'from', RoomState.myPeerId), {
+    type: 'offer',
+    sdp: offer.sdp,
+    from: RoomState.myPeerId,
+    createdAt: serverTimestamp(),
+  }).catch(() => {});
+}
+
+// ======================================================
+// ===== シグナルリスナー（Firestoreのシグナルを監視） =====
+// ======================================================
+let _signalUnsub = null;
+function startSignalListener(roomId) {
+  if (!_db || !_firestoreFuncs) return;
+  const { collection, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } = _firestoreFuncs;
+
+  // 自分宛のシグナルを監視
+  const signalRef = collection(_db, 'rooms', roomId, 'signals', RoomState.myPeerId, 'from');
+  _signalUnsub = onSnapshot(signalRef, async (snap) => {
+    for (const change of snap.docChanges()) {
+      if (change.type !== 'added') continue;
+      const signal = change.doc.data();
+      const fromId = signal.from;
+      if (!fromId || fromId === RoomState.myPeerId) continue;
+
+      if (signal.type === 'offer') {
+        // offerを受け取った（ホスト側）
+        await handleOffer(fromId, signal.sdp, roomId);
+      } else if (signal.type === 'answer') {
+        // answerを受け取った（ゲスト側）
+        const peer = RoomState.peers[fromId];
+        if (peer && peer.pc) {
+          await peer.pc.setRemoteDescription({ type: 'answer', sdp: signal.sdp }).catch(() => {});
+        }
+      } else if (signal.type === 'ice') {
+        // ICE候補を受け取った
+        const peer = RoomState.peers[fromId];
+        if (peer && peer.pc) {
+          try {
+            await peer.pc.addIceCandidate(JSON.parse(signal.candidate));
+          } catch (e) { /* 無視 */ }
+        }
+      }
+
+      // 処理済みシグナルを削除
+      deleteDoc(change.doc.ref).catch(() => {});
+    }
+  });
+}
+
+// ======================================================
+// ===== Offer処理（ホスト側） =====
+// ======================================================
+async function handleOffer(fromId, sdp, roomId) {
+  if (!_db || !_firestoreFuncs) return;
+  const { doc, setDoc, serverTimestamp } = _firestoreFuncs;
+
+  // 既存のpeer情報（名前など）を保持しながらpcを差し替える
+  const existingName = RoomState.peers[fromId]?.name || '...';
+  const { pc, dc } = createPeerConnection(fromId);
+  RoomState.peers[fromId] = { pc, dc, name: existingName, online: false, isHost: false };
+
+  await pc.setRemoteDescription({ type: 'offer', sdp }).catch(() => {});
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+
+  // answerをFirestoreに書き込む
+  await setDoc(doc(_db, 'rooms', roomId, 'signals', fromId, 'from', RoomState.myPeerId), {
+    type: 'answer',
+    sdp: answer.sdp,
+    from: RoomState.myPeerId,
+    createdAt: serverTimestamp(),
+  }).catch(() => {});
+
+  console.log(`[Room] offer受信・answer送信 → ${fromId}`);
+}
+
+// ======================================================
+// ===== メンバーリスナー（ルームの人数変化を監視） =====
+// ======================================================
+let _memberUnsub = null;
+function startMemberListener(roomId) {
+  if (!_db || !_firestoreFuncs) return;
+  const { collection, onSnapshot } = _firestoreFuncs;
+
+  const membersRef = collection(_db, 'rooms', roomId, 'members');
+  _memberUnsub = onSnapshot(membersRef, (snap) => {
+    snap.docChanges().forEach(change => {
+      const peerId = change.doc.id;
+      if (peerId === RoomState.myPeerId) return;
+
+      if (change.type === 'added') {
+        // 新しいメンバーが参加（ホストの場合のみP2P接続を開始）
+        if (RoomState.isHost && !RoomState.peers[peerId]) {
+          RoomState.peers[peerId] = { name: change.doc.data().name || '...', online: false };
+          console.log(`[Room] 新メンバー参加: ${peerId}`);
+          renderRoomMemberList();
+          // ホストからゲストへofferを送り、P2P接続を開始する
+          initiateConnectionTo(peerId, RoomState.roomId).catch(e => {
+            console.warn('[Room] ホスト→ゲストのoffer送信に失敗:', e);
+          });
+        }
+      } else if (change.type === 'removed') {
+        if (RoomState.peers[peerId]) {
+          RoomState.peers[peerId].online = false;
+          renderRoomMemberList();
+        }
+      }
+    });
+  });
+}
+
+// ======================================================
+// ===== ルームから退出 =====
+// ======================================================
+async function leaveRoom() {
+  if (!RoomState.roomId) return;
+  if (_signalUnsub) { _signalUnsub(); _signalUnsub = null; }
+  if (_memberUnsub) { _memberUnsub(); _memberUnsub = null; }
+
+  // 全P2P接続を閉じる
+  for (const peerId of Object.keys(RoomState.peers)) {
+    const peer = RoomState.peers[peerId];
+    if (peer.pc) peer.pc.close();
+  }
+
+  // Firestoreからメンバー情報を削除
+  if (_db && _firestoreFuncs) {
+    const { doc, deleteDoc } = _firestoreFuncs;
+    await deleteDoc(doc(_db, 'rooms', RoomState.roomId, 'members', RoomState.myPeerId)).catch(() => {});
+    // ホストが出る場合はルーム自体を削除
+    if (RoomState.isHost) {
+      const { setDoc, serverTimestamp } = _firestoreFuncs;
+      await setDoc(doc(_db, 'rooms', RoomState.roomId), { status: 'closed' }, { merge: true }).catch(() => {});
+    }
+  }
+
+  RoomState.roomId = null;
+  RoomState.isHost = false;
+  RoomState.peers = {};
+  RoomState.gameStarted = false;
+  console.log('[Room] ルーム退出');
+}
+window.leaveRoom = leaveRoom;
+
+// ======================================================
+// ===== クエスト開始（ホストが全員に通知） =====
+// ======================================================
+function startQuestMulti(stageId) {
+  if (!RoomState.isHost) return;
+  RoomState.selectedStageId = stageId;
+  RoomState.gameStarted = true;
+  // 全員にクエスト開始を通知
+  broadcastToPeers({ type: 'questStart', stageId });
+  // ホスト自身もクエスト開始
+  launchQuestMulti(stageId);
+}
+window.startQuestMulti = startQuestMulti;
+
+// クエスト開始共通処理（ホスト・ゲスト両用）
+function launchQuestMulti(stageId) {
+  currentStageId = stageId;
+  hideAllOverlays();
+  closeLobbyWorld();
+  resetGame();
+  canvas.style.display = 'block';
+  document.getElementById('tapLeft').style.display = 'block';
+  document.getElementById('tapRight').style.display = 'block';
+  document.getElementById('ui').style.display = 'block';
+  startGameFromLobby();
+}
+window.launchQuestMulti = launchQuestMulti;
+
+// ======================================================
+// ===== クエスト結果を全員に通知（ホスト専用） =====
+// ======================================================
+function broadcastQuestResult(result, stageId) {
+  if (!RoomState.isHost) return;
+  broadcastToPeers({ type: 'questResult', result, stageId });
+}
+window.broadcastQuestResult = broadcastQuestResult;
+
+// ロビーへ戻る時に全員に通知（ホスト専用）
+function broadcastReturnLobby() {
+  if (!RoomState.isHost) return;
+  broadcastToPeers({ type: 'returnLobby' });
+}
+window.broadcastReturnLobby = broadcastReturnLobby;
+
+// ======================================================
+// ===== ルームメンバーリストのUI描画 =====
+// ======================================================
+function renderRoomMemberList() {
+  const el = document.getElementById('roomMemberList');
+  if (!el) return;
+
+  const myChip = `
+    <div class="lp-chip">
+      <div class="lp-dot"></div>
+      <span>${myProfile.name || '名無し'}${RoomState.isHost ? ' 👑' : ''}</span>
+    </div>`;
+
+  const peerChips = Object.entries(RoomState.peers).map(([pid, p]) => `
+    <div class="lp-chip">
+      <div class="lp-dot ${p.online ? '' : 'wait'}"></div>
+      <span>${p.name || '接続中...'}${p.isHost ? ' 👑' : ''}</span>
+    </div>`).join('');
+
+  el.innerHTML = myChip + peerChips;
+
+  // ホストのみ「クエスト出発」ボタンの表示制御
+  const startBtn = document.getElementById('roomStartBtn');
+  if (startBtn) {
+    startBtn.style.display = RoomState.isHost ? 'block' : 'none';
+  }
+
+  // メンバー数表示
+  const countEl = document.getElementById('roomMemberCount');
+  if (countEl) {
+    const total = 1 + Object.keys(RoomState.peers).length;
+    countEl.textContent = `${total}/4`;
+  }
+}
+window.renderRoomMemberList = renderRoomMemberList;
+
+// ======================================================
+// ===== フレンドリストから招待送信 =====
+// ======================================================
+async function inviteFriendToRoom(friendPlayerId, friendName) {
+  if (!RoomState.roomId || !_db || !_firestoreFuncs) return;
+  const { doc, setDoc, serverTimestamp } = _firestoreFuncs;
+
+  // friendRequests に招待メッセージを書き込む（既存の申請システムを流用）
+  const inviteRef = doc(_db, 'roomInvites', friendPlayerId, 'invites', RoomState.roomId);
+  await setDoc(inviteRef, {
+    roomId: RoomState.roomId,
+    fromId: myProfile.id,
+    fromName: myProfile.name || 'プレイヤー',
+    createdAt: serverTimestamp(),
+  }, { merge: true }).catch(() => {});
+
+  alert(`${friendName} に招待を送りました！`);
+}
+window.inviteFriendToRoom = inviteFriendToRoom;
+
+// ======================================================
+// ===== 招待の受信チェック =====
+// ======================================================
+let _inviteUnsub = null;
+function startInviteListener() {
+  if (!_db || !_firestoreFuncs || !myProfile?.id) return;
+  const { collection, onSnapshot, deleteDoc } = _firestoreFuncs;
+
+  const invitesRef = collection(_db, 'roomInvites', myProfile.id, 'invites');
+  _inviteUnsub = onSnapshot(invitesRef, (snap) => {
+    snap.docChanges().forEach(async change => {
+      if (change.type !== 'added') return;
+      const inv = change.doc.data();
+      // すでにルームに入っている場合は無視
+      if (RoomState.roomId) return;
+
+      const accept = confirm(`${inv.fromName} からルームへの招待が届きました！\nルームID: ${inv.roomId}\n参加しますか？`);
+      if (accept) {
+        showRoomScreen();
+        document.getElementById('joinRoomInput').value = inv.roomId;
+        document.getElementById('joinRoomBtn').click();
+      }
+      // 招待を削除（一度きり）
+      deleteDoc(change.doc.ref).catch(() => {});
+    });
+  });
+}
+window.startInviteListener = startInviteListener;
+
+// cloudsync-ready後に招待リスナーを開始
+window.addEventListener('cloudsync-ready', () => {
+  setTimeout(() => startInviteListener(), 1000);
+}, { once: true });
+
+// ======================================================
+// ===== ルーム画面の開閉 =====
+// ======================================================
+function showRoomScreen() {
+  // lobbyScreenを確実に非表示にする
+  const ls = document.getElementById('lobbyScreen');
+  if (ls) ls.style.display = 'none';
+  // ルームID表示をリセット
+  document.getElementById('roomIdDisplay').textContent = '----';
+  document.getElementById('roomStatusMsg').textContent = '';
+  document.getElementById('joinRoomInput').value = '';
+  document.getElementById('roomMemberList').innerHTML = '';
+  document.getElementById('roomMemberCount').textContent = '0/4';
+  const startBtn = document.getElementById('roomStartBtn');
+  if (startBtn) startBtn.style.display = 'none';
+  showOverlay('roomScreen');
+}
+window.showRoomScreen = showRoomScreen;
+
+</script>
+
+<!-- ===== 12-cloud-sync.js: Firestore REST API版 ===== -->
+<script>
+/* ===== 12-cloud-sync.js (REST API版) =====
+   Firebase SDK不要。Firestore REST APIを直接呼び出す。
+   GitHub Pagesなどtype="module"やCDNが使えない環境向け。
+*/
+
+// ===== Firestore REST API基盤 =====
+const FS_PROJECT = 'robo-ado';
+const FS_API_KEY = 'AIzaSyAMmITxE83vvuGY3TWsZyKd9IgTERAmN54';
+const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents`;
+
+// FirestoreのRestレスポンス(fields形式)をJS objectに変換
+function fsToObj(fields) {
+  if (!fields) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(fields)) {
+    out[k] = fsValToJs(v);
+  }
+  return out;
+}
+function fsValToJs(v) {
+  if (v.stringValue  !== undefined) return v.stringValue;
+  if (v.integerValue !== undefined) return Number(v.integerValue);
+  if (v.doubleValue  !== undefined) return v.doubleValue;
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.nullValue    !== undefined) return null;
+  if (v.timestampValue !== undefined) return new Date(v.timestampValue);
+  if (v.arrayValue)  return (v.arrayValue.values || []).map(fsValToJs);
+  if (v.mapValue)    return fsToObj(v.mapValue.fields || {});
+  return null;
+}
+// JS値をFirestoreのfields形式に変換
+function jsToFsVal(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number')  return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === 'string')  return { stringValue: v };
+  if (v instanceof Date)      return { timestampValue: v.toISOString() };
+  if (v && v.__serverTimestamp) return { timestampValue: new Date().toISOString() }; // serverTimestamp代替
+  if (Array.isArray(v))       return { arrayValue: { values: v.map(jsToFsVal) } };
+  if (typeof v === 'object')  return { mapValue: { fields: objToFs(v) } };
+  return { nullValue: null };
+}
+function objToFs(obj) {
+  const fields = {};
+  for (const [k, v] of Object.entries(obj)) fields[k] = jsToFsVal(v);
+  return fields;
+}
+
+// serverTimestamp()の代替（書き込み時にサーバー時刻を使う代わりに現在時刻を使う）
+function serverTimestamp() { return { __serverTimestamp: true }; }
+
+// ドキュメント取得
+async function fsGetDoc(path) {
+  const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`);
+  if (r.status === 404) return { exists: () => false, data: () => ({}) };
+  if (!r.ok) throw new Error(`fsGetDoc ${path}: ${r.status}`);
+  const json = await r.json();
+  return {
+    exists: () => true,
+    data:   () => fsToObj(json.fields || {}),
+    _raw:   json
+  };
+}
+
+// ドキュメント書き込み（merge対応）
+async function fsSetDoc(path, data, opts) {
+  const fields = objToFs(data);
+  const fetchUrl = `${FS_BASE}/${path}?key=${FS_API_KEY}`;
+  console.log('[REST] fsSetDoc URL=', fetchUrl);
+  const url = opts?.merge
+    ? `${FS_BASE}/${path}?key=${FS_API_KEY}&updateMask.fieldPaths=${Object.keys(fields).join('&updateMask.fieldPaths=')}`
+    : `${FS_BASE}/${path}?key=${FS_API_KEY}`;
+  const method = opts?.merge ? 'PATCH' : 'PATCH';
+  // PATCHで常に部分更新（mergeの代わり）。新規作成もPATCHで可能。
+  let r;
+  try {
+    r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields })
+    });
+  } catch(netErr) {
+    throw new Error(`fetch失敗(ネット切断?) ${path}: ${netErr.message}`);
+  }
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    const msg = err?.error?.message || JSON.stringify(err);
+    throw new Error(`HTTP${r.status} ${msg}`);
+  }
+  return r.json();
+}
+
+// ドキュメント更新（フィールド指定）
+async function fsUpdateDoc(path, data) {
+  return fsSetDoc(path, data, { merge: true });
+}
+
+// ドキュメント削除
+async function fsDeleteDoc(path) {
+  const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`, { method: 'DELETE' });
+  if (!r.ok && r.status !== 404) throw new Error(`fsDeleteDoc ${path}: ${r.status}`);
+}
+
+// コレクション取得
+async function fsGetDocs(path) {
+  const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`);
+  if (!r.ok) return { docs: [] };
+  const json = await r.json();
+  const docs = (json.documents || []).map(d => ({
+    id:     d.name.split('/').pop(),
+    ref:    { _path: d.name.replace(/^.*\/documents\//, '') },
+    exists: () => true,
+    data:   () => fsToObj(d.fields || {})
+  }));
+  return { docs };
+}
+
+// バッチ書き込み
+function fsBatch() {
+  const writes = [];
+  return {
+    set(pathObj, data, opts) {
+      writes.push({ path: pathObj._path, data, opts });
+    },
+    async commit() {
+      // REST APIのbatchWriteを使用
+      const body = {
+        writes: writes.map(w => ({
+          update: {
+            name: `projects/${FS_PROJECT}/databases/(default)/documents/${w.path}`,
+            fields: objToFs(w.data)
+          }
+        }))
+      };
+      const r = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents:batchWrite?key=${FS_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
+      if (!r.ok) throw new Error(`batch.commit: ${r.status}`);
+    }
+  };
+}
+
+// onSnapshot代替：指定間隔でポーリング
+// callback(snap) の形で呼ぶ。戻り値はunsubscribe関数。
+function fsOnSnapshot(path, callback, intervalMs = 3000) {
+  let stopped = false;
+  let lastData = null;
+  const poll = async () => {
+    if (stopped) return;
+    try {
+      const snap = await fsGetDoc(path);
+      const dataStr = JSON.stringify(snap.exists() ? snap.data() : null);
+      if (dataStr !== lastData) {
+        lastData = dataStr;
+        callback(snap);
+      }
+    } catch (e) { /* オフライン時は無視 */ }
+    if (!stopped) setTimeout(poll, intervalMs);
+  };
+  poll();
+  return () => { stopped = true; };
+}
+
+// コレクションのonSnapshot代替（ポーリング）
+function fsOnSnapshotCollection(path, callback, intervalMs = 3000) {
+  let stopped = false;
+  let lastData = null;
+  const poll = async () => {
+    if (stopped) return;
+    try {
+      const result = await fsGetDocs(path);
+      const dataStr = JSON.stringify(result.docs.map(d => ({ id: d.id, data: d.data() })));
+      if (dataStr !== lastData) {
+        lastData = dataStr;
+        // SDK互換のsnapオブジェクトを作成
+        const changes = result.docs.map(d => ({ type: 'added', doc: d }));
+        callback({ docs: result.docs, docChanges: () => changes });
+      }
+    } catch (e) { /* オフライン時は無視 */ }
+    if (!stopped) setTimeout(poll, intervalMs);
+  };
+  poll();
+  return () => { stopped = true; };
+}
+
+// ===== _firestoreFuncs互換ラッパー =====
+// 13-webrtc-room.jsが期待するdoc(db, 'col', 'id', ...)形式に対応
+const _restDb = { _isRestDb: true };
+
+function makeDocRef(...segs) {
+  // segs例: ['rooms', 'ABCD'] or ['rooms','ABCD','members','pid']
+  const path = segs.join('/');
+  return { _path: path, _isRef: true };
+}
+function makeCollRef(...segs) {
+  const path = segs.join('/');
+  return { _path: path, _isCollection: true };
+}
+
+// SDK互換のdoc()関数
+function doc(dbOrRef, ...segs) {
+  if (!dbOrRef || dbOrRef._isRestDb) return makeDocRef(...segs);
+  if (dbOrRef._isRef) return makeDocRef(dbOrRef._path, ...segs);
+  if (dbOrRef._isCollection) return makeDocRef(dbOrRef._path, ...segs);
+  return makeDocRef(...segs);
+}
+
+// SDK互換のcollection()関数
+function collection(dbOrRef, ...segs) {
+  if (dbOrRef && dbOrRef._isRef) {
+    return makeCollRef(dbOrRef._path, ...segs);
+  }
+  return makeCollRef(...segs);
+}
+
+// SDK互換のsetDoc()
+async function setDoc(ref, data, opts) { return fsSetDoc(ref._path, data, opts); }
+async function getDoc(ref) { return fsGetDoc(ref._path); }
+async function updateDoc(ref, data) { return fsUpdateDoc(ref._path, data); }
+async function deleteDoc(ref) { return fsDeleteDoc(ref._path); }
+async function getDocs(ref) { return fsGetDocs(ref._path); }
+function writeBatch() { return fsBatch(); }
+
+// onSnapshot：ドキュメントかコレクションかで切り替え
+function onSnapshot(ref, callback, intervalMs) {
+  if (ref._isCollection) {
+    return fsOnSnapshotCollection(ref._path, callback, intervalMs || 3000);
+  }
+  return fsOnSnapshot(ref._path, callback, intervalMs || 3000);
+}
+
+// ===== ここからcloudsync本体 =====
+const SYNC_KEYS = ['rr_profile','rr_savedata','rr_equipment','rr_owned_weapons','rr_levels','rr_skills','rr_class','rr_friends','rr_quest'];
 
 function collectLocalData() {
   const out = {};
-  SYNC_KEYS.forEach(k => {
-    const v = localStorage.getItem(k);
-    if (v !== null) out[k] = v;
-  });
+  SYNC_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) out[k] = v; });
   return out;
 }
-
 function applyCloudData(data) {
-  SYNC_KEYS.forEach(k => {
-    if (typeof data[k] === 'string') localStorage.setItem(k, data[k]);
-  });
+  SYNC_KEYS.forEach(k => { if (typeof data[k] === 'string') localStorage.setItem(k, data[k]); });
 }
-
 function setStatus(msg) {
   const el = document.getElementById('syncStatus');
   if (el) el.textContent = msg || '';
 }
 
-// ===== クラウドへ送信（保存） =====
 async function pushToCloud(playerId) {
   if (!playerId) return false;
   try {
     const data = collectLocalData();
     data.updatedAt = serverTimestamp();
-    await setDoc(doc(db, 'players', playerId), data, { merge: true });
+    await setDoc(doc(_restDb, 'players', playerId), data, { merge: true });
     return true;
   } catch (e) {
-    console.warn('クラウド保存に失敗しました（オフラインの可能性があります）', e);
+    console.warn('クラウド保存に失敗しました', e);
     return false;
   }
 }
-
-// 連続呼び出しをまとめて、1.2秒操作が止まってから1回だけ送信する（負荷軽減）
-let pushTimer = null;
-let pendingId = null;
+let pushTimer = null, pendingId = null;
 function queuePush(playerId) {
   if (!playerId) return;
   pendingId = playerId;
   clearTimeout(pushTimer);
   pushTimer = setTimeout(() => { pushToCloud(pendingId); pushTimer = null; }, 1200);
 }
-// アプリを閉じる／タブを離れる瞬間に、保留中の保存があれば即座に送る
 function flushPush() {
-  if (pushTimer && pendingId) {
-    clearTimeout(pushTimer);
-    pushTimer = null;
-    pushToCloud(pendingId);
-  }
+  if (pushTimer && pendingId) { clearTimeout(pushTimer); pushTimer = null; pushToCloud(pendingId); }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushPush(); });
 window.addEventListener('pagehide', flushPush);
 
-// ===== クラウドから取得（別端末への引き継ぎ用） =====
 async function pullFromCloud(playerId) {
   if (!playerId) return false;
   try {
-    const snap = await getDoc(doc(db, 'players', playerId));
+    const snap = await getDoc(doc(_restDb, 'players', playerId));
     if (!snap.exists()) return false;
     applyCloudData(snap.data());
     return true;
   } catch (e) {
-    console.warn('クラウド読み込みに失敗しました（オフラインの可能性があります）', e);
+    console.warn('クラウド読み込みに失敗しました', e);
     return false;
   }
 }
 
-// ======================================================
-// ===== フレンド申請・承認 =====
-// ======================================================
-// friendIndex/{friendId}      → { playerId } …FR-IDからplayerIdを引く索引
-// friendRequests/{playerId}   → { incoming:[...], outgoing:[...] } …自分宛・自分発の申請一覧
-// players/{playerId}.friendsList → 確定した相互フレンドの一覧（このplayerId自身が保持する側）
-// players/{playerId}.lastActive  → オンライン判定用のハートビート時刻
-
-const ONLINE_THRESHOLD_MS = 90 * 1000; // 90秒以内に活動があればオンライン扱い
-
-// 自分のフレンドIDをFirestoreに登録（他人が検索できるようにする索引）
-// ※この登録さえ済んでいれば、後で自分が今オフラインでも相手から申請を送ってもらえる。
-//   起動直後は通信が不安定なことがあるため、失敗時は間隔を空けて自動的に再試行する。
+const ONLINE_THRESHOLD_MS = 90 * 1000;
 let _friendIndexArgs = null;
 function ensureFriendIndex(friendId, playerId, attempt = 0) {
   if (!friendId || !playerId) return;
   _friendIndexArgs = [friendId, playerId];
-  setDoc(doc(db, 'friendIndex', friendId), { playerId }, { merge: true }).catch(() => {
-    const maxAttempts = 6; // 1s,2s,4s,8s,16s,30s … 最後は約1分後まで再試行
+  setDoc(doc(_restDb, 'friendIndex', friendId), { playerId }, { merge: true }).catch(() => {
+    const maxAttempts = 6;
     if (attempt >= maxAttempts) return;
-    const delay = Math.min(30000, 1000 * Math.pow(2, attempt));
-    setTimeout(() => ensureFriendIndex(friendId, playerId, attempt + 1), delay);
+    setTimeout(() => ensureFriendIndex(friendId, playerId, attempt + 1), Math.min(30000, 1000 * Math.pow(2, attempt)));
   });
 }
-// 回線が切れていて登録できなかった場合に備え、ネットワーク復帰時にも再登録を試みる
 window.addEventListener('online', () => {
   if (_friendIndexArgs) ensureFriendIndex(_friendIndexArgs[0], _friendIndexArgs[1]);
 });
 
 async function getPlayerName(playerId) {
   try {
-    const snap = await getDoc(doc(db, 'players', playerId));
+    const snap = await getDoc(doc(_restDb, 'players', playerId));
     if (!snap.exists()) return 'プレイヤー';
     const raw = snap.data().rr_profile;
     if (!raw) return 'プレイヤー';
-    const p = JSON.parse(raw);
-    return p.name || 'プレイヤー';
-  } catch (e) {
-    return 'プレイヤー';
-  }
+    return JSON.parse(raw).name || 'プレイヤー';
+  } catch (e) { return 'プレイヤー'; }
 }
 
-// ===== フレンド申請を送信 =====
 async function sendFriendRequest(myId, myFriendId, myName, targetFriendId) {
   try {
-    const idxSnap = await getDoc(doc(db, 'friendIndex', targetFriendId));
+    const idxSnap = await getDoc(doc(_restDb, 'friendIndex', targetFriendId));
     if (!idxSnap.exists()) return { ok: false, reason: 'notfound' };
     const targetId = idxSnap.data().playerId;
     if (targetId === myId) return { ok: false, reason: 'self' };
-
     const targetName = await getPlayerName(targetId);
     const reqId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     const createdAt = Date.now();
-
-    const outSnap = await getDoc(doc(db, 'friendRequests', myId));
+    const outSnap = await getDoc(doc(_restDb, 'friendRequests', myId));
     const outData = outSnap.exists() ? outSnap.data() : {};
     const outgoing = (outData.outgoing || []).concat([{ reqId, toPlayerId: targetId, toFriendId: targetFriendId, toName: targetName, createdAt }]);
-
-    const inSnap = await getDoc(doc(db, 'friendRequests', targetId));
+    const inSnap = await getDoc(doc(_restDb, 'friendRequests', targetId));
     const inData = inSnap.exists() ? inSnap.data() : {};
     const incoming = (inData.incoming || []).concat([{ reqId, fromPlayerId: myId, fromFriendId: myFriendId, fromName: myName, createdAt }]);
-
-    // 自分側・相手側を1回のバッチ書き込みにまとめ、途中失敗による不整合を防ぐ
-    const batch = writeBatch(db);
-    batch.set(doc(db, 'friendRequests', myId), { incoming: outData.incoming || [], outgoing }, { merge: true });
-    batch.set(doc(db, 'friendRequests', targetId), { incoming, outgoing: inData.outgoing || [] }, { merge: true });
+    const batch = writeBatch();
+    batch.set(doc(_restDb, 'friendRequests', myId),     { incoming: outData.incoming || [], outgoing }, { merge: true });
+    batch.set(doc(_restDb, 'friendRequests', targetId), { incoming, outgoing: inData.outgoing || [] }, { merge: true });
     await batch.commit();
-
     return { ok: true, reqId, targetId, targetName };
   } catch (e) {
-    // 原因特定用：権限エラー(permission-denied)かどうかをコンソールで確認できるようにする
     console.warn('フレンド申請の送信に失敗しました', e.code || e.message || e);
     return { ok: false, reason: 'error' };
   }
 }
 
-// 申請を両者の一覧から取り除く（取消・拒否どちらにも使う共通処理）
 async function removeFriendRequest(reqId, playerIdA, playerIdB) {
   try {
     for (const pid of [playerIdA, playerIdB]) {
       if (!pid) continue;
-      const snap = await getDoc(doc(db, 'friendRequests', pid));
+      const snap = await getDoc(doc(_restDb, 'friendRequests', pid));
       if (!snap.exists()) continue;
       const data = snap.data();
-      const incoming = (data.incoming || []).filter(r => r.reqId !== reqId);
-      const outgoing = (data.outgoing || []).filter(r => r.reqId !== reqId);
-      await setDoc(doc(db, 'friendRequests', pid), { incoming, outgoing }, { merge: true });
+      await setDoc(doc(_restDb, 'friendRequests', pid), {
+        incoming: (data.incoming || []).filter(r => r.reqId !== reqId),
+        outgoing: (data.outgoing || []).filter(r => r.reqId !== reqId)
+      }, { merge: true });
     }
     return true;
-  } catch (e) {
-    console.warn('申請の削除に失敗しました', e);
-    return false;
-  }
+  } catch (e) { console.warn('申請の削除に失敗しました', e); return false; }
 }
 
 async function addToFriendsList(playerId, friendEntry) {
-  const snap = await getDoc(doc(db, 'players', playerId));
+  const snap = await getDoc(doc(_restDb, 'players', playerId));
   const list = snap.exists() ? (snap.data().friendsList || []) : [];
   if (!list.find(f => f.playerId === friendEntry.playerId)) list.push(friendEntry);
-  await setDoc(doc(db, 'players', playerId), { friendsList: list }, { merge: true });
+  await setDoc(doc(_restDb, 'players', playerId), { friendsList: list }, { merge: true });
 }
 
 async function removeFromFriendsList(playerId, otherPlayerId) {
-  const snap = await getDoc(doc(db, 'players', playerId));
+  const snap = await getDoc(doc(_restDb, 'players', playerId));
   if (!snap.exists()) return;
   const list = (snap.data().friendsList || []).filter(f => f.playerId !== otherPlayerId);
-  await setDoc(doc(db, 'players', playerId), { friendsList: list }, { merge: true });
+  await setDoc(doc(_restDb, 'players', playerId), { friendsList: list }, { merge: true });
 }
 
-// ===== 申請を承認 → 相互フレンドになる =====
 async function acceptFriendRequest({ reqId, meId, meFriendId, meName, otherId, otherFriendId, otherName }) {
   try {
     await removeFriendRequest(reqId, meId, otherId);
-    await addToFriendsList(meId, { playerId: otherId, friendId: otherFriendId, name: otherName });
-    await addToFriendsList(otherId, { playerId: meId, friendId: meFriendId, name: meName });
+    await addToFriendsList(meId,    { playerId: otherId, friendId: otherFriendId, name: otherName });
+    await addToFriendsList(otherId, { playerId: meId,    friendId: meFriendId,   name: meName    });
     return true;
-  } catch (e) {
-    console.warn('フレンド承認に失敗しました', e);
-    return false;
-  }
+  } catch (e) { console.warn('フレンド承認に失敗しました', e); return false; }
 }
 
-// ===== 相互フレンドの解除 =====
 async function removeFriendMutual(myId, otherId) {
   try {
     await removeFromFriendsList(myId, otherId);
     await removeFromFriendsList(otherId, myId);
     return true;
-  } catch (e) {
-    console.warn('フレンド削除に失敗しました', e);
-    return false;
-  }
+  } catch (e) { console.warn('フレンド削除に失敗しました', e); return false; }
 }
 
-// ===== 自分宛・自分発の申請一覧を取得 =====
 async function getFriendRequests(myId) {
   try {
-    const snap = await getDoc(doc(db, 'friendRequests', myId));
+    const snap = await getDoc(doc(_restDb, 'friendRequests', myId));
     if (!snap.exists()) return { incoming: [], outgoing: [] };
     const d = snap.data();
     return { incoming: d.incoming || [], outgoing: d.outgoing || [] };
-  } catch (e) {
-    console.warn('申請一覧の取得に失敗しました', e);
-    return { incoming: [], outgoing: [] };
-  }
+  } catch (e) { return { incoming: [], outgoing: [] }; }
 }
 
-// ===== フレンド一覧＋オンライン状態を取得 =====
 async function getFriendsWithStatus(myId) {
   try {
-    const snap = await getDoc(doc(db, 'players', myId));
+    const snap = await getDoc(doc(_restDb, 'players', myId));
     const list = snap.exists() ? (snap.data().friendsList || []) : [];
     const now = Date.now();
-    const results = await Promise.all(list.map(async f => {
+    return await Promise.all(list.map(async f => {
       try {
-        const pSnap = await getDoc(doc(db, 'players', f.playerId));
+        const pSnap = await getDoc(doc(_restDb, 'players', f.playerId));
         let online = false;
         if (pSnap.exists() && pSnap.data().lastActive) {
-          const ts = pSnap.data().lastActive.toMillis ? pSnap.data().lastActive.toMillis() : 0;
+          const ts = pSnap.data().lastActive instanceof Date ? pSnap.data().lastActive.getTime() : 0;
           online = (now - ts) < ONLINE_THRESHOLD_MS;
         }
         return { ...f, online };
-      } catch (e) {
-        return { ...f, online: false };
-      }
+      } catch (e) { return { ...f, online: false }; }
     }));
-    return results;
-  } catch (e) {
-    console.warn('フレンドリストの取得に失敗しました', e);
-    return [];
-  }
+  } catch (e) { return []; }
 }
 
-// ===== オンライン状態のハートビート =====
-let heartbeatTimer = null;
-let _heartbeatVisibilityHandler = null; // 多重登録防止用
+let heartbeatTimer = null, _heartbeatVisibilityHandler = null;
 function startPresenceHeartbeat(playerId) {
   if (!playerId) return;
   const beat = () => {
-    updateDoc(doc(db, 'players', playerId), { lastActive: serverTimestamp() }).catch(() => {
-      setDoc(doc(db, 'players', playerId), { lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
+    updateDoc(doc(_restDb, 'players', playerId), { lastActive: serverTimestamp() }).catch(() => {
+      setDoc(doc(_restDb, 'players', playerId), { lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
     });
   };
   beat();
   clearInterval(heartbeatTimer);
   heartbeatTimer = setInterval(beat, 60000);
-  // 既存のリスナーを削除してから再登録（多重登録防止）
-  if (_heartbeatVisibilityHandler) {
-    document.removeEventListener('visibilitychange', _heartbeatVisibilityHandler);
-  }
+  if (_heartbeatVisibilityHandler) document.removeEventListener('visibilitychange', _heartbeatVisibilityHandler);
   _heartbeatVisibilityHandler = () => { if (!document.hidden) beat(); };
   document.addEventListener('visibilitychange', _heartbeatVisibilityHandler);
 }
 
+// ===== 公開 =====
 window.CloudSync = {
   pushToCloud, queuePush, pullFromCloud, flushPush, setStatus,
   ensureFriendIndex, sendFriendRequest, removeFriendRequest, acceptFriendRequest,
   removeFriendMutual, getFriendRequests, getFriendsWithStatus, startPresenceHeartbeat
 };
+
+// 13-webrtc-room.jsが期待するインターフェースを公開
+window._firestoreDb = _restDb;
+window._firestoreFuncs = {
+  doc, collection, setDoc, getDoc, updateDoc, deleteDoc,
+  getDocs, onSnapshot, writeBatch, serverTimestamp
+};
+
+console.log('[CloudSync] REST API版 初期化完了');
 window.dispatchEvent(new Event('cloudsync-ready'));
 
-
-
-
 </script>
+
 </body>
 </html>
