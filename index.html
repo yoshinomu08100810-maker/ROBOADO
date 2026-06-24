@@ -571,6 +571,7 @@ html, body {
   .chest-weapon-name { font-size:18px; font-weight:bold; color:#fff; }
   .chest-weapon-sub  { font-size:13px; color:#f0c040; margin-top:2px; }
   #chestCloseBtn { display:none; margin-top:20px; }
+
 </style>
 </head>
 <body>
@@ -707,6 +708,28 @@ html, body {
     <div id="lobbyBtnAction" class="game-btn" style="width:64px;height:64px;background:rgba(41,128,185,0.8);border:2px solid #5be7ff;font-size:11px;">決定<br>▲</div>
     <div id="lobbyBtnRight" class="game-btn" style="width:64px;height:64px;background:rgba(0,0,0,0.6);border:2px solid #446;font-size:28px;color:#fff;line-height:1;">▶</div>
   </div>
+
+<!-- ===== ロビー内ルームパネル ===== -->
+<div id="lobbyRoomPanel" style="display:none;position:absolute;top:60px;right:10px;z-index:15;background:rgba(10,14,26,0.92);border:1px solid #8e44ad;border-radius:14px;padding:12px 14px;min-width:200px;max-width:240px;pointer-events:auto;">
+  <div style="font-size:13px;font-weight:bold;color:#d7bde2;margin-bottom:8px;">🎮 ルーム参加中</div>
+  <div style="font-size:11px;color:#7fa8c8;margin-bottom:4px;">ルームID</div>
+  <div id="lobbyRoomIdLabel" style="font-size:22px;letter-spacing:6px;color:#fff;font-weight:bold;margin-bottom:10px;">----</div>
+  <div style="font-size:11px;color:#7fa8c8;margin-bottom:4px;">メンバー</div>
+  <div id="lobbyRoomMemberList" style="margin-bottom:10px;font-size:13px;"></div>
+  <button id="lobbyStartQuestBtn" style="display:none;width:100%;background:rgba(39,174,96,0.85);border:1px solid #2ecc71;color:#fff;border-radius:8px;padding:8px;font-size:12px;font-weight:bold;cursor:pointer;margin-bottom:6px;">📋 クエストへ出発</button>
+  <button id="lobbyInviteBtn" style="width:100%;background:rgba(41,128,185,0.7);border:1px solid #5be7ff;color:#fff;border-radius:8px;padding:6px;font-size:12px;cursor:pointer;margin-bottom:6px;">👥 フレンドを招待</button>
+  <button id="lobbyLeaveRoomBtn" style="width:100%;background:rgba(192,57,43,0.7);border:1px solid #e74c3c;color:#fff;border-radius:8px;padding:6px;font-size:12px;cursor:pointer;">🚪 退出する</button>
+</div>
+
+<!-- ===== ロビー内フレンド招待モーダル ===== -->
+<div id="lobbyInviteModal" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;background:rgba(10,14,26,0.97);border:2px solid #5be7ff;border-radius:16px;padding:18px 16px;min-width:240px;max-width:300px;pointer-events:auto;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="font-size:14px;font-weight:bold;color:#5be7ff;">👥 フレンドを招待</div>
+    <button id="lobbyInviteCloseBtn" style="background:none;border:none;color:#7fa8c8;font-size:18px;cursor:pointer;">✕</button>
+  </div>
+  <div id="lobbyInviteList" style="max-height:200px;overflow-y:auto;"></div>
+</div>
+
 </div>
 
 <!-- ===== クエスト選択画面 ===== -->
@@ -1011,7 +1034,8 @@ html, body {
 </div>
 
 
-<!-- ===== JavaScript (01〜11, 13: 通常スクリプト) ===== -->
+<!-- ===== JavaScript (01〜11, 13: インライン) ===== -->
+<!-- 01-core-setup.js -->
 <script>
 // ==================== 01-core-setup.js ====================
 // === 01-core-setup.js ===
@@ -1242,6 +1266,11 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 // ======================================================
 
+
+</script>
+
+<!-- 02-input-controls.js -->
+<script>
 // ==================== 02-input-controls.js ====================
 // ======================================================
 // ===== 02-input-controls.js =====
@@ -1667,6 +1696,11 @@ function drawSkillGauge() {
 
 // ======================================================
 
+
+</script>
+
+<!-- 03-class-defs.js -->
+<script>
 // ==================== 03-class-defs.js ====================
 // ======================================================
 // ===== 03-class-defs.js =====
@@ -2888,6 +2922,11 @@ function applyStageDifficulty(stageId) {
 
 // ======================================================
 
+
+</script>
+
+<!-- 04-robot-config.js -->
+<script>
 // ==================== 04-robot-config.js ====================
 // ======================================================
 // ===== 04-robot-config.js =====
@@ -2973,6 +3012,11 @@ function rectsOverlap(a,b){
 
 // ======================================================
 
+
+</script>
+
+<!-- 05-game-loop.js -->
+<script>
 // ==================== 05-game-loop.js ====================
 // ======================================================
 // ===== 05-game-loop.js =====
@@ -3991,6 +4035,11 @@ window.onRevived = onRevived;
 
 // ======================================================
 
+
+</script>
+
+<!-- 06-enemy-draw.js -->
+<script>
 // ==================== 06-enemy-draw.js ====================
 // ======================================================
 // ===== 06-enemy-draw.js =====
@@ -4953,6 +5002,11 @@ function drawBird(p, cfg){
 
 // ======================================================
 
+
+</script>
+
+<!-- 07-course-draw.js -->
+<script>
 // ==================== 07-course-draw.js ====================
 // ======================================================
 // ===== 07-course-draw.js =====
@@ -6413,6 +6467,11 @@ function drawTorch(g){
 
 // ======================================================
 
+
+</script>
+
+<!-- 08-render.js -->
+<script>
 // ==================== 08-render.js ====================
 // ======================================================
 // ===== 08-render.js =====
@@ -7358,6 +7417,11 @@ if (typeof canvas !== 'undefined') {
 
 // ======================================================
 
+
+</script>
+
+<!-- 09-profile-id.js -->
+<script>
 // ==================== 09-profile-id.js ====================
 // ======================================================
 // ===== 09-profile-id.js =====
@@ -7482,6 +7546,8 @@ function goHome() {
   document.getElementById('ui').style.display='none';
   resetGame();
   openLobbyWorld();
+  // クエスト中に受け取った保留招待をロビー帰還後に表示
+  if (window.showPendingRoomInvite) showPendingRoomInvite();
 }
 
 menuBtn.addEventListener('click', () => { if(paused) hidePause(); else showPause(); });
@@ -7677,6 +7743,11 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 // ======================================================
 
+
+</script>
+
+<!-- 10-lobby-world.js -->
+<script>
 // ==================== 10-lobby-world.js ====================
 // ======================================================
 // ===== 10-lobby-world.js =====
@@ -8780,16 +8851,10 @@ document.getElementById('createRoomBtn').addEventListener('click', async () => {
   btn.textContent = '✨ ルームを作る';
   if (!roomId) return;
 
-  // ルーム情報を表示
-  document.getElementById('roomInfoCard').style.display = 'block';
-  document.getElementById('roomIdSection').style.display = 'block';
-  document.getElementById('roomIdDisplay').textContent = roomId;
-  document.getElementById('roomStatusMsg').textContent = '友達がルームIDを入力して参加するのを待っています...';
-  document.getElementById('roomStartBtn').style.display = 'block';
-  renderRoomMemberList();
-
-  // フレンドへの招待リストを表示
-  renderRoomInviteFriendList();
+  // ルームScreen を閉じてロビーへ戻る
+  hideAllOverlays();
+  document.getElementById('lobbyScreen').style.display = 'block';
+  showLobbyRoomPanel();
 });
 
 document.getElementById('copyRoomIdBtn').addEventListener('click', () => {
@@ -8826,16 +8891,18 @@ document.getElementById('joinRoomBtn').addEventListener('click', async () => {
   }
   msg.style.color = '#2ecc71';
   msg.textContent = `✅ ${result.hostName} のルームに参加しました！`;
-  document.getElementById('roomInfoCard').style.display = 'block';
-  document.getElementById('roomIdSection').style.display = 'none';
-  document.getElementById('roomStatusMsg').textContent = 'ホストがクエストを選ぶのを待っています...';
   renderRoomMemberList();
+  // ルームScreenを閉じてロビーへ戻る
+  setTimeout(() => {
+    hideAllOverlays();
+    document.getElementById('lobbyScreen').style.display = 'block';
+    showLobbyRoomPanel();
+  }, 800);
 });
 
-// ルームのクエスト出発ボタン（ホストのみ）
+// roomStartBtn（roomScreen内・念のため維持）
 document.getElementById('roomStartBtn').addEventListener('click', () => {
-  // クエスト画面を表示（ホストが選択する）
-  renderQuestScreen(true); // true = マルチモード
+  renderQuestScreen(true);
   showOverlay('questScreen');
 });
 
@@ -8843,14 +8910,16 @@ document.getElementById('backFromRoom').addEventListener('click', async () => {
   if (RoomState.roomId) {
     const sure = confirm('ルームを退出しますか？');
     if (!sure) return;
+    if (RoomState.isHost && window.broadcastToPeers) broadcastToPeers({ type: 'roomDissolved' });
     await leaveRoom();
+    hideLobbyRoomPanel();
   }
   document.getElementById('roomInfoCard').style.display = 'none';
   document.getElementById('joinRoomMsg').style.display = 'none';
   hideAllOverlays();
 });
 
-// フレンドへの招待リスト描画
+// フレンドへの招待リスト描画（roomScreen内）
 function renderRoomInviteFriendList() {
   const section = document.getElementById('roomInviteFriendSection');
   const list = document.getElementById('roomInviteFriendList');
@@ -8866,6 +8935,7 @@ function renderRoomInviteFriendList() {
     </div>`).join('');
 }
 window.renderRoomInviteFriendList = renderRoomInviteFriendList;
+
 document.getElementById('lobbyEquipBtn').addEventListener('click', () => {
   renderEquipScreen();
   showOverlay('equipScreen');
@@ -8879,6 +8949,96 @@ document.getElementById('lobbyHelpBtn').addEventListener('click', () => {
   showLobbyTutorial();
 });
 
+// ======================================================
+// ===== ロビー内ルームパネル =====
+// ======================================================
+
+function showLobbyRoomPanel() {
+  const panel = document.getElementById('lobbyRoomPanel');
+  if (!panel) return;
+  panel.style.display = 'block';
+  updateLobbyRoomPanel();
+}
+window.showLobbyRoomPanel = showLobbyRoomPanel;
+
+function hideLobbyRoomPanel() {
+  const panel = document.getElementById('lobbyRoomPanel');
+  if (panel) panel.style.display = 'none';
+  const modal = document.getElementById('lobbyInviteModal');
+  if (modal) modal.style.display = 'none';
+}
+window.hideLobbyRoomPanel = hideLobbyRoomPanel;
+
+function updateLobbyRoomPanel() {
+  if (!window.RoomState || !RoomState.roomId) return;
+  const idLabel = document.getElementById('lobbyRoomIdLabel');
+  if (idLabel) idLabel.textContent = RoomState.roomId;
+  const memberEl = document.getElementById('lobbyRoomMemberList');
+  if (memberEl) {
+    const myLine = `<div>${myProfile.name || '名無し'}${RoomState.isHost ? ' 👑' : ''} (自分)</div>`;
+    const peerLines = Object.values(RoomState.peers).map(p =>
+      `<div style="color:${p.online ? '#5be7ff' : '#888'};">${p.name || '接続中...'}${p.isHost ? ' 👑' : ''}</div>`
+    ).join('');
+    memberEl.innerHTML = myLine + peerLines;
+  }
+  const startBtn = document.getElementById('lobbyStartQuestBtn');
+  if (startBtn) startBtn.style.display = RoomState.isHost ? 'block' : 'none';
+}
+window.updateLobbyRoomPanel = updateLobbyRoomPanel;
+
+// ロビー退出ボタン
+document.getElementById('lobbyLeaveRoomBtn').addEventListener('click', async () => {
+  if (!RoomState.roomId) return;
+  const sure = confirm('ルームを退出しますか？');
+  if (!sure) return;
+  if (RoomState.isHost && window.broadcastToPeers) broadcastToPeers({ type: 'roomDissolved' });
+  await leaveRoom();
+  hideLobbyRoomPanel();
+});
+
+// ロビー内クエスト出発ボタン（ホストのみ）
+document.getElementById('lobbyStartQuestBtn').addEventListener('click', () => {
+  renderQuestScreen(true);
+  showOverlay('questScreen');
+});
+
+// フレンド招待ボタン（最新フレンドリストを取得してから表示）
+document.getElementById('lobbyInviteBtn').addEventListener('click', async () => {
+  if (window.refreshFriendData) await refreshFriendData();
+  renderLobbyInviteModal();
+  document.getElementById('lobbyInviteModal').style.display = 'block';
+});
+document.getElementById('lobbyInviteCloseBtn').addEventListener('click', () => {
+  document.getElementById('lobbyInviteModal').style.display = 'none';
+});
+
+function renderLobbyInviteModal() {
+  const list = document.getElementById('lobbyInviteList');
+  if (!list) return;
+  if (!friends || friends.length === 0) {
+    list.innerHTML = '<div style="color:#888;font-size:12px;text-align:center;">フレンドがいません</div>';
+    return;
+  }
+  list.innerHTML = friends.map(f => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
+      <div>
+        <div style="font-size:13px;color:#fff;font-weight:bold;">${f.name}</div>
+        <div style="font-size:10px;color:#7fa8c8;">${f.id || ''}</div>
+      </div>
+      <button onclick="inviteFriendToRoom('${f.playerId}','${f.name}')"
+        style="background:rgba(41,128,185,0.85);border:1px solid #5be7ff;color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap;">
+        招待 ✉
+      </button>
+    </div>`).join('');
+}
+
+// renderRoomMemberList をフックしてロビーパネルも更新
+const _origRenderRoomMemberList = window.renderRoomMemberList;
+window.renderRoomMemberList = function() {
+  if (_origRenderRoomMemberList) _origRenderRoomMemberList();
+  if (window.RoomState && RoomState.roomId) updateLobbyRoomPanel();
+};
+
 window.addEventListener('resize', resizeLobbyCanvas);
 
 
@@ -8891,6 +9051,11 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 // ======================================================
 
+
+</script>
+
+<!-- 11-quest-screen.js -->
+<script>
 // ==================== 11-quest-screen.js ====================
 // ======================================================
 // ===== 11-quest-screen.js =====
@@ -9615,6 +9780,11 @@ if (!myProfile.name) {
 
 
 
+
+</script>
+
+<!-- 13-webrtc-room.js -->
+<script>
 // ==================== 13-webrtc-room.js ====================
 // ===== 13-webrtc-room.js =====
 // ======================================================
@@ -9963,7 +10133,7 @@ window.notifyEnemyHit = notifyEnemyHit;
 // ======================================================
 // ===== Firestoreシグナリング: ルーム作成 =====
 // ======================================================
-async function createRoom() {
+async function createRoom(roomId = null, retryCount = 0) {
   // _dbが未取得の場合、window経由で再取得を試みる（moduleの初期化タイミング対策）
   if (!_db && window._firestoreDb) {
     _db = window._firestoreDb;
@@ -9977,7 +10147,8 @@ async function createRoom() {
     return null;
   }
   const { doc, setDoc, serverTimestamp } = _firestoreFuncs;
-  const roomId = genRoomId();
+  // retryのたびに新しいroomIdが生成されるバグを修正: 初回のみ生成してそのまま使う
+  if (!roomId) roomId = genRoomId();
   RoomState.roomId = roomId;
   RoomState.isHost = true;
   RoomState.myPeerId = myProfile.id;
@@ -9986,7 +10157,7 @@ async function createRoom() {
 
   // Firestoreにルーム情報を登録
   try {
-    console.log('[Room] rooms書き込み開始 roomId=', roomId, '_db=', _db, 'doc=', typeof doc, 'setDoc=', typeof setDoc);
+    console.log('[Room] rooms書き込み開始 roomId=', roomId, 'retry=', retryCount);
     await setDoc(doc(_db, 'rooms', roomId), {
       host: myProfile.id,
       hostName: myProfile.name || 'プレイヤー',
@@ -9996,7 +10167,15 @@ async function createRoom() {
     console.log('[Room] rooms書き込み完了');
   } catch(e) {
     console.error('[Room] rooms書き込みエラー:', e.message || e);
-    document.getElementById('roomStatusMsg').textContent = '❌ ' + (e.message || e);
+    if (retryCount < 3) {
+      const msgEl = document.getElementById('roomStatusMsg');
+      if (msgEl) { msgEl.style.color='#f39c12'; msgEl.textContent=`⏳ 接続中... (${retryCount + 1}/3) roomId=${roomId}`; }
+      await new Promise(r => setTimeout(r, 2000));
+      // 同じroomIdでリトライ
+      return createRoom(roomId, retryCount + 1);
+    }
+    const errMsg = e.message || String(e);
+    document.getElementById('roomStatusMsg').textContent = '❌ ' + errMsg;
     document.getElementById('createRoomBtn').disabled = false;
     document.getElementById('createRoomBtn').textContent = '✨ ルームを作る';
     return null;
@@ -10342,6 +10521,10 @@ window.inviteFriendToRoom = inviteFriendToRoom;
 // ===== 招待の受信チェック =====
 // ======================================================
 let _inviteUnsub = null;
+
+// 保留中の招待キュー（クエスト中に届いた招待はここに積む）
+window._pendingRoomInvites = [];
+
 function startInviteListener() {
   if (!_db || !_firestoreFuncs || !myProfile?.id) return;
   const { collection, onSnapshot, deleteDoc } = _firestoreFuncs;
@@ -10351,21 +10534,90 @@ function startInviteListener() {
     snap.docChanges().forEach(async change => {
       if (change.type !== 'added') return;
       const inv = change.doc.data();
-      // すでにルームに入っている場合は無視
-      if (RoomState.roomId) return;
+      const ref = change.doc.ref;
 
-      const accept = confirm(`${inv.fromName} からルームへの招待が届きました！\nルームID: ${inv.roomId}\n参加しますか？`);
-      if (accept) {
-        showRoomScreen();
-        document.getElementById('joinRoomInput').value = inv.roomId;
-        document.getElementById('joinRoomBtn').click();
+      // 同じルームにすでにいる場合は無視
+      if (RoomState.roomId === inv.roomId) {
+        deleteDoc(ref).catch(() => {});
+        return;
       }
-      // 招待を削除（一度きり）
-      deleteDoc(change.doc.ref).catch(() => {});
+
+      // クエスト中（gameCanvas表示中）なら保留キューに積む
+      const gc = document.getElementById('gameCanvas');
+      const isInGame = gc && gc.style.display !== 'none';
+      if (isInGame) {
+        window._pendingRoomInvites.push({ inv, ref });
+        return; // ロビー帰還後に showPendingRoomInvite() が処理する
+      }
+
+      // ロビー・ホーム画面ならすぐポップアップ
+      deleteDoc(ref).catch(() => {});
+      showRoomInvitePopup(inv);
     });
   });
 }
 window.startInviteListener = startInviteListener;
+
+// 招待ポップアップを表示して承認/拒否を待つ
+function showRoomInvitePopup(inv) {
+  const popup   = document.getElementById('roomInvitePopup');
+  const overlay = document.getElementById('roomInviteOverlay');
+  if (!popup) return;
+
+  document.getElementById('roomInvitePopupTitle').textContent =
+    inv.fromName + ' からルームへの招待';
+  document.getElementById('roomInvitePopupSub').textContent =
+    'ルームID: ' + inv.roomId + '\n一緒にクエストに挑戦しませんか？';
+
+  popup.style.display   = 'block';
+  overlay.style.display = 'block';
+
+  // ボタンを一度cloneして既存リスナーをリセット
+  const oldAccept  = document.getElementById('roomInviteAcceptBtn');
+  const oldDecline = document.getElementById('roomInviteDeclineBtn');
+  const accept  = oldAccept.cloneNode(true);
+  const decline = oldDecline.cloneNode(true);
+  oldAccept.replaceWith(accept);
+  oldDecline.replaceWith(decline);
+
+  function cleanup() {
+    popup.style.display   = 'none';
+    overlay.style.display = 'none';
+  }
+
+  accept.addEventListener('click', async () => {
+    cleanup();
+    if (RoomState.roomId) await leaveRoom();
+    const result = await joinRoom(inv.roomId);
+    if (result.ok) {
+      hideAllOverlays();
+      document.getElementById('lobbyScreen').style.display = 'block';
+      if (window.showLobbyRoomPanel) showLobbyRoomPanel();
+    } else {
+      const reason = result.reason === 'notfound' ? 'ルームが見つかりません'
+        : result.reason === 'full'    ? 'ルームが満員です'
+        : result.reason === 'started' ? 'すでにクエスト中です'
+        : '参加できませんでした';
+      alert('\u26a0\ufe0f ' + reason);
+    }
+  }, { once: true });
+
+  decline.addEventListener('click', () => {
+    cleanup();
+  }, { once: true });
+}
+window.showRoomInvitePopup = showRoomInvitePopup;
+
+// ロビー帰還後に保留招待を処理（openLobbyWorld の後に呼ぶ）
+function showPendingRoomInvite() {
+  if (window._pendingRoomInvites.length === 0) return;
+  const { inv, ref } = window._pendingRoomInvites.shift();
+  if (_db && _firestoreFuncs) {
+    _firestoreFuncs.deleteDoc(ref).catch(() => {});
+  }
+  setTimeout(() => showRoomInvitePopup(inv), 600);
+}
+window.showPendingRoomInvite = showPendingRoomInvite;
 
 // cloudsync-ready後に招待リスナーを開始
 window.addEventListener('cloudsync-ready', () => {
@@ -10391,9 +10643,10 @@ function showRoomScreen() {
 }
 window.showRoomScreen = showRoomScreen;
 
+
 </script>
 
-<!-- ===== 12-cloud-sync.js: Firestore REST API版 ===== -->
+<!-- ===== 12-cloud-sync.js: インライン ===== -->
 <script>
 /* ===== 12-cloud-sync.js (REST API版) =====
    Firebase SDK不要。Firestore REST APIを直接呼び出す。
@@ -10446,45 +10699,80 @@ function objToFs(obj) {
 // serverTimestamp()の代替（書き込み時にサーバー時刻を使う代わりに現在時刻を使う）
 function serverTimestamp() { return { __serverTimestamp: true }; }
 
+// ===== fetch並列数制御キュー =====
+// Androidブラウザは同一ホストへの並列fetch数が少ないため
+// 全FirestoreリクエストをFS_MAX_CONCURRENT本以下に制限する
+const FS_MAX_CONCURRENT = 2;
+let _fsRunning = 0;
+const _fsQueue = [];
+function _fsEnqueue(fn) {
+  return new Promise((resolve, reject) => {
+    _fsQueue.push({ fn, resolve, reject });
+    _fsDrain();
+  });
+}
+function _fsDrain() {
+  while (_fsRunning < FS_MAX_CONCURRENT && _fsQueue.length > 0) {
+    const { fn, resolve, reject } = _fsQueue.shift();
+    _fsRunning++;
+    fn().then(v => { _fsRunning--; resolve(v); _fsDrain(); })
+        .catch(e => { _fsRunning--; reject(e); _fsDrain(); });
+  }
+}
+
+
 // ドキュメント取得
 async function fsGetDoc(path) {
-  const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`);
-  if (r.status === 404) return { exists: () => false, data: () => ({}) };
-  if (!r.ok) throw new Error(`fsGetDoc ${path}: ${r.status}`);
-  const json = await r.json();
-  return {
-    exists: () => true,
-    data:   () => fsToObj(json.fields || {}),
-    _raw:   json
-  };
+  return _fsEnqueue(async () => {
+    let r;
+    try {
+      r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`);
+    } catch(netErr) {
+      console.error('[Firestore] fsGetDoc fetch失敗 path=', path, netErr);
+      throw netErr;
+    }
+    if (r.status === 404) return { exists: () => false, data: () => ({}) };
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      console.error('[Firestore] fsGetDoc HTTP' + r.status, 'path=', path, txt);
+      throw new Error(`fsGetDoc ${path}: ${r.status} ${txt}`);
+    }
+    const json = await r.json();
+    return {
+      exists: () => true,
+      data:   () => fsToObj(json.fields || {}),
+      _raw:   json
+    };
+  });
 }
 
 // ドキュメント書き込み（merge対応）
 async function fsSetDoc(path, data, opts) {
-  const fields = objToFs(data);
-  const fetchUrl = `${FS_BASE}/${path}?key=${FS_API_KEY}`;
-  console.log('[REST] fsSetDoc URL=', fetchUrl);
-  const url = opts?.merge
-    ? `${FS_BASE}/${path}?key=${FS_API_KEY}&updateMask.fieldPaths=${Object.keys(fields).join('&updateMask.fieldPaths=')}`
-    : `${FS_BASE}/${path}?key=${FS_API_KEY}`;
-  const method = opts?.merge ? 'PATCH' : 'PATCH';
-  // PATCHで常に部分更新（mergeの代わり）。新規作成もPATCHで可能。
-  let r;
-  try {
-    r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields })
-    });
-  } catch(netErr) {
-    throw new Error(`fetch失敗(ネット切断?) ${path}: ${netErr.message}`);
-  }
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    const msg = err?.error?.message || JSON.stringify(err);
-    throw new Error(`HTTP${r.status} ${msg}`);
-  }
-  return r.json();
+  return _fsEnqueue(async () => {
+    const fields = objToFs(data);
+    const url = opts?.merge
+      ? `${FS_BASE}/${path}?key=${FS_API_KEY}&updateMask.fieldPaths=${Object.keys(fields).join('&updateMask.fieldPaths=')}`
+      : `${FS_BASE}/${path}?key=${FS_API_KEY}`;
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields })
+      });
+    } catch(netErr) {
+      console.error('[Firestore] fetch失敗 path=', path, 'error=', netErr);
+      throw new Error(`fetch失敗(ネット切断?) ${path}: ${netErr.message}`);
+    }
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      let msg = errText;
+      try { const j = JSON.parse(errText); msg = j?.error?.message || errText; } catch(_){}
+      console.error('[Firestore] HTTPエラー', r.status, 'path=', path, 'body=', errText);
+      throw new Error(`HTTP${r.status} ${msg}`);
+    }
+    return r.json();
+  });
 }
 
 // ドキュメント更新（フィールド指定）
@@ -10494,22 +10782,26 @@ async function fsUpdateDoc(path, data) {
 
 // ドキュメント削除
 async function fsDeleteDoc(path) {
-  const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`, { method: 'DELETE' });
-  if (!r.ok && r.status !== 404) throw new Error(`fsDeleteDoc ${path}: ${r.status}`);
+  return _fsEnqueue(async () => {
+    const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`, { method: 'DELETE' });
+    if (!r.ok && r.status !== 404) throw new Error(`fsDeleteDoc ${path}: ${r.status}`);
+  });
 }
 
 // コレクション取得
 async function fsGetDocs(path) {
-  const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`);
-  if (!r.ok) return { docs: [] };
-  const json = await r.json();
-  const docs = (json.documents || []).map(d => ({
-    id:     d.name.split('/').pop(),
-    ref:    { _path: d.name.replace(/^.*\/documents\//, '') },
-    exists: () => true,
-    data:   () => fsToObj(d.fields || {})
-  }));
-  return { docs };
+  return _fsEnqueue(async () => {
+    const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`);
+    if (!r.ok) return { docs: [] };
+    const json = await r.json();
+    const docs = (json.documents || []).map(d => ({
+      id:     d.name.split('/').pop(),
+      ref:    { _path: d.name.replace(/^.*\/documents\//, '') },
+      exists: () => true,
+      data:   () => fsToObj(d.fields || {})
+    }));
+    return { docs };
+  });
 }
 
 // バッチ書き込み
@@ -10529,11 +10821,13 @@ function fsBatch() {
           }
         }))
       };
-      const r = await fetch(
-        `https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents:batchWrite?key=${FS_API_KEY}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-      );
-      if (!r.ok) throw new Error(`batch.commit: ${r.status}`);
+      await _fsEnqueue(async () => {
+        const r = await fetch(
+          `https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents:batchWrite?key=${FS_API_KEY}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        );
+        if (!r.ok) throw new Error(`batch.commit: ${r.status}`);
+      });
     }
   };
 }
@@ -10622,9 +10916,9 @@ function writeBatch() { return fsBatch(); }
 // onSnapshot：ドキュメントかコレクションかで切り替え
 function onSnapshot(ref, callback, intervalMs) {
   if (ref._isCollection) {
-    return fsOnSnapshotCollection(ref._path, callback, intervalMs || 3000);
+    return fsOnSnapshotCollection(ref._path, callback, intervalMs || 5000);
   }
-  return fsOnSnapshot(ref._path, callback, intervalMs || 3000);
+  return fsOnSnapshot(ref._path, callback, intervalMs || 5000);
 }
 
 // ===== ここからcloudsync本体 =====
@@ -10643,16 +10937,28 @@ function setStatus(msg) {
   if (el) el.textContent = msg || '';
 }
 
+let _pushRunning = false;
+let _pushFailCount = 0;
 async function pushToCloud(playerId) {
   if (!playerId) return false;
+  if (_pushRunning) return false;
+  _pushRunning = true;
   try {
     const data = collectLocalData();
     data.updatedAt = serverTimestamp();
     await setDoc(doc(_restDb, 'players', playerId), data, { merge: true });
+    _pushFailCount = 0; // 成功したらリセット
     return true;
   } catch (e) {
-    console.warn('クラウド保存に失敗しました', e);
+    _pushFailCount++;
+    // 失敗が続くほど次のリトライ間隔を延ばす（最大60秒）
+    const nextDelay = Math.min(60000, 3000 * Math.pow(2, _pushFailCount - 1));
+    if (_pushFailCount <= 5) {
+      console.warn(`クラウド保存に失敗しました (${_pushFailCount}回目, 次回${nextDelay/1000}秒後)`, e.message);
+    }
     return false;
+  } finally {
+    _pushRunning = false;
   }
 }
 let pushTimer = null, pendingId = null;
@@ -10660,7 +10966,9 @@ function queuePush(playerId) {
   if (!playerId) return;
   pendingId = playerId;
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => { pushToCloud(pendingId); pushTimer = null; }, 1200);
+  // 失敗が続いている場合はバックオフした間隔で実行
+  const delay = _pushFailCount > 0 ? Math.min(60000, 3000 * Math.pow(2, _pushFailCount)) : 3000;
+  pushTimer = setTimeout(() => { pushToCloud(pendingId); pushTimer = null; }, delay);
 }
 function flushPush() {
   if (pushTimer && pendingId) { clearTimeout(pushTimer); pushTimer = null; pushToCloud(pendingId); }
@@ -10683,17 +10991,31 @@ async function pullFromCloud(playerId) {
 
 const ONLINE_THRESHOLD_MS = 90 * 1000;
 let _friendIndexArgs = null;
+let _friendIndexRunning = false;
+let _friendIndexRetryTimer = null;
 function ensureFriendIndex(friendId, playerId, attempt = 0) {
   if (!friendId || !playerId) return;
   _friendIndexArgs = [friendId, playerId];
-  setDoc(doc(_restDb, 'friendIndex', friendId), { playerId }, { merge: true }).catch(() => {
-    const maxAttempts = 6;
-    if (attempt >= maxAttempts) return;
-    setTimeout(() => ensureFriendIndex(friendId, playerId, attempt + 1), Math.min(30000, 1000 * Math.pow(2, attempt)));
-  });
+  if (_friendIndexRunning) return;
+  _friendIndexRunning = true;
+  setDoc(doc(_restDb, 'friendIndex', friendId), { playerId }, { merge: true })
+    .then(() => { _friendIndexRunning = false; })
+    .catch(() => {
+      _friendIndexRunning = false;
+      const maxAttempts = 4;
+      if (attempt >= maxAttempts) return;
+      clearTimeout(_friendIndexRetryTimer);
+      _friendIndexRetryTimer = setTimeout(
+        () => ensureFriendIndex(friendId, playerId, attempt + 1),
+        Math.min(30000, 2000 * Math.pow(2, attempt))
+      );
+    });
 }
 window.addEventListener('online', () => {
-  if (_friendIndexArgs) ensureFriendIndex(_friendIndexArgs[0], _friendIndexArgs[1]);
+  if (_friendIndexArgs && !_friendIndexRunning) {
+    clearTimeout(_friendIndexRetryTimer);
+    ensureFriendIndex(_friendIndexArgs[0], _friendIndexArgs[1]);
+  }
 });
 
 async function getPlayerName(playerId) {
@@ -10810,10 +11132,13 @@ async function getFriendsWithStatus(myId) {
 let heartbeatTimer = null, _heartbeatVisibilityHandler = null;
 function startPresenceHeartbeat(playerId) {
   if (!playerId) return;
+  let _beatRunning = false;
   const beat = () => {
-    updateDoc(doc(_restDb, 'players', playerId), { lastActive: serverTimestamp() }).catch(() => {
-      setDoc(doc(_restDb, 'players', playerId), { lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
-    });
+    if (_beatRunning) return;
+    _beatRunning = true;
+    updateDoc(doc(_restDb, 'players', playerId), { lastActive: serverTimestamp() })
+      .catch(() => setDoc(doc(_restDb, 'players', playerId), { lastActive: serverTimestamp() }, { merge: true }).catch(() => {}))
+      .finally(() => { _beatRunning = false; });
   };
   beat();
   clearInterval(heartbeatTimer);
@@ -10838,9 +11163,63 @@ window._firestoreFuncs = {
 };
 
 console.log('[CloudSync] REST API版 初期化完了');
-window.dispatchEvent(new Event('cloudsync-ready'));
+
+// roomsコレクションへの書き込み権限を事前テスト
+(async () => {
+  const testPath = 'rooms/__test_write__';
+  const testUrl = `${FS_BASE}/${testPath}?key=${FS_API_KEY}`;
+  try {
+    const r = await fetch(testUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { _test: { booleanValue: true } } })
+    });
+    if (r.ok) {
+      console.log('[CloudSync] roomsコレクション書き込み権限: OK');
+      // テストドキュメントを削除
+      fetch(`${testUrl}`, { method: 'DELETE' }).catch(() => {});
+    } else {
+      const txt = await r.text().catch(() => '');
+      console.warn('[CloudSync] roomsコレクション書き込み権限エラー HTTP' + r.status + ':', txt);
+    }
+  } catch(e) {
+    console.error('[CloudSync] roomsコレクション書き込みテスト失敗:', e.message);
+  }
+})();
+
+// 接続確立のために少し待ってから初期化イベントを発火
+setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
+
 
 </script>
 
+
+
+
+<div id="roomInvitePopup" style="
+  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
+  border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
+  box-shadow:0 0 40px rgba(142,68,173,0.6);text-align:center;
+  font-family:sans-serif;
+">
+  <div style="font-size:22px;margin-bottom:8px;">🎮</div>
+  <div id="roomInvitePopupTitle" style="font-size:15px;font-weight:bold;color:#d7bde2;margin-bottom:6px;"></div>
+  <div id="roomInvitePopupSub" style="font-size:12px;color:#7fa8c8;margin-bottom:18px;line-height:1.6;"></div>
+  <div style="display:flex;gap:10px;justify-content:center;">
+    <button id="roomInviteAcceptBtn" style="
+      flex:1;background:rgba(39,174,96,0.85);border:1px solid #2ecc71;
+      color:#fff;border-radius:10px;padding:10px;font-size:13px;
+      font-weight:bold;cursor:pointer;">✅ 参加する</button>
+    <button id="roomInviteDeclineBtn" style="
+      flex:1;background:rgba(80,80,100,0.7);border:1px solid #555;
+      color:#ccc;border-radius:10px;padding:10px;font-size:13px;
+      cursor:pointer;">✖ 断る</button>
+  </div>
+</div>
+<div id="roomInviteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5);"></div>
+
 </body>
 </html>
+
+<!-- ===== ルーム招待ポップアップ ===== -->
