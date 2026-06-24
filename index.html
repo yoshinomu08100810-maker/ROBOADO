@@ -7767,7 +7767,20 @@ const FACILITIES = [
   { x:180,  w:90, label:'クエスト掲示板', icon:'📋', action:'questScreen' },
   { x:440,  w:80, label:'クラスチェンジ',  icon:'⚔️', action:'classScreen'  },
   { x:680,  w:80, label:'鍛冶屋',          icon:'🔨', action:'smithScreen'  },
+  { x:920,  w:90, label:'集会所',          icon:'🏠', action:'guildScreen'  },
 ];
+
+// 集会所内の施設定義
+const GUILD_FACILITIES = [
+  { x:100, w:90, label:'クエスト掲示板', icon:'📋', action:'questScreen'  },
+  { x:300, w:80, label:'クラスチェンジ',  icon:'⚔️', action:'classScreen'   },
+  { x:480, w:80, label:'鍛冶屋',          icon:'🔨', action:'smithScreen'   },
+  { x:660, w:90, label:'ルーム受付',      icon:'🎮', action:'multiScreen'   },
+  { x:860, w:80, label:'出口',            icon:'🚪', action:'guildExit'     },
+];
+
+// lobbyMode: 'outdoor'=通常ロビー, 'guild'=集会所内
+let lobbyMode = 'outdoor';
 
 const LOBBY_W = 1200;
 const LOBBY_GROUND = 0; // groundYはcanvas高さ依存なので動的計算
@@ -7783,6 +7796,7 @@ function resizeLobbyCanvas() {
 
 function openLobbyWorld() {
   resizeLobbyCanvas();
+  lobbyMode = 'outdoor'; // 必ず屋外モードで開始
   document.getElementById('lobbyScreen').style.display = 'block';
   hideAllOverlays();
   homeScreen.style.display = 'none';
@@ -7898,10 +7912,13 @@ function updateLobby(dt) {
 
 function getNearFacility() {
   const px = lobbyPlayer.x + lobbyPlayer.w/2;
-  return FACILITIES.find(f => px > f.x - 20 && px < f.x + f.w + 20) || null;
+  const list = lobbyMode === 'guild' ? GUILD_FACILITIES : FACILITIES;
+  return list.find(f => px > f.x - 20 && px < f.x + f.w + 20) || null;
 }
 
 function drawLobby() {
+  if (lobbyMode === 'guild') { drawGuildInterior(); return; }
+
   const W = lobbyCanvas.width, H = lobbyCanvas.height;
   lctx.clearRect(0, 0, W, H);
 
@@ -7940,6 +7957,7 @@ function drawLobby() {
     if (f.action === 'questScreen') drawQuestBoard(f);
     else if (f.action === 'classScreen') drawClassHouse(f);
     else if (f.action === 'smithScreen') drawSmithShop(f);
+    else if (f.action === 'guildScreen') drawGuildHall(f);
   });
 
   // ロビープレイヤー（ロボット）
@@ -7949,7 +7967,6 @@ function drawLobby() {
   if (window.RoomState && RoomState.roomId) {
     for (const [pid, peer] of Object.entries(RoomState.peers)) {
       if (!peer.online || peer.lobbyX === undefined) continue;
-      // 他プレイヤーのロビー座標を描画（ghostモード）
       const ghostP = {
         x: peer.lobbyX ?? 200,
         y: peer.lobbyY ?? (lobbyGround - 48),
@@ -7960,7 +7977,6 @@ function drawLobby() {
       lctx.save();
       lctx.globalAlpha = 0.75;
       drawLobbyRobot(ghostP, peer.classId);
-      // 名前表示
       lctx.globalAlpha = 0.9;
       lctx.fillStyle = '#5be7ff';
       lctx.font = 'bold 11px sans-serif';
@@ -7972,6 +7988,373 @@ function drawLobby() {
   }
 
   lctx.restore();
+}
+
+// ===== 集会所内部の描画 =====
+function drawGuildInterior() {
+  const W = lobbyCanvas.width, H = lobbyCanvas.height;
+  lctx.clearRect(0, 0, W, H);
+
+  // 天井（木の梁）
+  const ceilGrad = lctx.createLinearGradient(0, 0, 0, H * 0.15);
+  ceilGrad.addColorStop(0, '#2a1800');
+  ceilGrad.addColorStop(1, '#3d2510');
+  lctx.fillStyle = ceilGrad;
+  lctx.fillRect(0, 0, W, H * 0.15);
+
+  // 梁（横）
+  lctx.fillStyle = '#1a0e00';
+  for (let i = 0; i < 4; i++) {
+    lctx.fillRect(0, H * (0.04 + i * 0.035), W, H * 0.018);
+  }
+
+  // 壁（木板、温かみのある茶色）
+  const wallGrad = lctx.createLinearGradient(0, H * 0.15, 0, lobbyGround);
+  wallGrad.addColorStop(0, '#6b4220');
+  wallGrad.addColorStop(1, '#4a2e10');
+  lctx.fillStyle = wallGrad;
+  lctx.fillRect(0, H * 0.15, W, lobbyGround - H * 0.15);
+
+  // 壁の縦板模様
+  lctx.strokeStyle = 'rgba(0,0,0,0.25)'; lctx.lineWidth = 2;
+  for (let i = 0; i < 20; i++) {
+    const wx = (i / 20) * W;
+    lctx.beginPath(); lctx.moveTo(wx, H * 0.15); lctx.lineTo(wx, lobbyGround); lctx.stroke();
+  }
+
+  // 窓（左右の壁に）
+  const winY = H * 0.22, winH = H * 0.22, winW = W * 0.10;
+  [W * 0.03, W * 0.87].forEach(wx => {
+    // 外の夜空
+    lctx.fillStyle = '#0a0e1a';
+    lctx.fillRect(wx, winY, winW, winH);
+    // 星
+    lctx.fillStyle = 'rgba(255,255,255,0.8)';
+    [[0.3,0.2],[0.7,0.5],[0.5,0.8],[0.2,0.7],[0.8,0.3]].forEach(([rx,ry]) => {
+      lctx.beginPath(); lctx.arc(wx + winW*rx, winY + winH*ry, 1, 0, Math.PI*2); lctx.fill();
+    });
+    // 窓枠
+    lctx.strokeStyle = '#3a1800'; lctx.lineWidth = 4;
+    lctx.strokeRect(wx, winY, winW, winH);
+    lctx.strokeStyle = '#5a2e10'; lctx.lineWidth = 2;
+    lctx.beginPath();
+    lctx.moveTo(wx + winW/2, winY); lctx.lineTo(wx + winW/2, winY + winH);
+    lctx.moveTo(wx, winY + winH/2); lctx.lineTo(wx + winW, winY + winH/2);
+    lctx.stroke();
+    // 暖かい光の差し込み
+    const glow = lctx.createRadialGradient(wx + winW/2, winY + winH, 0, wx + winW/2, winY + winH, winW * 1.5);
+    glow.addColorStop(0, 'rgba(255,200,80,0.18)');
+    glow.addColorStop(1, 'rgba(255,200,80,0)');
+    lctx.fillStyle = glow;
+    lctx.fillRect(wx - winW, winY, winW * 3, winH * 2);
+  });
+
+  // 暖炉（中央背景）
+  const fx = W/2 - 35, fy = H * 0.30, fw = 70, fh = H * 0.32;
+  lctx.fillStyle = '#222';
+  lctx.fillRect(fx - 8, fy - 10, fw + 16, fh + 10);
+  lctx.fillStyle = '#1a0a00';
+  lctx.fillRect(fx, fy + fh * 0.3, fw, fh * 0.7);
+  // 火
+  const fireColors = ['rgba(255,60,0,0.8)','rgba(255,140,0,0.7)','rgba(255,220,0,0.6)'];
+  fireColors.forEach((c, i) => {
+    lctx.fillStyle = c;
+    lctx.beginPath();
+    const fmx = fx + fw/2, fbase = fy + fh * 0.98;
+    const fHeight = fh * (0.55 - i * 0.12);
+    lctx.moveTo(fmx - fw * (0.4 - i*0.08), fbase);
+    lctx.quadraticCurveTo(fmx - fw*0.1, fbase - fHeight*0.5, fmx, fbase - fHeight);
+    lctx.quadraticCurveTo(fmx + fw*0.1, fbase - fHeight*0.5, fmx + fw*(0.4-i*0.08), fbase);
+    lctx.closePath(); lctx.fill();
+  });
+  // 暖炉の光
+  const fireGlow = lctx.createRadialGradient(fx + fw/2, fy + fh*0.7, 0, fx + fw/2, fy + fh*0.7, W*0.4);
+  fireGlow.addColorStop(0, 'rgba(255,120,0,0.12)');
+  fireGlow.addColorStop(1, 'rgba(255,120,0,0)');
+  lctx.fillStyle = fireGlow;
+  lctx.fillRect(0, 0, W, H);
+  // 暖炉枠
+  lctx.strokeStyle = '#5a3010'; lctx.lineWidth = 3;
+  lctx.strokeRect(fx - 8, fy - 10, fw + 16, fh + 10);
+  // マントルピース（棚）
+  lctx.fillStyle = '#6b4220';
+  lctx.fillRect(fx - 16, fy - 18, fw + 32, 12);
+  lctx.strokeStyle = '#3a1800'; lctx.lineWidth = 1.5;
+  lctx.strokeRect(fx - 16, fy - 18, fw + 32, 12);
+
+  // 松明（左右の壁）
+  [W * 0.18, W * 0.82].forEach(tx => {
+    const ty = H * 0.25;
+    // 柄
+    lctx.fillStyle = '#6b4010'; lctx.fillRect(tx - 2, ty, 4, 20);
+    // 炎
+    lctx.fillStyle = 'rgba(255,100,0,0.9)';
+    lctx.beginPath(); lctx.arc(tx, ty, 7, 0, Math.PI*2); lctx.fill();
+    lctx.fillStyle = 'rgba(255,220,0,0.7)';
+    lctx.beginPath(); lctx.arc(tx, ty, 4, 0, Math.PI*2); lctx.fill();
+    // 光
+    const tGlow = lctx.createRadialGradient(tx, ty, 0, tx, ty, 60);
+    tGlow.addColorStop(0, 'rgba(255,150,0,0.15)');
+    tGlow.addColorStop(1, 'rgba(255,150,0,0)');
+    lctx.fillStyle = tGlow;
+    lctx.beginPath(); lctx.arc(tx, ty, 60, 0, Math.PI*2); lctx.fill();
+  });
+
+  lctx.save();
+  lctx.translate(-lobbyCamX, 0);
+
+  // 床（木板）
+  const floorGrad = lctx.createLinearGradient(0, lobbyGround, 0, H);
+  floorGrad.addColorStop(0, '#7a5030');
+  floorGrad.addColorStop(0.08, '#5a3818');
+  floorGrad.addColorStop(1, '#2a1808');
+  lctx.fillStyle = floorGrad;
+  lctx.fillRect(0, lobbyGround, LOBBY_W, H - lobbyGround);
+  // 床板の横線
+  lctx.strokeStyle = 'rgba(0,0,0,0.3)'; lctx.lineWidth = 1.5;
+  for (let i = 0; i < 6; i++) {
+    const fy2 = lobbyGround + i * ((H - lobbyGround) / 6);
+    lctx.beginPath(); lctx.moveTo(0, fy2); lctx.lineTo(LOBBY_W, fy2); lctx.stroke();
+  }
+  // 床板の縦目地
+  lctx.strokeStyle = 'rgba(0,0,0,0.15)'; lctx.lineWidth = 1;
+  for (let i = 0; i < 24; i++) {
+    lctx.beginPath(); lctx.moveTo(i * 50, lobbyGround); lctx.lineTo(i * 50 + 25, H); lctx.stroke();
+  }
+  // 床の境界線
+  lctx.strokeStyle = '#3a1800'; lctx.lineWidth = 3;
+  lctx.beginPath(); lctx.moveTo(0, lobbyGround); lctx.lineTo(LOBBY_W, lobbyGround); lctx.stroke();
+
+  // 集会所内施設を描画
+  GUILD_FACILITIES.forEach(f => {
+    if (f.action === 'questScreen')  drawGuildQuestBoard(f);
+    else if (f.action === 'classScreen') drawGuildClassDesk(f);
+    else if (f.action === 'smithScreen') drawGuildSmithCorner(f);
+    else if (f.action === 'multiScreen') drawGuildMultiDesk(f);
+    else if (f.action === 'guildExit')   drawGuildExit(f);
+  });
+
+  // プレイヤー
+  drawLobbyRobot(lobbyPlayer);
+
+  // マルチプレイ中：他プレイヤー
+  if (window.RoomState && RoomState.roomId) {
+    for (const [pid, peer] of Object.entries(RoomState.peers)) {
+      if (!peer.online || peer.lobbyX === undefined) continue;
+      const ghostP = { x: peer.lobbyX ?? 200, y: peer.lobbyY ?? (lobbyGround - 48), w: 32, h: 48, facing: peer.lobbyFacing ?? 1, walkTimer: peer.lobbyWalkTimer ?? 0 };
+      lctx.save(); lctx.globalAlpha = 0.75;
+      drawLobbyRobot(ghostP, peer.classId);
+      lctx.globalAlpha = 0.9; lctx.fillStyle = '#ffb347';
+      lctx.font = 'bold 11px sans-serif'; lctx.textAlign = 'center';
+      lctx.fillText(peer.name || '?', ghostP.x + ghostP.w / 2, ghostP.y - 6);
+      lctx.textAlign = 'left'; lctx.restore();
+    }
+  }
+
+  lctx.restore();
+}
+
+// ===== 集会所（屋外建物）描画 =====
+function drawGuildHall(f) {
+  const bx = f.x, bw = f.w;
+  const bh = Math.floor(lobbyCanvas.height * 0.32);
+  const by = lobbyGround - bh;
+  const cx = bx + bw / 2;
+
+  // 壁（木造・温かみのある茶色）
+  lctx.fillStyle = '#c8a86b';
+  lctx.fillRect(bx, by + bh * 0.22, bw, bh * 0.78);
+  lctx.strokeStyle = '#a07840'; lctx.lineWidth = 1;
+  for (let i = 1; i < 7; i++) {
+    const wy = by + bh * 0.22 + i * (bh * 0.78 / 7);
+    lctx.beginPath(); lctx.moveTo(bx, wy); lctx.lineTo(bx + bw, wy); lctx.stroke();
+  }
+  lctx.strokeStyle = '#7a5a28'; lctx.lineWidth = 2;
+  lctx.strokeRect(bx, by + bh * 0.22, bw, bh * 0.78);
+
+  // 屋根
+  lctx.fillStyle = '#4a5a7a';
+  lctx.beginPath();
+  lctx.moveTo(bx - 10, by + bh * 0.24);
+  lctx.lineTo(cx, by);
+  lctx.lineTo(bx + bw + 10, by + bh * 0.24);
+  lctx.closePath(); lctx.fill();
+  lctx.strokeStyle = '#2a3a5a'; lctx.lineWidth = 2; lctx.stroke();
+
+  // 看板
+  const sx = cx - bw*0.28, sy = by + bh*0.24;
+  lctx.fillStyle = '#8b6030';
+  lctx.fillRect(sx, sy, bw*0.56, bh*0.10);
+  lctx.strokeStyle = '#5a3a10'; lctx.lineWidth = 1.5;
+  lctx.strokeRect(sx, sy, bw*0.56, bh*0.10);
+  lctx.fillStyle = '#ffe8a0';
+  lctx.font = 'bold ' + Math.max(9, Math.floor(bw * 0.10)) + 'px sans-serif';
+  lctx.textAlign = 'center';
+  lctx.fillText('集 会 所', cx, sy + bh*0.072);
+
+  // ドア
+  const dw = bw*0.30, dh = bh*0.35;
+  const dx = cx - dw/2, dy = lobbyGround - dh;
+  lctx.fillStyle = '#6b3a10';
+  lctx.fillRect(dx, dy, dw, dh);
+  lctx.strokeStyle = '#3a1800'; lctx.lineWidth = 2; lctx.strokeRect(dx, dy, dw, dh);
+  lctx.fillStyle = '#f0c040';
+  lctx.beginPath(); lctx.arc(dx + dw*0.75, dy + dh*0.55, 3, 0, Math.PI*2); lctx.fill();
+
+  // ラベル
+  lctx.fillStyle = '#a0d8ff';
+  lctx.font = 'bold ' + Math.max(11, Math.floor(bw * 0.13)) + 'px sans-serif';
+  lctx.textAlign = 'center';
+  lctx.fillText(f.label, cx, by - 12);
+  lctx.textAlign = 'left';
+}
+
+// ===== 集会所内施設描画 =====
+function drawGuildQuestBoard(f) {
+  const bx = f.x, bw = f.w, bh = Math.floor(lobbyCanvas.height * 0.30);
+  const by = lobbyGround - bh, cx = bx + bw/2;
+  // 掲示板スタンド
+  lctx.fillStyle = '#5a3010';
+  lctx.fillRect(cx - 3, by + bh*0.4, 6, bh*0.6);
+  // ボード本体
+  lctx.fillStyle = '#c8a060';
+  lctx.fillRect(bx, by + bh*0.05, bw, bh*0.5);
+  lctx.strokeStyle = '#5a3010'; lctx.lineWidth = 2;
+  lctx.strokeRect(bx, by + bh*0.05, bw, bh*0.5);
+  // 紙（クエスト一覧）
+  [0.1, 0.22, 0.34].forEach(oy => {
+    lctx.fillStyle = '#fffde0';
+    lctx.fillRect(bx + bw*0.08, by + bh*(0.10 + oy), bw*0.84, bh*0.09);
+    lctx.fillStyle = '#888'; lctx.fillRect(bx + bw*0.12, by + bh*(0.13 + oy), bw*0.6, 2);
+  });
+  lctx.fillStyle = '#ffcc44';
+  lctx.font = `bold ${Math.max(10,Math.floor(bw*0.12))}px sans-serif`;
+  lctx.textAlign = 'center';
+  lctx.fillText(f.label, cx, by - 8);
+  lctx.textAlign = 'left';
+}
+
+function drawGuildClassDesk(f) {
+  const bx = f.x, bw = f.w, bh = Math.floor(lobbyCanvas.height * 0.28);
+  const by = lobbyGround - bh, cx = bx + bw/2;
+  // 本棚
+  lctx.fillStyle = '#6b3a10';
+  lctx.fillRect(bx, by + bh*0.1, bw, bh*0.9);
+  lctx.strokeStyle = '#3a1800'; lctx.lineWidth = 2;
+  lctx.strokeRect(bx, by + bh*0.1, bw, bh*0.9);
+  // 棚板
+  [0.3, 0.55, 0.78].forEach(oy => {
+    lctx.fillStyle = '#4a2000';
+    lctx.fillRect(bx, by + bh*oy, bw, 4);
+  });
+  // 本（カラフル）
+  const bookColors = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c'];
+  let bkx = bx + 4;
+  bookColors.forEach((bc, i) => {
+    const shelf = Math.floor(i / 2);
+    const col   = i % 2;
+    const sy = by + bh * ([0.13, 0.35, 0.58][shelf] || 0.13);
+    lctx.fillStyle = bc;
+    lctx.fillRect(bkx + col * (bw*0.38), sy, bw*0.28, bh*0.14);
+  });
+  // ラベル
+  lctx.fillStyle = '#a0d8ff';
+  lctx.font = `bold ${Math.max(10,Math.floor(bw*0.12))}px sans-serif`;
+  lctx.textAlign = 'center'; lctx.fillText(f.label, cx, by - 8); lctx.textAlign = 'left';
+}
+
+function drawGuildSmithCorner(f) {
+  const bx = f.x, bw = f.w, bh = Math.floor(lobbyCanvas.height * 0.28);
+  const by = lobbyGround - bh, cx = bx + bw/2;
+  // 作業台
+  lctx.fillStyle = '#4a3010';
+  lctx.fillRect(bx, by + bh*0.5, bw, bh*0.5);
+  lctx.strokeStyle = '#2a1800'; lctx.lineWidth = 2;
+  lctx.strokeRect(bx, by + bh*0.5, bw, bh*0.5);
+  lctx.fillStyle = '#6b4820';
+  lctx.fillRect(bx, by + bh*0.48, bw, bh*0.06);
+  // 足
+  [[bx+bw*0.1, bh*0.08],[bx+bw*0.8, bh*0.08]].forEach(([lx,lh]) => {
+    lctx.fillStyle = '#3a1800'; lctx.fillRect(lx, lobbyGround - lh, bw*0.1, lh);
+  });
+  // 道具（ハンマー・剣）
+  lctx.fillStyle = '#ccc';
+  lctx.fillRect(bx+bw*0.1, by+bh*0.20, bw*0.35, bh*0.08); // 剣身
+  lctx.fillStyle = '#c0a000';
+  lctx.fillRect(bx+bw*0.08, by+bh*0.26, bw*0.38, bh*0.04); // 鍔
+  lctx.fillStyle = '#8b5020';
+  lctx.fillRect(bx+bw*0.20, by+bh*0.30, bw*0.10, bh*0.16); // 柄
+  lctx.fillStyle = '#aaa';
+  lctx.fillRect(bx+bw*0.58, by+bh*0.18, bw*0.28, bh*0.10); // ハンマーヘッド
+  lctx.fillStyle = '#8b5020';
+  lctx.fillRect(bx+bw*0.68, by+bh*0.28, bw*0.08, bh*0.18); // ハンマー柄
+  // ラベル
+  lctx.fillStyle = '#ffb347';
+  lctx.font = `bold ${Math.max(10,Math.floor(bw*0.12))}px sans-serif`;
+  lctx.textAlign = 'center'; lctx.fillText(f.label, cx, by - 8); lctx.textAlign = 'left';
+}
+
+
+function drawGuildMultiDesk(f) {
+  const bx = f.x, bw = f.w, bh = Math.floor(lobbyCanvas.height * 0.28);
+  const by = lobbyGround - bh, cx = bx + bw/2;
+  // 受付カウンター
+  lctx.fillStyle = '#5a3a80';
+  lctx.fillRect(bx, by + bh*0.45, bw, bh*0.55);
+  lctx.strokeStyle = '#8060c0'; lctx.lineWidth = 2;
+  lctx.strokeRect(bx, by + bh*0.45, bw, bh*0.55);
+  // カウンター天板
+  lctx.fillStyle = '#7a50b0';
+  lctx.fillRect(bx - 4, by + bh*0.43, bw + 8, bh*0.07);
+  // 足（カウンター脚）
+  [[bx+bw*0.1],[bx+bw*0.8]].forEach(([lx])=>{
+    lctx.fillStyle = '#3a2050'; lctx.fillRect(lx, lobbyGround - bh*0.10, bw*0.1, bh*0.10);
+  });
+  // マルチプレイアイコン（コントローラー風）
+  const icx = cx, icy = by + bh*0.22;
+  lctx.fillStyle = '#d7bde2';
+  lctx.beginPath(); lctx.roundRect(icx-18, icy-10, 36, 22, 8); lctx.fill();
+  lctx.fillStyle = '#8060c0';
+  lctx.fillRect(icx-6, icy-4, 12, 3); lctx.fillRect(icx-1, icy-7, 3, 9); // 十字
+  lctx.beginPath(); lctx.arc(icx+10, icy+2, 3, 0, Math.PI*2); lctx.fill();
+  lctx.beginPath(); lctx.arc(icx+16, icy-2, 3, 0, Math.PI*2); lctx.fill();
+  // 受付の人（シルエット）
+  lctx.fillStyle = '#c0a0e0';
+  lctx.beginPath(); lctx.arc(cx, by+bh*0.30, bw*0.12, 0, Math.PI*2); lctx.fill(); // 頭
+  lctx.fillRect(cx - bw*0.10, by+bh*0.36, bw*0.20, bh*0.10); // 胴
+  // ラベル
+  lctx.fillStyle = '#d7bde2';
+  lctx.font = `bold ${Math.max(10,Math.floor(bw*0.12))}px sans-serif`;
+  lctx.textAlign = 'center'; lctx.fillText(f.label, cx, by - 8); lctx.textAlign = 'left';
+}
+
+function drawGuildExit(f) {
+  const bx = f.x, bw = f.w, bh = Math.floor(lobbyCanvas.height * 0.30);
+  const by = lobbyGround - bh, cx = bx + bw/2;
+  // 出口ドア枠
+  lctx.fillStyle = '#3a1800';
+  lctx.fillRect(bx, by + bh*0.1, bw, bh*0.9);
+  lctx.strokeStyle = '#5a2e10'; lctx.lineWidth = 3;
+  lctx.strokeRect(bx, by + bh*0.1, bw, bh*0.9);
+  // 外の夜空
+  lctx.fillStyle = '#0a0e1a';
+  lctx.fillRect(bx+4, by + bh*0.12, bw-8, bh*0.86);
+  // 星
+  lctx.fillStyle = 'rgba(255,255,255,0.8)';
+  [[0.2,0.2],[0.7,0.15],[0.5,0.4],[0.3,0.6],[0.8,0.5]].forEach(([rx,ry])=>{
+    lctx.beginPath(); lctx.arc(bx+4+(bw-8)*rx, by+bh*0.12+bh*0.86*ry, 1.2, 0, Math.PI*2); lctx.fill();
+  });
+  // 出口矢印
+  lctx.fillStyle = '#5be7ff';
+  lctx.font = `bold ${Math.floor(bw*0.3)}px sans-serif`;
+  lctx.textAlign = 'center'; lctx.fillText('→', cx, by + bh*0.58); lctx.textAlign = 'left';
+  // ドアノブ
+  lctx.fillStyle = '#f0c040';
+  lctx.beginPath(); lctx.arc(bx + bw*0.2, by + bh*0.55, 3.5, 0, Math.PI*2); lctx.fill();
+  // 「出口」ラベル
+  lctx.fillStyle = '#5be7ff';
+  lctx.font = `bold ${Math.max(11,Math.floor(bw*0.13))}px sans-serif`;
+  lctx.textAlign = 'center'; lctx.fillText(f.label, cx, by - 8); lctx.textAlign = 'left';
 }
 
 // ===== クエスト掲示板 =====
@@ -8794,6 +9177,13 @@ function openNearFacility() {
   openFacility(f.action);
 }
 function openFacility(screenId) {
+  if (screenId === 'guildScreen') { enterGuildHall(); return; }
+  if (screenId === 'guildExit')   { exitGuildHall();  return; }
+  if (screenId === 'multiScreen') {
+    document.getElementById('lobbyScreen').style.display = 'none';
+    showRoomScreen();
+    return;
+  }
   if (screenId === 'friendScreen') {
     document.getElementById('myPidFriend').textContent = myProfile.friendId;
     document.getElementById('addFriendInput').value = '';
@@ -8809,6 +9199,39 @@ function openFacility(screenId) {
   showOverlay(screenId);
   if (screenId === 'classScreen' && !isClassTutorialSeen()) showClassTutorial();
 }
+
+// 集会所に入る
+function enterGuildHall() {
+  lobbyMode = 'guild';
+  // プレイヤーを集会所入口付近に配置
+  lobbyPlayer.x = 200;
+  lobbyPlayer.y = lobbyGround - lobbyPlayer.h;
+  lobbyPlayer.vx = 0; lobbyPlayer.vy = 0;
+  lobbyCamX = 0;
+  // InviteListenerを起動（Firestore節約：集会所に入った時のみ）
+  if (window.startInviteListener && !window._inviteListenerActive) {
+    startInviteListener();
+    window._inviteListenerActive = true;
+  }
+  // ヒント更新
+  const hintEl = document.getElementById('lobbyHint');
+  if (hintEl) hintEl.style.display = 'none';
+}
+
+// 集会所を出る
+function exitGuildHall() {
+  lobbyMode = 'outdoor';
+  // プレイヤーを集会所の建物前に戻す
+  lobbyPlayer.x = 940;
+  lobbyPlayer.y = lobbyGround - lobbyPlayer.h;
+  lobbyPlayer.vx = 0; lobbyPlayer.vy = 0;
+  // InviteListenerを停止
+  if (window._inviteUnsub) { window._inviteUnsub(); window._inviteUnsub = null; }
+  if (typeof _inviteUnsub !== 'undefined' && _inviteUnsub) { _inviteUnsub(); _inviteUnsub = null; }
+  window._inviteListenerActive = false;
+}
+window.enterGuildHall = enterGuildHall;
+window.exitGuildHall  = exitGuildHall;
 document.getElementById('lobbyBtnAction').addEventListener('click', openNearFacility);
 document.getElementById('lobbyBtnAction').addEventListener('touchstart', ev => {
   ev.preventDefault(); openNearFacility();
@@ -8829,9 +9252,8 @@ document.getElementById('lobbyFriendBtn').addEventListener('click', () => {
 
 // ===== マルチプレイボタン =====
 document.getElementById('lobbyMultiBtn').addEventListener('click', () => {
-  console.log('[DEBUG] lobbyMultiBtn clicked, showRoomScreen=', typeof showRoomScreen);
-  document.getElementById('lobbyScreen').style.display = 'none';
-  showRoomScreen();
+  // 集会所内に入る（マルチプレイは集会所から）
+  enterGuildHall();
 });
 
 // ===== ルーム画面のUI処理 =====
@@ -10006,6 +10428,9 @@ function handlePeerMessage(fromPeerId, msg) {
       if (!RoomState.isHost) {
         RoomState.selectedStageId = msg.stageId;
         RoomState.gameStarted = true;
+        // クエスト開始後はFirestoreシグナリング不要なのでリスナーを停止
+        if (_signalUnsub) { _signalUnsub(); _signalUnsub = null; }
+        if (_memberUnsub) { _memberUnsub(); _memberUnsub = null; }
         launchQuestMulti(msg.stageId);
       }
       break;
@@ -10133,7 +10558,7 @@ window.notifyEnemyHit = notifyEnemyHit;
 // ======================================================
 // ===== Firestoreシグナリング: ルーム作成 =====
 // ======================================================
-async function createRoom(roomId = null, retryCount = 0) {
+async function createRoom(retryCount = 0) {
   // _dbが未取得の場合、window経由で再取得を試みる（moduleの初期化タイミング対策）
   if (!_db && window._firestoreDb) {
     _db = window._firestoreDb;
@@ -10147,8 +10572,7 @@ async function createRoom(roomId = null, retryCount = 0) {
     return null;
   }
   const { doc, setDoc, serverTimestamp } = _firestoreFuncs;
-  // retryのたびに新しいroomIdが生成されるバグを修正: 初回のみ生成してそのまま使う
-  if (!roomId) roomId = genRoomId();
+  const roomId = genRoomId();
   RoomState.roomId = roomId;
   RoomState.isHost = true;
   RoomState.myPeerId = myProfile.id;
@@ -10157,7 +10581,7 @@ async function createRoom(roomId = null, retryCount = 0) {
 
   // Firestoreにルーム情報を登録
   try {
-    console.log('[Room] rooms書き込み開始 roomId=', roomId, 'retry=', retryCount);
+    console.log('[Room] rooms書き込み開始 roomId=', roomId, '_db=', _db, 'doc=', typeof doc, 'setDoc=', typeof setDoc);
     await setDoc(doc(_db, 'rooms', roomId), {
       host: myProfile.id,
       hostName: myProfile.name || 'プレイヤー',
@@ -10169,13 +10593,11 @@ async function createRoom(roomId = null, retryCount = 0) {
     console.error('[Room] rooms書き込みエラー:', e.message || e);
     if (retryCount < 3) {
       const msgEl = document.getElementById('roomStatusMsg');
-      if (msgEl) { msgEl.style.color='#f39c12'; msgEl.textContent=`⏳ 接続中... (${retryCount + 1}/3) roomId=${roomId}`; }
+      if (msgEl) { msgEl.style.color='#f39c12'; msgEl.textContent=`⏳ 接続中... (${retryCount + 1}/3)`; }
       await new Promise(r => setTimeout(r, 2000));
-      // 同じroomIdでリトライ
-      return createRoom(roomId, retryCount + 1);
+      return createRoom(retryCount + 1);
     }
-    const errMsg = e.message || String(e);
-    document.getElementById('roomStatusMsg').textContent = '❌ ' + errMsg;
+    document.getElementById('roomStatusMsg').textContent = '❌ ' + (e.message || e);
     document.getElementById('createRoomBtn').disabled = false;
     document.getElementById('createRoomBtn').textContent = '✨ ルームを作る';
     return null;
@@ -10424,6 +10846,9 @@ function startQuestMulti(stageId) {
   if (!RoomState.isHost) return;
   RoomState.selectedStageId = stageId;
   RoomState.gameStarted = true;
+  // クエスト開始後はFirestoreシグナリング不要なのでリスナーを停止
+  if (_signalUnsub) { _signalUnsub(); _signalUnsub = null; }
+  if (_memberUnsub) { _memberUnsub(); _memberUnsub = null; }
   // 全員にクエスト開始を通知
   broadcastToPeers({ type: 'questStart', stageId });
   // ホスト自身もクエスト開始
@@ -10724,19 +11149,9 @@ function _fsDrain() {
 // ドキュメント取得
 async function fsGetDoc(path) {
   return _fsEnqueue(async () => {
-    let r;
-    try {
-      r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`);
-    } catch(netErr) {
-      console.error('[Firestore] fsGetDoc fetch失敗 path=', path, netErr);
-      throw netErr;
-    }
+    const r = await fetch(`${FS_BASE}/${path}?key=${FS_API_KEY}`);
     if (r.status === 404) return { exists: () => false, data: () => ({}) };
-    if (!r.ok) {
-      const txt = await r.text().catch(() => '');
-      console.error('[Firestore] fsGetDoc HTTP' + r.status, 'path=', path, txt);
-      throw new Error(`fsGetDoc ${path}: ${r.status} ${txt}`);
-    }
+    if (!r.ok) throw new Error(`fsGetDoc ${path}: ${r.status}`);
     const json = await r.json();
     return {
       exists: () => true,
@@ -10761,14 +11176,11 @@ async function fsSetDoc(path, data, opts) {
         body: JSON.stringify({ fields })
       });
     } catch(netErr) {
-      console.error('[Firestore] fetch失敗 path=', path, 'error=', netErr);
       throw new Error(`fetch失敗(ネット切断?) ${path}: ${netErr.message}`);
     }
     if (!r.ok) {
-      const errText = await r.text().catch(() => '');
-      let msg = errText;
-      try { const j = JSON.parse(errText); msg = j?.error?.message || errText; } catch(_){}
-      console.error('[Firestore] HTTPエラー', r.status, 'path=', path, 'body=', errText);
+      const err = await r.json().catch(() => ({}));
+      const msg = err?.error?.message || JSON.stringify(err);
       throw new Error(`HTTP${r.status} ${msg}`);
     }
     return r.json();
@@ -11163,30 +11575,6 @@ window._firestoreFuncs = {
 };
 
 console.log('[CloudSync] REST API版 初期化完了');
-
-// roomsコレクションへの書き込み権限を事前テスト
-(async () => {
-  const testPath = 'rooms/__test_write__';
-  const testUrl = `${FS_BASE}/${testPath}?key=${FS_API_KEY}`;
-  try {
-    const r = await fetch(testUrl, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: { _test: { booleanValue: true } } })
-    });
-    if (r.ok) {
-      console.log('[CloudSync] roomsコレクション書き込み権限: OK');
-      // テストドキュメントを削除
-      fetch(`${testUrl}`, { method: 'DELETE' }).catch(() => {});
-    } else {
-      const txt = await r.text().catch(() => '');
-      console.warn('[CloudSync] roomsコレクション書き込み権限エラー HTTP' + r.status + ':', txt);
-    }
-  } catch(e) {
-    console.error('[CloudSync] roomsコレクション書き込みテスト失敗:', e.message);
-  }
-})();
-
 // 接続確立のために少し待ってから初期化イベントを発火
 setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
