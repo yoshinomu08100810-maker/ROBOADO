@@ -572,6 +572,7 @@ html, body {
   .chest-weapon-sub  { font-size:13px; color:#f0c040; margin-top:2px; }
   #chestCloseBtn { display:none; margin-top:20px; }
 
+
 </style>
 </head>
 <body>
@@ -1034,9 +1035,10 @@ html, body {
 </div>
 
 
-<!-- ===== JavaScript (01〜11, 13: インライン) ===== -->
-<!-- 01-core-setup.js -->
+
+<!-- ===== JavaScript ===== -->
 <script>
+/* ===== 01-core-setup.js ===== */
 // ==================== 01-core-setup.js ====================
 // === 01-core-setup.js ===
 // ======================================================
@@ -1267,10 +1269,10 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 // ======================================================
 
 
-</script>
 
-<!-- 02-input-controls.js -->
+</script>
 <script>
+/* ===== 02-input-controls.js ===== */
 // ==================== 02-input-controls.js ====================
 // ======================================================
 // ===== 02-input-controls.js =====
@@ -1586,17 +1588,15 @@ function fireSkill() {
     });
 
   } else {
-    player.attackAnim = { type:'punch_giant', t:0, duration:0.6 };
-    const range = TILE * 3.0;
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      const dx = (e.x+e.w/2)-(player.x+player.w/2);
-      const dy = Math.abs((e.y+e.h/2)-(player.y+player.h/2));
-      if (Math.sign(dx)===player.facing && Math.abs(dx)<range && dy<TILE*2) {
-        e.hp -= skillAtk; e.dmgFlash = 0.35;
-        if (e.hp<=0){e.alive=false;score+=getEnemyKillScore(e);}
-      }
-    }
+    // punch_giant: ダメージは発射フェーズ（57%）で適用（05-game-loop.js側で処理）
+    player.attackAnim = {
+      type: 'punch_giant',
+      t: 0,
+      duration: 2.0,
+      hitChecked: false,
+      hitAtk: skillAtk,
+      hitRange: TILE * 3.0,
+    };
   }
   updateSkillBtn();
 }
@@ -1697,10 +1697,10 @@ function drawSkillGauge() {
 // ======================================================
 
 
-</script>
 
-<!-- 03-class-defs.js -->
+</script>
 <script>
+/* ===== 03-class-defs.js ===== */
 // ==================== 03-class-defs.js ====================
 // ======================================================
 // ===== 03-class-defs.js =====
@@ -2122,30 +2122,42 @@ const WEAPON_VISUALS = {
     accentColor:'#fff0a0', glowColor:'rgba(255,225,110,0.6)',
   },
   // --- 弓（ユミカゼ） ---
-  bow_n: {  // 木の弓（ノーマル）
+  // bowStyle: 形状アーキタイプ（wood/metal/longbow/recurve/celestial）。色だけでなく
+  // シルエット・装飾・エフェクトをレアリティごとに変えてランクの上昇を見た目で感じさせる。
+  bow_n: {  // 木の弓（ノーマル）：素朴な一枚木の弓、革巻きの握り
     bowColor:'#8B5E2A', stringColor:'#e8e0d0',
     headColor:'#c8d4dc', headColor2:'#777', fletchColor:'#88aa66',
     glowColor:null,
+    bowStyle:'wood', limbWidth:2.7, recurve:0, riser:'wrap',
+    accent:'#5e3f1c', particle:null,
   },
-  bow_r: {  // 鉄の弓（レア）
+  bow_r: {  // 鉄の弓（レア）：金属補強・先端がわずかにリカーブした無骨な弓
     bowColor:'#7a8a9a', stringColor:'#dde8f0',
     headColor:'#d0d8e0', headColor2:'#5a6a7a', fletchColor:'#5aaad0',
     glowColor:null,
+    bowStyle:'angular', limbWidth:2.5, recurve:0.13, riser:'band',
+    tipCap:'#dfe8f0', accent:'#aebccc', particle:null,
   },
-  bow_sr: { // 長弓（スーパーレア）：紫、淡く発光
-    bowColor:'#8a5fd8', stringColor:'#e6d8ff',
+  bow_sr: { // 長弓（スーパーレア）：銀の本体に紫の象嵌(インレイ)模様、S字に反る優美なロングボウ、淡く発光・きらめき
+    bowColor:'#c8d2dc', stringColor:'#e6d8ff',
     headColor:'#e6d8ff', headColor2:'#7a4fc0', fletchColor:'#a35ee0',
-    glowColor:'rgba(163,94,224,0.45)',
+    glowColor:'rgba(163,94,224,0.45)', glowBlur:4,
+    bowStyle:'asymmetric', limbWidth:2.4, recurve:0, riser:'ornate',
+    tipCap:'#eef3f8', accent:'#e2e9f0', patternColor:'#9a5fe0', particle:'star',
   },
-  bow_ur: { // 疾風の弓（ウルトラレア）：エメラルド、風をまとう
+  bow_ur: { // 疾風の弓（ウルトラレア）：エメラルドの大きくカーブしたリカーブボウ、風の流線をまとう
     bowColor:'#1fae84', stringColor:'#d0fff0',
     headColor:'#c0fff0', headColor2:'#1fae84', fletchColor:'#2ecc9a',
-    glowColor:'rgba(60,255,200,0.5)',
+    glowColor:'rgba(60,255,200,0.5)', glowBlur:5,
+    bowStyle:'recurve', limbWidth:3.0, recurve:0.24, riser:'band',
+    accent:'#7df0c8', particle:'wind', stringGlow:true,
   },
-  bow_l: {  // 流星の神弓（レジェンド）：黄金、強い光をまとう
+  bow_l: {  // 流星の神弓（レジェンド）：黄金のエネルギー弓身＋輝く宝玉＋星/流星パーティクル、強い発光
     bowColor:'#ffb000', stringColor:'#fff6c8',
     headColor:'#fff0a0', headColor2:'#e09000', fletchColor:'#ff8c00',
-    glowColor:'rgba(255,200,60,0.6)',
+    glowColor:'rgba(255,200,60,0.65)', glowBlur:7,
+    bowStyle:'compound', limbWidth:2.4, recurve:0, riser:'gem',
+    tipCap:'#fff3b0', accent:'#ffd84a', particle:'star', stringGlow:true,
   },
   // --- 大槍（スピラ） ---
   lsp_n: {
@@ -2438,21 +2450,562 @@ function getShieldSvg(weaponId, size) {
     + `<line x1="6" y1="10.5" x2="16" y2="10.5" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>`
     + `</svg>`;
 }
+// ===== 弓の見た目を共通描画するヘルパー（ロビー・クエスト中の両方で使用） =====
+// 弓身(リム)・先端リカーブ・握り(リサー)・発光・パーティクルをまとめて描く。
+// 弦と矢は引き具合のアニメが絡むため呼び出し側に残し、ここでは描かない。
+// ctx:2Dコンテキスト, cx/cy:弓の中心, r:弓の半径, u:スケール係数, wv:武器ビジュアル
+// 弧の角度(±0.6π)は弦・矢の描画と一致させるため固定。差別化は太さ/装飾/エフェクトで行う。
+// 色を明るく/暗くするヘルパー（amt<0で暗く, amt>0で明るく）。緑の濃淡・縁取り・スプラッシュ用。
+function _shade(hex, amt) {
+  let c = (hex || '#1fae84').replace('#', '');
+  if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  const R = parseInt(c.slice(0, 2), 16), G = parseInt(c.slice(2, 4), 16), B = parseInt(c.slice(4, 6), 16);
+  const f = (amt < 0) ? (v) => Math.round(v * (1 + amt)) : (v) => Math.round(v + (255 - v) * amt);
+  const h = (v) => ('0' + Math.max(0, Math.min(255, f(v))).toString(16)).slice(-2);
+  return '#' + h(R) + h(G) + h(B);
+}
+
+function drawBowFrame(ctx, cx, cy, r, u, wv, opts) {
+  wv = wv || {}; opts = opts || {};
+  const draw = (opts.draw != null ? opts.draw : 0);            // 0=ゆるみ, 1=満引き
+  const showArrow = (opts.showArrow !== false);
+  const t = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const style    = wv.bowStyle || 'wood';
+  const limbW    = (wv.limbWidth || 2.6) * u;
+  const bowColor = wv.bowColor || '#8B5E2A';
+  const glow     = wv.glowColor || null;
+  const glowBlur = (wv.glowBlur != null ? wv.glowBlur : (glow ? 5 : 0)) * u;
+  const accent   = wv.accent || bowColor;
+  const stringCol= wv.stringColor || '#e8e0d0';
+  const HH = 1.6 * r;   // 全弓共通の縦の半長（木の弓に合わせてサイズを統一）
+  const P = (fx, fy) => [cx + fx * r, cy + fy * r];
+  const setGlow = (m) => { if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = glowBlur * (m || 1); } };
+  const clr = () => { ctx.shadowBlur = 0; };
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = (style === 'angular') ? 'miter' : 'round';
+
+  let topTip, botTip, gripX, nockBaseX;
+
+  if (style === 'wood') {
+    // 素朴な一枚木：浅くシャープな縦長アーチ。中央はカクッと折れない滑らかな腹のまま、
+    // 中央から先端へ向かうほどS字（弦側へ食い込み→先端で反り返る）を強める。
+    // 縦は胴体の約0.9倍、横の膨らみは抑える。
+    const hh    = 1.6 * r;     // 中心→先端の縦距離（全長 ≒ 胴体の約0.9倍）
+    const bulge = 0.46 * r;    // 中央付近の腹のふくらみ（右）
+    const waist = 0.22 * r;    // 先端寄りで弦側(左)へ食い込む量（S字の谷）
+    const flare = 0.05 * r;    // 先端が腹側(右)へ反り返る量
+    gripX = cx + bulge;
+    topTip = [cx + flare, cy - hh];
+    botTip = [cx + flare, cy + hh];
+    nockBaseX = cx + flare;
+    setGlow();
+    ctx.strokeStyle = bowColor; ctx.lineWidth = limbW;
+    ctx.beginPath();
+    // 上リム：腹(右) → 先端寄りで左へ食い込み → 先端で右へ反り返る（端ほどS字が強い）
+    ctx.moveTo(gripX, cy);
+    ctx.bezierCurveTo(cx + bulge * 0.92, cy - hh * 0.26, cx - waist, cy - hh * 0.90, topTip[0], topTip[1]);
+    ctx.moveTo(gripX, cy);
+    ctx.bezierCurveTo(cx + bulge * 0.92, cy + hh * 0.26, cx - waist, cy + hh * 0.90, botTip[0], botTip[1]);
+    ctx.stroke();
+    clr();
+    // 革巻きの握り（頂点に短い帯）
+    ctx.strokeStyle = accent; ctx.lineWidth = limbW * 1.6;
+    ctx.beginPath(); ctx.moveTo(gripX, cy - hh * 0.13); ctx.lineTo(gripX, cy + hh * 0.13); ctx.stroke();
+  }
+  else if (style === 'angular') {
+    // 鉄のフラットボウ：直線セグメントの角張ったシルエット
+    topTip = [cx - 0.18 * r, cy - HH]; botTip = [cx - 0.18 * r, cy + HH];
+    const kU = [cx + 0.6 * r, cy - 0.60 * HH], gp = [cx + 1.0 * r, cy], kL = [cx + 0.6 * r, cy + 0.60 * HH];
+    gripX = gp[0]; nockBaseX = cx - 0.18 * r;
+    setGlow();
+    ctx.strokeStyle = bowColor; ctx.lineWidth = limbW;
+    ctx.beginPath();
+    ctx.moveTo(topTip[0], topTip[1]);
+    ctx.lineTo(kU[0], kU[1]); ctx.lineTo(gp[0], gp[1]); ctx.lineTo(kL[0], kL[1]);
+    ctx.lineTo(botTip[0], botTip[1]);
+    ctx.stroke();
+    clr();
+    // 金属バンドの握り＋リベット
+    ctx.strokeStyle = accent; ctx.lineWidth = limbW * 2.0;
+    ctx.beginPath(); ctx.moveTo(cx + 0.78 * r, cy - 0.16 * r); ctx.lineTo(cx + 0.78 * r, cy + 0.16 * r); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.beginPath(); ctx.arc(cx + 0.92 * r, cy, limbW * 0.45, 0, Math.PI * 2); ctx.fill();
+    if (wv.tipCap) { ctx.fillStyle = wv.tipCap; for (const tp of [topTip, botTip]) { ctx.beginPath(); ctx.arc(tp[0], tp[1], limbW * 0.7, 0, Math.PI * 2); ctx.fill(); } }
+  }
+  else if (style === 'asymmetric') {
+    // 和弓風の非対称ロングボウ：上が長く下が短い、握りは中心より下。
+    // 各リムは S字（腹側へ膨らみ → 弦側へ食い込み → 先端で外へ反り返る）。
+    // 銀色の本体に、リムへ沿って走る紫の象嵌(インレイ)模様を重ねた優美なデザイン。
+    const patCol = wv.patternColor || '#9a5fe0';
+    topTip = [cx + 0.05 * r, cy - 1.85 * r]; botTip = [cx + 0.06 * r, cy + 1.42 * r];
+    gripX = cx + 0.95 * r; nockBaseX = cx - 0.04 * r;
+    // S字ベジェ制御点（[start, cp1, cp2, end]）
+    const upper = [gripX, cy, cx + 0.85 * r, cy - 0.55 * r, cx - 0.18 * r, cy - 1.45 * r, topTip[0], topTip[1]];
+    const lower = [gripX, cy, cx + 0.80 * r, cy + 0.42 * r, cx - 0.14 * r, cy + 1.12 * r, botTip[0], botTip[1]];
+    const limbPath = (p) => { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.bezierCurveTo(p[2], p[3], p[4], p[5], p[6], p[7]); };
+    // ① 本体（銀）＋紫の淡い発光
+    setGlow();
+    ctx.strokeStyle = bowColor; ctx.lineWidth = limbW;
+    limbPath(upper); ctx.stroke();
+    limbPath(lower); ctx.stroke();
+    clr();
+    // ② 紫の象嵌模様（本体に沿って走る細い紫ライン。両縁に銀を残す）
+    ctx.strokeStyle = patCol; ctx.lineWidth = limbW * 0.46;
+    limbPath(upper); ctx.stroke();
+    limbPath(lower); ctx.stroke();
+    // ③ 金属ハイライト（中央にごく細い明色の照り）
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = limbW * 0.16;
+    limbPath(upper); ctx.stroke();
+    limbPath(lower); ctx.stroke();
+    // 装飾された握り（銀の帯＋紫の巻き）
+    ctx.strokeStyle = accent; ctx.lineWidth = limbW * 1.7;
+    ctx.beginPath(); ctx.moveTo(gripX, cy - 0.16 * r); ctx.lineTo(gripX, cy + 0.16 * r); ctx.stroke();
+    ctx.strokeStyle = patCol; ctx.lineWidth = limbW * 0.55;
+    for (const dy of [-0.10, -0.01, 0.08]) { ctx.beginPath(); ctx.moveTo(gripX - limbW, cy + dy * r); ctx.lineTo(gripX + limbW, cy + dy * r); ctx.stroke(); }
+    // 上下の飾り（銀のスタッド＋紫の菱形紋）
+    for (const st of [[cx + 0.55 * r, cy - 0.95 * r], [cx + 0.5 * r, cy + 0.7 * r]]) {
+      ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(st[0], st[1], limbW * 0.62, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = patCol; const d = limbW * 0.42;
+      ctx.beginPath(); ctx.moveTo(st[0], st[1] - d); ctx.lineTo(st[0] + d, st[1]); ctx.lineTo(st[0], st[1] + d); ctx.lineTo(st[0] - d, st[1]); ctx.closePath(); ctx.fill();
+    }
+    // 先端の銀キャップ
+    ctx.fillStyle = wv.tipCap || accent;
+    for (const tp of [topTip, botTip]) { ctx.beginPath(); ctx.arc(tp[0], tp[1], limbW * 0.55, 0, Math.PI * 2); ctx.fill(); }
+  }
+  else if (style === 'recurve') {
+    // === 疾風の弓：肉厚クレセント＋外へS字に跳ねる先端＋トゲ2本＋緑×黒唐草×スプラッシュ ===
+    const a  = Math.PI * 0.62;
+    const ry = 1.40 * r;
+    const aeT = [cx + r * Math.cos(-a), cy + ry * Math.sin(-a)];
+    const aeB = [cx + r * Math.cos(a),  cy + ry * Math.sin(a)];
+    topTip = [cx - 0.02 * r, cy - 1.30 * r]; botTip = [cx - 0.02 * r, cy + 1.30 * r];
+    gripX = cx + r; nockBaseX = cx - 0.02 * r;
+
+    // --- 本体アーチ（aeT→arc→aeB）の中心線・法線 ---
+    const N = 31, arc = [];
+    for (let i = 0; i < N; i++) { const th = -a + 2 * a * (i / (N - 1));
+      arc.push([cx + r * Math.cos(th), cy + ry * Math.sin(th)]); }
+    const norm = [];
+    for (let i = 0; i < N; i++) {
+      const p0 = arc[Math.max(0, i - 1)], p1 = arc[Math.min(N - 1, i + 1)];
+      let tx = p1[0] - p0[0], ty = p1[1] - p0[1]; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L;
+      let nx = ty, ny = -tx; if (nx < 0) { nx = -nx; ny = -ny; } norm.push([nx, ny]);
+    }
+    const baseHW = limbW * 1.6;
+    const hwAt = (p) => (baseHW * (0.5 + 0.5 * Math.sin(Math.PI * p))) * (1 - 0.13 * Math.exp(-Math.pow((p - 0.5) / 0.06, 2)));
+    const Oedge = (i) => { const w = hwAt(i / (N - 1)); return [arc[i][0] + norm[i][0] * w, arc[i][1] + norm[i][1] * w]; };
+    const Iedge = (i) => { const w = hwAt(i / (N - 1)); return [arc[i][0] - norm[i][0] * w, arc[i][1] - norm[i][1] * w]; };
+
+    // --- 本体バンド（肉厚クレセント）---
+    const body = new Path2D();
+    { const o0 = Oedge(0); body.moveTo(o0[0], o0[1]);
+      for (let i = 1; i < N; i++) { const q = Oedge(i); body.lineTo(q[0], q[1]); }
+      for (let i = N - 1; i >= 0; i--) { const q = Iedge(i); body.lineTo(q[0], q[1]); }
+      body.closePath(); }
+
+    // --- 先端ツノ：両端から外へS字に跳ねる先細りシェイプ。上下対称 ---
+    const makeHorn = (base, c1, c2, tip, baseW) => {
+      const M = 20, cl = [];
+      for (let i = 0; i <= M; i++) { const t = i / M, mt = 1 - t;
+        cl.push([mt*mt*mt*base[0] + 3*mt*mt*t*c1[0] + 3*mt*t*t*c2[0] + t*t*t*tip[0],
+                 mt*mt*mt*base[1] + 3*mt*mt*t*c1[1] + 3*mt*t*t*c2[1] + t*t*t*tip[1]]); }
+      const nm = [];
+      for (let i = 0; i < cl.length; i++) { const p0 = cl[Math.max(0,i-1)], p1 = cl[Math.min(cl.length-1,i+1)];
+        let tx = p1[0]-p0[0], ty = p1[1]-p0[1]; const L = Math.hypot(tx,ty)||1; tx/=L; ty/=L; nm.push([ty,-tx]); }
+      const le = [], ri = [];
+      for (let i = 0; i < cl.length; i++) { const s = i/(cl.length-1), w = baseW * Math.pow(1-s, 0.72);
+        le.push([cl[i][0]+nm[i][0]*w, cl[i][1]+nm[i][1]*w]);
+        ri.push([cl[i][0]-nm[i][0]*w, cl[i][1]-nm[i][1]*w]); }
+      const path = new Path2D(); path.moveTo(le[0][0], le[0][1]);
+      for (let i = 1; i < le.length; i++) path.lineTo(le[i][0], le[i][1]);
+      for (let i = ri.length-1; i >= 0; i--) path.lineTo(ri[i][0], ri[i][1]);
+      path.closePath();
+      return path;
+    };
+    const hornT = makeHorn(aeT, [cx-0.10*r, cy-1.95*r], [cx+0.45*r, cy-2.35*r], [cx+0.62*r, cy-2.05*r], hwAt(0));
+    const hornB = makeHorn(aeB, [cx-0.10*r, cy+1.95*r], [cx+0.45*r, cy+2.35*r], [cx+0.62*r, cy+2.05*r], hwAt(1));
+
+    // --- トゲ2本：右(ベリー)へ突き出す三角形。cy基準で上下完全対称 ---
+    const mid = Math.floor(N / 2);
+    const SY = 0.74 * r, spikeLen = 0.95 * r, baseHalf = 0.30 * r;
+    const idxAtY = (y, lo, hi) => { let bi = lo, bd = Infinity;
+      for (let i = lo; i < hi; i++) { const dd = Math.abs(arc[i][1] - y); if (dd < bd) { bd = dd; bi = i; } } return bi; };
+    const spikeTris = [];
+    for (const sg of [-1, 1]) {
+      const yT = cy + sg * SY, lo = sg < 0 ? 0 : mid, hi = sg < 0 ? mid : N;
+      const b1 = Oedge(idxAtY(yT - baseHalf, lo, hi)), b2 = Oedge(idxAtY(yT + baseHalf, lo, hi));
+      const bcx = (b1[0] + b2[0]) / 2, apex = [bcx + spikeLen * 0.95, cy + sg * (SY + spikeLen * 0.40)];
+      spikeTris.push([b1, apex, b2]);
+    }
+    const traceTri = (tr) => { ctx.beginPath(); ctx.moveTo(tr[0][0], tr[0][1]); ctx.lineTo(tr[1][0], tr[1][1]); ctx.lineTo(tr[2][0], tr[2][1]); ctx.closePath(); };
+
+    // 共通の左右グラデ（厚みの丸み）
+    const grad = ctx.createLinearGradient(cx - 0.1 * r, 0, cx + 1.25 * r, 0);
+    grad.addColorStop(0,    _shade(bowColor, -0.42));
+    grad.addColorStop(0.55, bowColor);
+    grad.addColorStop(1,    _shade(bowColor, 0.34));
+
+    // ① fill：本体→トゲ→ツノ（順に手前）＋発光
+    ctx.save();
+    if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = glowBlur * 1.2; }
+    ctx.fillStyle = grad; ctx.fill(body);
+    ctx.restore();
+    ctx.fillStyle = grad;
+    for (const tr of spikeTris) { traceTri(tr); ctx.fill(); }
+    ctx.fill(hornT); ctx.fill(hornB);
+
+    // ② 本体内にクリップ → スプラッシュ(緑濃淡)＋黒の唐草模様
+    ctx.save();
+    ctx.clip(body);
+    const blobs = [[0.22, 0.5, 0.40], [0.30, -0.4, -0.40], [0.50, 0.3, 0.50],
+                   [0.70, 0.45, 0.34], [0.78, -0.4, -0.46]];
+    for (const b of blobs) {
+      const idx = Math.round(b[0] * (N - 1)), P0 = arc[idx], nn = norm[idx];
+      const bx = P0[0] + nn[0] * b[1] * r * 0.45, by = P0[1] + nn[1] * b[1] * r * 0.45;
+      ctx.globalAlpha = 0.5; ctx.fillStyle = _shade(bowColor, b[2]);
+      ctx.beginPath(); ctx.ellipse(bx, by, r * 0.34, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(8,10,9,0.85)'; ctx.lineWidth = Math.max(0.7 * u, limbW * 0.26); ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let i = 2; i < N - 2; i++) { const off = Math.sin(i * 0.7) * hwAt(i / (N - 1)) * 0.5;
+      const x = arc[i][0] + norm[i][0] * off, y = arc[i][1] + norm[i][1] * off;
+      if (i === 2) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+    ctx.stroke();
+    for (const sg of [-1, 1]) { const yT = cy + sg * SY, w = baseHW * 0.5;
+      const ii = idxAtY(yT, sg < 0 ? 0 : mid, sg < 0 ? mid : N);
+      const ox = arc[ii][0] - norm[ii][0] * w * 0.3, oy = arc[ii][1] - norm[ii][1] * w * 0.3;
+      ctx.beginPath(); ctx.arc(ox, oy, w * 0.4, 0.2, Math.PI * 1.7); ctx.stroke(); }
+    ctx.restore();
+
+    // ③ 立体感：濃い緑の縁取り＋明るいリムライト
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = _shade(bowColor, -0.5); ctx.lineWidth = Math.max(0.8 * u, limbW * 0.5);
+    ctx.stroke(body); ctx.stroke(hornT); ctx.stroke(hornB);
+    ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = _shade(bowColor, 0.55); ctx.lineWidth = limbW * 0.22; ctx.stroke(body); ctx.restore();
+    // トゲは外側2辺だけ縁取り（付け根の継ぎ目を隠す）
+    ctx.strokeStyle = _shade(bowColor, -0.5); ctx.lineWidth = Math.max(0.8 * u, limbW * 0.5); ctx.lineCap = 'round';
+    for (const tr of spikeTris) { ctx.beginPath(); ctx.moveTo(tr[0][0], tr[0][1]); ctx.lineTo(tr[1][0], tr[1][1]); ctx.lineTo(tr[2][0], tr[2][1]); ctx.stroke(); }
+
+    // ④ 握りのアクセント帯
+    setGlow();
+    ctx.strokeStyle = accent; ctx.lineWidth = limbW * 1.7;
+    ctx.beginPath(); ctx.ellipse(cx, cy, r, ry, 0, -0.13, 0.13); ctx.stroke();
+    clr();
+  }
+  else { // compound（流星の神弓）：金の彫刻弓身＋上下対称フィン突起＋黒よろけ縞＋カム＋流星宝玉
+    const aa = Math.PI * 0.60;
+    const rx = 0.92 * r;          // ベリー側(右)のふくらみ
+    const ry = 1.56 * r;          // 縦の伸び（従来より少し大きく）
+    const dipDepth = 0.16 * r;    // アーチ中央を内側(弦側)へキュッと窪ませる深さ
+    const aeT = [cx + rx * Math.cos(-aa), cy + ry * Math.sin(-aa)];
+    const aeB = [cx + rx * Math.cos(aa),  cy + ry * Math.sin(aa)];
+    topTip = [aeT[0], aeT[1]]; botTip = [aeB[0], aeB[1]];
+    nockBaseX = cx - 0.04 * r;
+
+    // --- 中心線（中央を内側へくびれさせる）と法線 ---
+    const N = 31, mid = Math.floor(N / 2), arc = [];
+    for (let i = 0; i < N; i++) {
+      const p = i / (N - 1), th = -aa + 2 * aa * p;
+      const dip = dipDepth * Math.exp(-Math.pow((p - 0.5) / 0.072, 2));  // 中央のキュッとした窪み
+      arc.push([cx + rx * Math.cos(th) - dip, cy + ry * Math.sin(th)]);
+    }
+    const norm = [];
+    for (let i = 0; i < N; i++) {
+      const p0 = arc[Math.max(0, i - 1)], p1 = arc[Math.min(N - 1, i + 1)];
+      let tx = p1[0] - p0[0], ty = p1[1] - p0[1]; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L;
+      let nx = ty, ny = -tx; if (nx < 0) { nx = -nx; ny = -ny; } norm.push([nx, ny]);
+    }
+    gripX = arc[mid][0];   // くびれた中央のベリー＝宝玉がここに収まる
+    // 太さ：中央(グリップ)で最大、先端へシャープに収束（太さとシャープさの両立）
+    const baseHW = limbW * 1.7;
+    const hwAt = (p) => baseHW * (0.14 + 0.86 * Math.pow(Math.sin(Math.PI * p), 0.6));
+    const Oedge = (i) => { const w = hwAt(i / (N - 1)); return [arc[i][0] + norm[i][0] * w, arc[i][1] + norm[i][1] * w]; };
+    const Iedge = (i) => { const w = hwAt(i / (N - 1)); return [arc[i][0] - norm[i][0] * w, arc[i][1] - norm[i][1] * w]; };
+
+    // --- 本体バンド ---
+    const body = new Path2D();
+    { const o0 = Oedge(0); body.moveTo(o0[0], o0[1]);
+      for (let i = 1; i < N; i++) { const q = Oedge(i); body.lineTo(q[0], q[1]); }
+      for (let i = N - 1; i >= 0; i--) { const q = Iedge(i); body.lineTo(q[0], q[1]); }
+      body.closePath(); }
+
+    // --- 先端ツノ：両端から外側へS字に跳ねる先細りシェイプ（上下対称）---
+    const makeHorn = (base, c1, c2, tip, baseW) => {
+      const M = 20, cl = [];
+      for (let i = 0; i <= M; i++) { const tt2 = i / M, mt = 1 - tt2;
+        cl.push([mt*mt*mt*base[0] + 3*mt*mt*tt2*c1[0] + 3*mt*tt2*tt2*c2[0] + tt2*tt2*tt2*tip[0],
+                 mt*mt*mt*base[1] + 3*mt*mt*tt2*c1[1] + 3*mt*tt2*tt2*c2[1] + tt2*tt2*tt2*tip[1]]); }
+      const nm = [];
+      for (let i = 0; i < cl.length; i++) { const p0 = cl[Math.max(0,i-1)], p1 = cl[Math.min(cl.length-1,i+1)];
+        let tx = p1[0]-p0[0], ty = p1[1]-p0[1]; const L = Math.hypot(tx,ty)||1; tx/=L; ty/=L; nm.push([ty,-tx]); }
+      const le = [], ri = [];
+      for (let i = 0; i < cl.length; i++) { const s = i/(cl.length-1), w = baseW * Math.pow(1-s, 0.7);
+        le.push([cl[i][0]+nm[i][0]*w, cl[i][1]+nm[i][1]*w]);
+        ri.push([cl[i][0]-nm[i][0]*w, cl[i][1]-nm[i][1]*w]); }
+      const path = new Path2D(); path.moveTo(le[0][0], le[0][1]);
+      for (let i = 1; i < le.length; i++) path.lineTo(le[i][0], le[i][1]);
+      for (let i = ri.length-1; i >= 0; i--) path.lineTo(ri[i][0], ri[i][1]);
+      path.closePath();
+      return path;
+    };
+    const hornBaseW = hwAt(0) * 1.2;
+    const hornT = makeHorn(aeT, [cx - 0.42*r, cy - 1.82*r], [cx + 0.34*r, cy - 2.22*r], [cx + 0.48*r, cy - 1.92*r], hornBaseW);
+    const hornB = makeHorn(aeB, [cx - 0.42*r, cy + 1.82*r], [cx + 0.34*r, cy + 2.22*r], [cx + 0.48*r, cy + 1.92*r], hornBaseW);
+
+    // --- 上下対称フィン突起：端からほんの少し中央寄り、ベリー側へ尖って跳ねる ---
+    const idxAtY = (y, lo, hi) => { let bi = lo, bd = Infinity;
+      for (let i = lo; i < hi; i++) { const dd = Math.abs(arc[i][1] - y); if (dd < bd) { bd = dd; bi = i; } } return bi; };
+    const FY = 1.16 * r, finHalf = 0.16 * r, finLen = 0.52 * r;
+    const finPaths = [];
+    for (const sg of [-1, 1]) {
+      const yC = cy + sg * FY, lo = sg < 0 ? 0 : mid, hi = sg < 0 ? mid : N;
+      const b1 = Oedge(idxAtY(yC - finHalf, lo, hi)), b2 = Oedge(idxAtY(yC + finHalf, lo, hi));
+      const bcx = (b1[0] + b2[0]) / 2;
+      const apex = [bcx + finLen, cy + sg * (FY + finLen * 0.42)];
+      const p = new Path2D(); p.moveTo(b1[0], b1[1]); p.lineTo(apex[0], apex[1]); p.lineTo(b2[0], b2[1]); p.closePath();
+      finPaths.push(p);
+    }
+
+    // --- 金のグラデ（厚みの丸み）---
+    const grad = ctx.createLinearGradient(cx - 0.2 * r, 0, cx + 1.25 * r, 0);
+    grad.addColorStop(0,    _shade(bowColor, -0.40));
+    grad.addColorStop(0.5,  bowColor);
+    grad.addColorStop(1,    _shade(bowColor, 0.48));
+
+    // ① 塗り：本体＋フィン（発光付き）
+    ctx.save();
+    if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = glowBlur * 1.2; }
+    ctx.fillStyle = grad; ctx.fill(body);
+    ctx.restore();
+    ctx.fillStyle = grad; for (const p of finPaths) ctx.fill(p);
+    ctx.fill(hornT); ctx.fill(hornB);
+
+    // ② クリップ → 立体濃淡＋黒のよろけ縞（縦に走り左右へ揺れる縞）
+    ctx.save();
+    ctx.clip(body);
+    ctx.globalAlpha = 0.5; ctx.fillStyle = _shade(bowColor, 0.55);
+    for (const fr of [0.24, 0.5, 0.76]) { const id = Math.round(fr * (N - 1)), P0 = arc[id], nn = norm[id];
+      ctx.beginPath(); ctx.ellipse(P0[0] + nn[0] * baseHW * 0.35, P0[1] + nn[1] * baseHW * 0.35, r * 0.14, r * 0.3, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(14,11,3,0.9)'; ctx.lineWidth = Math.max(0.6 * u, limbW * 0.18); ctx.lineCap = 'round';
+    const stripeN = 3;
+    for (let s = 0; s < stripeN; s++) {
+      const baseOff = (s - (stripeN - 1) / 2) / (stripeN - 1) * 1.1;   // -0.55..0.55
+      ctx.beginPath();
+      for (let i = 2; i < N - 2; i++) {
+        const p = i / (N - 1), w = hwAt(i / (N - 1));
+        const k = baseOff + 0.26 * Math.sin(p * Math.PI * 5 + s * 1.4);
+        const x = arc[i][0] + norm[i][0] * w * k, y = arc[i][1] + norm[i][1] * w * k;
+        if (i === 2) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ③ 縁取り＋リムライト
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = _shade(bowColor, -0.5); ctx.lineWidth = Math.max(0.8 * u, limbW * 0.42);
+    ctx.stroke(body); for (const p of finPaths) ctx.stroke(p);
+    ctx.stroke(hornT); ctx.stroke(hornB);
+    ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = _shade(bowColor, 0.6); ctx.lineWidth = limbW * 0.2; ctx.stroke(body); ctx.restore();
+
+    // ④ カムホイール（複合弓の象徴）を両端に
+    const camR = 0.16 * r;
+    for (const cm of [aeT, aeB]) {
+      setGlow(1.1);
+      ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(cm[0], cm[1], camR, 0, Math.PI * 2); ctx.fill();
+      clr();
+      ctx.fillStyle = '#0c0f15'; ctx.beginPath(); ctx.arc(cm[0], cm[1], camR * 0.45, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = _shade(bowColor, -0.4); ctx.lineWidth = Math.max(0.6 * u, limbW * 0.2);
+      ctx.beginPath(); ctx.arc(cm[0], cm[1], camR, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // ⑤ 中央：流星のエネルギー宝玉
+    const pulse = 0.6 + 0.4 * Math.sin(t * 0.006);
+    ctx.save(); ctx.shadowColor = glow || accent; ctx.shadowBlur = glowBlur * 1.4 * pulse;
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.moveTo(gripX + limbW * 1.7, cy); ctx.lineTo(gripX, cy - limbW * 1.55);
+    ctx.lineTo(gripX - limbW * 1.7, cy); ctx.lineTo(gripX, cy + limbW * 1.55);
+    ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(gripX, cy, limbW * 0.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ===== 弦（引くほど筈が左へ寄る）=====
+  const nockX = nockBaseX - draw * 0.5 * r;
+  const nockY = cy;
+  ctx.strokeStyle = stringCol;
+  if (glow && wv.stringGlow) { ctx.shadowColor = glow; ctx.shadowBlur = 4 * u; ctx.lineWidth = 1.3 * u; }
+  else { ctx.lineWidth = 1 * u; }
+  ctx.beginPath();
+  ctx.moveTo(topTip[0], topTip[1]); ctx.lineTo(nockX, nockY); ctx.lineTo(botTip[0], botTip[1]);
+  ctx.stroke();
+  clr();
+
+  // ===== 番えた矢 =====
+  if (showArrow) {
+    const ay = cy - 1 * u;
+    // 矢尻の根元（三角形の底辺＝tipX-4.5u）が弓本体の握り(gripX)に接するよう、
+    // tipX を各スタイルの gripX に連動させる（弓の種類が変わっても常に接触）。
+    const tipX = gripX + 4.5 * u;
+    ctx.strokeStyle = '#A0784A'; ctx.lineWidth = 1.3 * u;
+    ctx.beginPath(); ctx.moveTo(nockX, ay); ctx.lineTo(tipX, ay); ctx.stroke();
+    ctx.fillStyle = wv.headColor || '#ccddee';
+    ctx.beginPath(); ctx.moveTo(tipX, ay); ctx.lineTo(tipX - 4.5 * u, ay - 2.6 * u); ctx.lineTo(tipX - 4.5 * u, ay + 2.6 * u); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = wv.fletchColor || '#88aa66'; ctx.lineWidth = 1 * u;
+    ctx.beginPath();
+    ctx.moveTo(nockX, ay); ctx.lineTo(nockX - 3.5 * u, ay - 3 * u);
+    ctx.moveTo(nockX, ay); ctx.lineTo(nockX - 3.5 * u, ay + 3 * u);
+    ctx.stroke();
+  }
+
+  // ===== パーティクル =====
+  if (wv.particle === 'wind') {
+    for (let i = 0; i < 3; i++) {
+      const ph = (t * 0.0009 + i * 0.37) % 1;
+      const sx = cx - r * 0.3 + (r * 1.9) * ph;
+      const sy = cy - r * 0.7 + i * r * 0.7;
+      ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.7;
+      ctx.strokeStyle = wv.fletchColor || accent; ctx.lineWidth = 1.4 * u;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(sx + r * 0.35, sy - r * 0.08, sx + r * 0.6, sy); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (wv.particle === 'star') {
+    const n = (style === 'compound') ? 5 : 3;
+    for (let i = 0; i < n; i++) {
+      const ang = -Math.PI * 0.6 + Math.PI * 1.2 * ((i + 0.5) / n);
+      const rr = r * (1.16 + 0.12 * Math.sin(t * 0.004 + i));
+      const px = cx + Math.cos(ang) * rr, py = cy + Math.sin(ang) * rr;
+      const tw = 0.35 + 0.65 * Math.abs(Math.sin(t * 0.005 + i * 1.7));
+      const sz = (1.3 + 0.7 * Math.sin(t * 0.006 + i)) * u;
+      ctx.globalAlpha = tw; ctx.fillStyle = glow || accent;
+      if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 4 * u; }
+      ctx.beginPath(); ctx.moveTo(px, py - sz * 2); ctx.lineTo(px + sz * 0.5, py); ctx.lineTo(px, py + sz * 2); ctx.lineTo(px - sz * 0.5, py); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(px - sz * 2, py); ctx.lineTo(px, py + sz * 0.5); ctx.lineTo(px + sz * 2, py); ctx.lineTo(px, py - sz * 0.5); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+
 // 弓アイコンSVGを武器IDの見た目で生成
 function getBowSvg(weaponId, size) {
   const wv = getWeaponVisual(weaponId);
   const s = size || 22;
-  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  const style = wv.bowStyle || 'wood';
+  const bow  = wv.bowColor   || '#8B5E2A';
+  const str  = wv.stringColor|| '#e8e0d0';
+  const head = wv.headColor  || '#c8d4dc';
+  const head2= wv.headColor2 || '#777';
+  const fl   = wv.fletchColor|| '#88aa66';
+  const acc  = wv.accent     || bow;
+  const glow = wv.glowColor  || null;
+  const pat  = wv.patternColor || acc;
+  const arrow = `<line x1="3" y1="11" x2="13.5" y2="11" stroke="${head2}" stroke-width="1.4" stroke-linecap="round"/>`
+    + `<path d="M13.5,11 L9.5,9 L9.5,13 Z" fill="${head}"/>`
+    + `<line x1="3" y1="11" x2="0.8" y2="8.8" stroke="${fl}" stroke-width="1.2"/>`
+    + `<line x1="3" y1="11" x2="0.8" y2="13.2" stroke="${fl}" stroke-width="1.2"/>`;
+  let fx = '', limbs = '', deco = '';
+  if (style === 'wood') {
+    limbs = `<path d="M13.5,11 C13,6.6 6.6,3 8.4,1.4" fill="none" stroke="${bow}" stroke-width="2.3" stroke-linecap="round"/>`
+          + `<path d="M13.5,11 C13,15.4 6.6,19 8.4,20.6" fill="none" stroke="${bow}" stroke-width="2.3" stroke-linecap="round"/>`
+          + `<line x1="8.4" y1="1.4" x2="8.4" y2="20.6" stroke="${str}" stroke-width="0.8"/>`;
+    deco  = `<line x1="13.5" y1="8.4" x2="13.5" y2="13.6" stroke="${acc}" stroke-width="2.6" stroke-linecap="round"/>`;
+  } else if (style === 'angular') {
+    limbs = `<polyline points="6,2 13,6.5 18,11 13,15.5 6,20" fill="none" stroke="${bow}" stroke-width="2.2" stroke-linejoin="miter" stroke-linecap="round"/>`
+          + `<line x1="6" y1="2" x2="6" y2="20" stroke="${str}" stroke-width="0.8"/>`;
+    deco  = `<line x1="16" y1="8.5" x2="16" y2="13.5" stroke="${acc}" stroke-width="2.6" stroke-linecap="round"/>`
+          + `<circle cx="17.8" cy="11" r="0.9" fill="#fff" opacity="0.7"/>`;
+    fx    = `<circle cx="6" cy="2" r="1" fill="${wv.tipCap||acc}"/><circle cx="6" cy="20" r="1" fill="${wv.tipCap||acc}"/>`;
+  } else if (style === 'asymmetric') {
+    fx    = glow ? `<ellipse cx="12" cy="11" rx="9" ry="10.4" fill="${glow}"/>` : '';
+    const uP = 'M16,11 C16.2,6.8 6.2,4.2 8,1';
+    const lP = 'M16,11 C15.8,15 7.4,15.6 9.5,18.5';
+    limbs = `<path d="${uP}" fill="none" stroke="${bow}" stroke-width="2.1" stroke-linecap="round"/>`
+          + `<path d="${lP}" fill="none" stroke="${bow}" stroke-width="2.1" stroke-linecap="round"/>`
+          + `<path d="${uP}" fill="none" stroke="${pat}" stroke-width="0.9" stroke-linecap="round"/>`
+          + `<path d="${lP}" fill="none" stroke="${pat}" stroke-width="0.9" stroke-linecap="round"/>`
+          + `<path d="M8,1 Q7,11 9.5,18.5" fill="none" stroke="${str}" stroke-width="0.8"/>`;
+    deco  = `<line x1="16" y1="9" x2="16" y2="13" stroke="${acc}" stroke-width="2.4" stroke-linecap="round"/>`
+          + `<line x1="16" y1="9.6" x2="16" y2="12.4" stroke="${pat}" stroke-width="0.8" stroke-linecap="round"/>`
+          + `<circle cx="11" cy="5" r="0.95" fill="${acc}"/><circle cx="11" cy="5" r="0.45" fill="${pat}"/>`
+          + `<circle cx="11.6" cy="15.4" r="0.95" fill="${acc}"/><circle cx="11.6" cy="15.4" r="0.45" fill="${pat}"/>`;
+    fx   += `<circle cx="12.5" cy="3" r="0.6" fill="#fff" opacity="0.85"/>`;
+  } else if (style === 'recurve') {
+    // 肉厚クレセント＋外へS字に跳ねる先端＋トゲ2本＋緑グラデ＋黒唐草＋スプラッシュ（実物と同期）
+    const dG = _shade(bow, -0.5), lG = _shade(bow, 0.45);
+    const body  = "M10.77,6.30 L11.39,6.14 L11.89,6.16 L12.74,4.19 L13.69,4.39 L14.60,4.81 L15.42,5.43 L16.14,6.21 L16.73,7.13 L17.18,8.16 L17.44,9.28 L17.48,10.43 L17.48,11.57 L17.44,12.72 L17.18,13.84 L16.73,14.87 L16.14,15.79 L15.42,16.57 L14.60,17.19 L13.69,17.61 L12.74,17.81 L11.89,15.84 L11.39,15.86 L10.77,15.70 L10.18,17.10 L10.90,17.51 L11.79,17.77 L12.35,15.72 L12.77,15.49 L13.16,15.17 L13.53,14.75 L13.86,14.23 L14.15,13.62 L14.39,12.94 L14.60,12.20 L14.79,11.41 L14.79,10.59 L14.60,9.80 L14.39,9.06 L14.15,8.38 L13.86,7.77 L13.53,7.25 L13.16,6.83 L12.77,6.51 L12.35,6.28 L11.79,4.23 L10.90,4.49 L10.18,4.90 Z";
+    const hornT = "M9.78,5.29 L10.34,4.30 L10.99,3.43 L11.68,2.73 L12.40,2.20 L13.11,1.88 L13.77,1.79 L14.32,2.01 L14.57,2.49 L14.16,2.31 L13.81,2.35 L13.41,2.56 L12.95,2.94 L12.46,3.48 L11.98,4.17 L11.54,4.98 L11.17,5.91 Z";
+    const hornB = "M11.17,16.09 L11.54,17.02 L11.98,17.83 L12.46,18.52 L12.95,19.06 L13.41,19.44 L13.81,19.65 L14.16,19.69 L14.57,19.51 L14.32,19.99 L13.77,20.21 L13.11,20.12 L12.40,19.80 L11.68,19.27 L10.99,18.57 L10.34,17.70 L9.78,16.71 Z";
+    const spk1  = "M16.14,6.21 L20.54,6.35 L17.44,9.28 Z";
+    const spk2  = "M17.44,12.72 L20.54,15.65 L16.14,15.79 Z";
+    fx    = glow ? `<ellipse cx="13" cy="11" rx="9" ry="10" fill="${glow}"/>` : '';
+    limbs = `<defs>`
+          +   `<linearGradient id="urbg" x1="0" y1="0" x2="1" y2="0">`
+          +     `<stop offset="0" stop-color="${dG}"/><stop offset="0.55" stop-color="${bow}"/><stop offset="1" stop-color="${lG}"/>`
+          +   `</linearGradient>`
+          +   `<clipPath id="urbc"><path d="${body}"/></clipPath>`
+          + `</defs>`
+          + `<path d="${spk1}" fill="url(#urbg)" stroke="${dG}" stroke-width="0.6" stroke-linejoin="round"/>`
+          + `<path d="${spk2}" fill="url(#urbg)" stroke="${dG}" stroke-width="0.6" stroke-linejoin="round"/>`
+          + `<path d="${body}" fill="url(#urbg)" stroke="${dG}" stroke-width="0.7" stroke-linejoin="round"/>`
+          + `<path d="${hornT}" fill="url(#urbg)" stroke="${dG}" stroke-width="0.55" stroke-linejoin="round"/>`
+          + `<path d="${hornB}" fill="url(#urbg)" stroke="${dG}" stroke-width="0.55" stroke-linejoin="round"/>`
+          + `<g clip-path="url(#urbc)">`
+          +   `<ellipse cx="13.5" cy="7.4" rx="2.2" ry="1.6" fill="${lG}" opacity="0.5"/>`
+          +   `<ellipse cx="13.8" cy="14.6" rx="2" ry="1.5" fill="${dG}" opacity="0.5"/>`
+          +   `<ellipse cx="15.8" cy="11" rx="1.9" ry="1.5" fill="${lG}" opacity="0.45"/>`
+          +   `<path d="M12,6.4 Q14.6,8 13.2,10 Q12.2,11 13.8,11" fill="none" stroke="#0a0a0a" stroke-width="0.45" opacity="0.85"/>`
+          +   `<path d="M12,15.6 Q14.6,14 13.2,12" fill="none" stroke="#0a0a0a" stroke-width="0.45" opacity="0.85"/>`
+          +   `<path d="M15,9.4 Q16.6,11 15,12.6" fill="none" stroke="#0a0a0a" stroke-width="0.4" opacity="0.7"/>`
+          + `</g>`
+          + `<path d="M12.9,6.6 Q15.6,11 13,15.4" fill="none" stroke="${lG}" stroke-width="0.5" opacity="0.7" stroke-linecap="round"/>`
+          + `<path d="M11,5.6 Q10.2,11 11,16.4" fill="none" stroke="${str}" stroke-width="0.8"/>`;
+    deco  = `<path d="M16,9.2 Q17.9,11 16,12.8" fill="none" stroke="${acc}" stroke-width="1.6" stroke-linecap="round"/>`;
+    fx   += `<path d="M1.4,6 Q5.4,5.2 8.8,6" fill="none" stroke="${fl}" stroke-width="0.95" opacity="0.7" stroke-linecap="round"/>`
+          + `<path d="M1,16 Q5.4,16.8 9.2,16" fill="none" stroke="${fl}" stroke-width="0.95" opacity="0.55" stroke-linecap="round"/>`;
+  } else { // compound（流星の神弓）：金の彫刻弓身（中央くびれ）＋S字ツノ＋上下対称フィン＋黒よろけ縞＋カム＋宝玉
+    const dG = _shade(bow, -0.45), lG = _shade(bow, 0.5);
+    // ベリーを中央(y=11)でほんの少し内側へくびれさせる
+    const bodyP = "M9,2.4 Q18.6,4 18.4,7.4 Q17.3,11 18.4,14.6 Q18.6,18 9,19.6 Q13.6,16 13.2,11 Q13.6,6 9,2.4 Z";
+    const finT  = "M16,5.2 L19.4,3 L14.7,6.6 Z";
+    const finB  = "M16,16.8 L19.4,19 L14.7,15.4 Z";
+    const hornT = "M8.7,3 Q7.0,1.1 9.5,0.4 Q10.6,1.4 9.9,2.7 Z";
+    const hornB = "M8.7,19 Q7.0,20.9 9.5,21.6 Q10.6,20.6 9.9,19.3 Z";
+    fx    = glow ? `<ellipse cx="13" cy="11" rx="9.6" ry="10.8" fill="${glow}"/>` : '';
+    limbs = `<defs>`
+          +   `<linearGradient id="cmpg" x1="0" y1="0" x2="1" y2="0">`
+          +     `<stop offset="0" stop-color="${dG}"/><stop offset="0.5" stop-color="${bow}"/><stop offset="1" stop-color="${lG}"/>`
+          +   `</linearGradient>`
+          +   `<clipPath id="cmpc"><path d="${bodyP}"/></clipPath>`
+          + `</defs>`
+          + `<path d="${hornT}" fill="url(#cmpg)" stroke="${dG}" stroke-width="0.5" stroke-linejoin="round"/>`
+          + `<path d="${hornB}" fill="url(#cmpg)" stroke="${dG}" stroke-width="0.5" stroke-linejoin="round"/>`
+          + `<path d="${finT}" fill="url(#cmpg)" stroke="${dG}" stroke-width="0.5" stroke-linejoin="round"/>`
+          + `<path d="${finB}" fill="url(#cmpg)" stroke="${dG}" stroke-width="0.5" stroke-linejoin="round"/>`
+          + `<path d="${bodyP}" fill="url(#cmpg)" stroke="${dG}" stroke-width="0.7" stroke-linejoin="round"/>`
+          + `<g clip-path="url(#cmpc)">`
+          +   `<ellipse cx="16.4" cy="8" rx="1.5" ry="1" fill="${lG}" opacity="0.5"/>`
+          +   `<ellipse cx="16.4" cy="14" rx="1.4" ry="1" fill="${dG}" opacity="0.45"/>`
+          +   `<path d="M13.8,4 Q16.2,7 14.7,11 Q13.5,15 14.4,18" fill="none" stroke="#0c0a04" stroke-width="0.5" opacity="0.9"/>`
+          +   `<path d="M15.3,4.4 Q17.4,7.2 16.1,11 Q15,15 15.9,17.6" fill="none" stroke="#0c0a04" stroke-width="0.5" opacity="0.9"/>`
+          +   `<path d="M16.8,5.4 Q18.2,8 17.1,11 Q16.2,14 16.9,16.8" fill="none" stroke="#0c0a04" stroke-width="0.45" opacity="0.85"/>`
+          + `</g>`
+          + `<path d="M9,2.4 L7,11 L9,19.6" fill="none" stroke="${str}" stroke-width="0.9"/>`;
+    deco  = `<circle cx="9" cy="2.4" r="1.5" fill="${acc}" stroke="${dG}" stroke-width="0.4"/><circle cx="9" cy="2.4" r="0.6" fill="#0c0f15"/>`
+          + `<circle cx="9" cy="19.6" r="1.5" fill="${acc}" stroke="${dG}" stroke-width="0.4"/><circle cx="9" cy="19.6" r="0.6" fill="#0c0f15"/>`
+          + `<path d="M17.4,11 L15.6,8.9 L13.8,11 L15.6,13.1 Z" fill="${acc}"/><circle cx="15.6" cy="11" r="0.85" fill="#fff"/>`;
+    fx   += `<path d="M11.3,4.2 L11.8,5.6 L13.2,6.1 L11.8,6.6 L11.3,8 L10.8,6.6 L9.4,6.1 L10.8,5.6 Z" fill="#fff" opacity="0.85"/>`;
+  }
   return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
-    + glow
-    + `<path d="M6,2 Q17,11 6,20" fill="none" stroke="${wv.bowColor}" stroke-width="2.2" stroke-linecap="round"/>`
-    + `<line x1="6" y1="2" x2="6" y2="20" stroke="${wv.stringColor}" stroke-width="0.8"/>`
-    + `<line x1="3" y1="11" x2="14" y2="11" stroke="${wv.headColor2}" stroke-width="1.4" stroke-linecap="round"/>`
-    + `<path d="M14,11 L10,9 L10,13 Z" fill="${wv.headColor}"/>`
-    + `<line x1="3" y1="11" x2="0.5" y2="8.5" stroke="${wv.fletchColor}" stroke-width="1.2"/>`
-    + `<line x1="3" y1="11" x2="0.5" y2="13.5" stroke="${wv.fletchColor}" stroke-width="1.2"/>`
-    + `</svg>`;
+    + fx + limbs + arrow + deco + `</svg>`;
 }
+
 // --- 第2世代武器アイコンSVG ---
 // 大槍（スピラ）アイコン
 function getLongSpearSvg(weaponId, size) {
@@ -2923,10 +3476,10 @@ function applyStageDifficulty(stageId) {
 // ======================================================
 
 
-</script>
 
-<!-- 04-robot-config.js -->
+</script>
 <script>
+/* ===== 04-robot-config.js ===== */
 // ==================== 04-robot-config.js ====================
 // ======================================================
 // ===== 04-robot-config.js =====
@@ -3013,10 +3566,10 @@ function rectsOverlap(a,b){
 // ======================================================
 
 
-</script>
 
-<!-- 05-game-loop.js -->
+</script>
 <script>
+/* ===== 05-game-loop.js ===== */
 // ==================== 05-game-loop.js ====================
 // ======================================================
 // ===== 05-game-loop.js =====
@@ -3120,8 +3673,8 @@ function update(dt){
           arrows.push({
             x: player.x + player.w/2,
             y: player.y + player.h * 0.3,
-            vx: player.facing * TILE * 22,
-            vy: spread * TILE * 8,
+            vx: player.facing * TILE * 20,
+            vy: -TILE * 4.5 + spread * TILE * 8,
             atk: spearAtk,
             life: 1.5,
             trail: [],
@@ -3226,6 +3779,49 @@ function update(dt){
           }
         }
         if (grardHit) addGaugeHit(1);
+      }
+    }
+
+    // punch_giant: 発射フェーズ(57%)到達時に1度だけ当たり判定（手が敵に触れるタイミング）
+    if (player.attackAnim.type === 'punch_giant' && !player.attackAnim.hitChecked) {
+      if (player.attackAnim.t / player.attackAnim.duration >= 0.57) {
+        player.attackAnim.hitChecked = true;
+        const range = player.attackAnim.hitRange || TILE * 3.0;
+        const punchAtk = player.attackAnim.hitAtk || 1;
+        let punchHit = false;
+        for (const e of enemies) {
+          if (!e.alive) continue;
+          const dx = (e.x+e.w/2)-(player.x+player.w/2);
+          const dy = Math.abs((e.y+e.h/2)-(player.y+player.h/2));
+          if (Math.sign(dx)===player.facing && Math.abs(dx)<range && dy<TILE*2) {
+            e.hp -= punchAtk; e.dmgFlash = 0.35;
+            if (e.hp<=0){e.alive=false;score+=getEnemyKillScore(e);}
+            punchHit = true;
+          }
+        }
+        if (punchHit) addGaugeHit(1);
+      }
+    }
+
+    // mumei_punch: 手が最大限伸びるタイミング（50%）で1度だけヒット判定
+    if (player.attackAnim.type === 'mumei_punch' && !player.attackAnim.hitChecked) {
+      if (player.attackAnim.t / player.attackAnim.duration >= 0.50) {
+        player.attackAnim.hitChecked = true;
+        const range = player.attackAnim.hitRange;
+        const punchAtk = player.attackAnim.hitAtk || 1;
+        let mumeiHit = false;
+        for (const e of enemies) {
+          if (!e.alive) continue;
+          const dx = (e.x + e.w/2) - (player.x + player.w/2);
+          const dy = Math.abs((e.y + e.h/2) - (player.y + player.h/2));
+          // 前方向きの敵のみ・縦方向は体の高さ範囲内
+          if (Math.sign(dx) === player.facing && Math.abs(dx) < range && dy < player.h * 0.85) {
+            e.hp -= punchAtk; e.dmgFlash = 0.18;
+            if (e.hp <= 0) { e.alive = false; score += getEnemyKillScore(e); }
+            mumeiHit = true;
+          }
+        }
+        if (mumeiHit) addGaugeHit(1);
       }
     }
 
@@ -3398,19 +3994,14 @@ function update(dt){
       player.attackAnim = { type:'punch', t:0, duration:0.4 };
 
     } else {
+      // ムメイ通常攻撃（punch）：手が実際に届くタイミング（50%）でヒット判定（attackAnim内で処理）
       player.attackTimer = _skill.cooldown;
-      player.attackAnim = { type:'punch', t:0, duration:0.25 };
-      const range = TILE * _skill.range;
-      let noneHit = false;
-      for (const e of enemies) {
-        if (!e.alive) continue;
-        if (isInMeleeRange(player, e, range, player.facing)) {
-          e.hp -= skillAtk; e.dmgFlash=0.18;
-          if (e.hp<=0){e.alive=false;score+=getEnemyKillScore(e);}
-          noneHit = true;
-        }
-      }
-      if (noneHit) addGaugeHit(1); // ヒット時のみゲージ付与
+      player.attackAnim = {
+        type: 'mumei_punch', t: 0, duration: 0.25,
+        hitChecked: false, hitAtk: skillAtk,
+        // 手先の到達距離：体の半幅(player.w*0.5) ＋ 腕の突き出し量(player.w*0.42) ＋ 拳のサイズ(player.w*0.12)
+        hitRange: player.w * 0.5 + player.w * 0.42 + player.w * 0.12,
+      };
     }
   }
 
@@ -3512,10 +4103,11 @@ function update(dt){
     a.x += a.vx * dt;
     a.y += a.vy * dt;
     // 矢種別の重力係数
-    // rain=速落下, heavy_arrow=超高重力, ballista_bolt/magic_bolt=無重力（直進）
+    // rain=速落下, heavy_arrow=超高重力, ballista_bolt/magic_bolt=無重力（直進）, spear_throw=放物線
     const _grav = (a.type === 'rain')          ? 600
                 : (a.type === 'heavy_arrow')    ? 850
                 : (a.type === 'ballista_bolt' || a.type === 'magic_bolt') ? 0
+                : (a.type === 'spear_throw')    ? 480
                 : 280;
     a.vy += _grav * dt;
     if (a.x < 0 || a.x > WORLD_W) { arrows.splice(i, 1); continue; }
@@ -4036,10 +4628,10 @@ window.onRevived = onRevived;
 // ======================================================
 
 
-</script>
 
-<!-- 06-enemy-draw.js -->
+</script>
 <script>
+/* ===== 06-enemy-draw.js ===== */
 // ==================== 06-enemy-draw.js ====================
 // ======================================================
 // ===== 06-enemy-draw.js =====
@@ -5003,109 +5595,427 @@ function drawBird(p, cfg){
 // ======================================================
 
 
-</script>
 
-<!-- 07-course-draw.js -->
+</script>
 <script>
+/* ===== 07-course-draw.js ===== */
 // ==================== 07-course-draw.js ====================
 // ======================================================
 // ===== 07-course-draw.js =====
 // ===== コース用ムメイ描画（ロビーのdrawLobbyRobotMumeiをctx版に移植） =====
+
+// ======================================================
+// ===== アイドルモーション：瞬き状態管理（全キャラ共通） =====
+// ======================================================
+const _idleAnim = {
+  blinkTimer: 0,
+  blinkInterval: 3.2,   // 次の瞬きまでの秒数（初期値）
+  isBlinking: false,
+  blinkT: 0,
+  BLINK_DURATION: 0.10, // 瞬き1回の長さ（秒）
+  lastTimestamp: 0,
+
+  // 毎フレーム呼び出し：経過時間を更新し、目の開き具合（0〜1）を返す
+  update(nowMs) {
+    const dt = this.lastTimestamp ? Math.min((nowMs - this.lastTimestamp) / 1000, 0.05) : 0;
+    this.lastTimestamp = nowMs;
+
+    this.blinkTimer += dt;
+    if (!this.isBlinking && this.blinkTimer >= this.blinkInterval) {
+      this.isBlinking = true;
+      this.blinkT = 0;
+      this.blinkTimer = 0;
+      this.blinkInterval = 2.5 + Math.random() * 3.0; // 次は2.5〜5.5秒後
+    }
+    if (this.isBlinking) {
+      this.blinkT += dt;
+      const p = this.blinkT / this.BLINK_DURATION;
+      if (p >= 1) { this.isBlinking = false; return 1; }
+      // 0→0.5で閉じる、0.5→1で開く
+      return p < 0.5 ? 1 - (p / 0.5) : (p - 0.5) / 0.5;
+    }
+    return 1;
+  }
+};
+
+// 呼吸オフセットを返す（±2px の上下。攻撃中は0）
+function _getBreathOffset(nowMs, isAttacking) {
+  if (isAttacking) return 0;
+  return Math.sin(nowMs / 1000 * 1.1) * 2;
+}
+
+// 線形補間
+function _lerp(a, b, t) { return a + (b - a) * t; }
+
+// 関節のある手足を描く（肩→肘→手 のように複数点を太いラインで繋ぎ、輪郭付きで描画）
+// pts: [x0,y0, x1,y1, ...] の平坦配列。color: 主色, w: 太さ, u: スケール単位
+function _limb(c, pts, color, w, u) {
+  c.save();
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  // 輪郭（暗色）
+  c.strokeStyle = '#333'; c.lineWidth = w + 1.4 * u;
+  c.beginPath(); c.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+  c.stroke();
+  // 本体（主色）
+  c.strokeStyle = color; c.lineWidth = w;
+  c.beginPath(); c.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+  c.stroke();
+  c.restore();
+}
+
+// 肩(sx,sy)→手(hx,hy) を肘を曲げて2節で描く。bend: 肘の張り出し量(+で進行方向に対し時計回り側)
+// 返り値は肘座標 {ex,ey}
+function _arm2(c, sx, sy, hx, hy, bend, color, w, u) {
+  const mx = (sx + hx) / 2, my = (sy + hy) / 2;
+  const dx = hx - sx, dy = hy - sy;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len; // 進行方向に垂直
+  const ex = mx + nx * bend, ey = my + ny * bend;
+  _limb(c, [sx, sy, ex, ey, hx, hy], color, w, u);
+  return { ex, ey };
+}
+
+// 手（拳）を小さな円で描く
+function _hand(c, x, y, color, u) {
+  c.fillStyle = color;
+  c.beginPath(); c.arc(x, y, 2.6 * u, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#333'; c.lineWidth = 1 * u; c.stroke();
+}
+
 function drawCourseMumei(c, cx, baseY, W, H, flipped, attackAnim) {
   const u = W / 48;
   const headW = W * 0.55, headH = H * 0.32;
   const bodyW = W * 0.38;
   const armW  = W * 0.12, armH  = H * 0.20;
-  const headTop  = baseY - H;
+
+  // ===== アイドルモーション =====
+  const _now = performance.now();
+  const _isAttacking = !!attackAnim;
+  const _breath = _getBreathOffset(_now, _isAttacking);
+  const _eyeOpen = _isAttacking ? 1 : _idleAnim.update(_now);
+
+  const headTop  = baseY - H + _breath;    // 頭は呼吸で上下
   const bodyTop  = headTop + headH + 2*u;
-  const bodyH = baseY - bodyTop;
+  const bodyH = baseY - bodyTop - _breath; // 胴体は腕基準に合わせて伸縮
 
   // パンチモーション判定（通常 / 巨大化スキル）
-  const isPunching = attackAnim && attackAnim.type === 'punch';
+  const isPunching = attackAnim && (attackAnim.type === 'punch' || attackAnim.type === 'mumei_punch');
   const isGiantPunching = attackAnim && attackAnim.type === 'punch_giant';
-  const punchT = (isPunching || isGiantPunching) ? attackAnim.t / attackAnim.duration : 0;
-  // 0→1→0で前に突き出して戻る（sin波）
-  const punchProgress = (isPunching || isGiantPunching) ? Math.sin(Math.min(1, punchT) * Math.PI) : 0;
-  const punchExtend = punchProgress * W * 0.42; // 突き出し量
-  // 巨大化倍率（最大：スライム大の頭よりやや小さいサイズ）
-  const giantScale = isGiantPunching ? 1 + punchProgress * 5.4 : 1;
+  const punchT = isPunching ? attackAnim.t / attackAnim.duration : 0;
+  // 通常パンチ：0→1→0で前に突き出して戻る（sin波）
+  const punchProgress = isPunching ? Math.sin(Math.min(1, punchT) * Math.PI) : 0;
+  const punchExtend = punchProgress * W * 0.42;
 
-  // 腕（左右）
-  c.fillStyle = '#c8d4de';
-  // 左腕（軸足側・固定）
-  c.beginPath(); c.roundRect(cx - bodyW/2 - armW, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
-  c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
+  // 巨大パンチ：4フェーズ（引き込み→溜め静止→発射→戻り）
+  // duration は 02-input-controls.js 側で 2.0 に変更すること
+  // フェーズ1（0〜10%）  ：腕を後方に引き始め＋体が捻り始める
+  // フェーズ2（10〜70%） ：溜め静止（背中が見えるほど90度捻り・1.2秒キープ）
+  // フェーズ3（70〜85%） ：体の捻りを解放しながら一気に発射
+  // フェーズ4（85〜100%）：腕・体が元の位置へ戻る
+  const giantT = isGiantPunching ? attackAnim.t / attackAnim.duration : 0;
+  const WINDUP_END = 0.10; // 引き込み終了（0.2秒）
+  const HOLD_END   = 0.50; // 溜め静止終了（0.10〜0.50 = 0.8秒）
+  const FIRE_END   = 0.65; // 発射終了
 
-  // 右腕（パンチを繰り出す側：前方に伸びる。巨大化時は太さも増す）
-  const armWGiant = armW * (1 + (giantScale-1) * 0.6);
-  c.beginPath();
-  c.roundRect(cx + bodyW/2 + punchExtend, bodyTop + bodyH*0.08, armWGiant + punchExtend*0.3, armH, 3*u);
-  c.fill();
-  c.stroke();
+  let giantPunchP = 0;  // 0→1→0：前方への突き出し量（発射フェーズのみ）
+  let giantScale  = 1;  // 拳の巨大化倍率
+  let twistP      = 0;  // 0→1：体の捻り量（0=正面、1=90度捻り）
 
-  // パンチ時：拳の強調（先端に丸い拳）
-  if ((isPunching || isGiantPunching) && punchProgress > 0.1) {
-    const fistX = cx + bodyW/2 + punchExtend + armWGiant + punchExtend*0.3;
-    const fistY = bodyTop + bodyH*0.08 + armH/2;
-    const fistR = armW * 0.55 * giantScale; // 巨大化時は拳も大きく（見た目は通常と同じ）
+  if (isGiantPunching) {
+    if (giantT < WINDUP_END) {
+      const p = giantT / WINDUP_END;
+      twistP = 1 - Math.pow(1 - p, 2); // ease-out で素早く捻り始める
+    } else if (giantT < HOLD_END) {
+      twistP = 1; // 背中が見えるほど最大捻りで静止
+    } else if (giantT < FIRE_END) {
+      const p = (giantT - HOLD_END) / (FIRE_END - HOLD_END);
+      twistP      = 1 - p * p;           // ease-in で素早く解放
+      giantPunchP = Math.sin(p * Math.PI);
+      giantScale  = 1 + giantPunchP * 5.4;
+    } else {
+      twistP = 0; giantPunchP = 0; giantScale = 1;
+    }
+  }
 
+  // ===== 胴体：上半身（肩ライン）と下半身（腰ライン）をずらして「ねじれ」を表現 =====
+  //
+  // 捻りの考え方：
+  //   腰（下端）は正面向きを維持（twistP に関係なく cx 中心）
+  //   肩（上端）だけが進行方向と逆（左）にオフセットされる
+  //   → 上下でずれることで「ねじれ」に見える
+  //
+  const shoulderOffset = twistP * bodyW * 0.55;  // 肩が左（後方）にずれる量
+  // 肩ライン中心（捻りで左へ）・腰ライン中心（正面固定）
+  const shoulderCx = cx - shoulderOffset;
+  const waistCx    = cx;
+  // 胴体は台形として描く：上辺（肩）と下辺（腰）で左端・右端が異なる
+  const bodyHalfW  = bodyW * 0.5;
+  // 肩ライン
+  const shoulderL  = shoulderCx - bodyHalfW;
+  const shoulderR  = shoulderCx + bodyHalfW;
+  // 腰ライン
+  const waistL     = waistCx - bodyHalfW;
+  const waistR     = waistCx + bodyHalfW;
+  // 胴体全体のバウンディングボックス（腕付け根の計算用）
+  const bodyDrawL  = Math.min(shoulderL, waistL);
+  const bodyDrawR  = Math.max(shoulderR, waistR);
+  const bodyDrawW  = bodyDrawR - bodyDrawL;
+
+  // 腕の付け根：肩ラインから生える
+  const armLen = W * 0.55;
+  const giantPunchExtend = giantPunchP * W * 0.42;
+  // 右腕（パンチ腕）：肩の右端から
+  const rArmRootX = shoulderR;
+  const rArmRootY = bodyTop + bodyH * 0.10;
+  // 左腕（添え手）：肩の左端から
+  const lArmRootX = shoulderL;
+  const lArmRootY = bodyTop + bodyH * 0.10;
+
+  // ===== 描画：後方パーツから順に =====
+
+  // --- 溜め中の両腕（引き絞りポーズ）---
+  // キャラは右向きに進行 → 引き絞りは「進行方向と逆（左＝後方）」に引く
+  if (isGiantPunching && twistP > 0.05 && giantPunchP < 0.05) {
+
+    // 右腕（パンチ腕）：左後方に引き絞る
+    // 肩（右）→ 肘（体の外側左に大きく突き出す）→ 拳（肘から前方へ折り返し）
+    const elbowX = rArmRootX - armLen * twistP * 1.2;    // さらに大きく左へ（体の外側に明確にはみ出す）
+    const elbowY = rArmRootY + armH * 0.5 + armLen * 0.42; // さらに下げて「肘を後ろ下に突き出した」形
+    const fistX  = elbowX + armLen * twistP * 0.40;      // 肘から右（前方）へ折り返し
+    const fistY  = elbowY - armLen * 0.12;
+
+    // 上腕（肩→肘）
+    c.strokeStyle = '#778899'; c.lineWidth = armW * 1.2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(rArmRootX, rArmRootY + armH*0.5); c.lineTo(elbowX, elbowY); c.stroke();
+    // 前腕（肘→拳）
+    c.strokeStyle = '#8899aa'; c.lineWidth = armW * 0.85; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(elbowX, elbowY); c.lineTo(fistX, fistY); c.stroke();
+    // 肘の丸み（大きくして視認性アップ）
+    c.fillStyle = '#b0bec8';
+    c.beginPath(); c.arc(elbowX, elbowY, armW * 0.7, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#445'; c.lineWidth = 1.5*u; c.stroke();
+    // 肩の丸みは省略（不自然に見えるため）
+    // 右拳
     c.fillStyle = '#dde8f0';
-    c.beginPath(); c.arc(fistX, fistY, fistR, 0, Math.PI*2); c.fill();
+    c.beginPath(); c.arc(fistX, fistY, armW * 0.65, 0, Math.PI*2); c.fill();
     c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
 
-    // 衝撃線（通常・巨大共通デザイン。サイズのみfistRに連動）
-    if (punchProgress > 0.5) {
-      c.globalAlpha = (punchProgress - 0.5) * 1.6;
-      c.strokeStyle = '#ffe066'; c.lineWidth = 2*u; c.lineCap = 'round';
-      for (let k = 0; k < 3; k++) {
-        const ang = -0.4 + k * 0.4;
-        c.beginPath();
-        c.moveTo(fistX + Math.cos(ang)*fistR*1.1, fistY + Math.sin(ang)*fistR*1.1);
-        c.lineTo(fistX + Math.cos(ang)*fistR*1.7, fistY + Math.sin(ang)*fistR*1.7);
-        c.stroke();
-      }
+    // 左腕（添え手）：右拳を進行方向側（右）から包む
+    // 左肩 → 右拳の少し右（前方）に向かって伸びて覆う
+    const lFistX  = fistX + armW * 1.0;   // 右拳の少し右（前方）
+    const lFistY  = fistY + armW * 0.3;
+    const lElbowX = lArmRootX + (lFistX - lArmRootX) * 0.45 + armW * 0.4;
+    const lElbowY = lArmRootY + (lFistY - lArmRootY) * 0.45 - armW * 0.3;
+
+    // 左上腕
+    c.strokeStyle = '#8899aa'; c.lineWidth = armW * 0.95; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(lArmRootX, lArmRootY + armH*0.5); c.lineTo(lElbowX, lElbowY); c.stroke();
+    // 左前腕
+    c.strokeStyle = '#99aabc'; c.lineWidth = armW * 0.80; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(lElbowX, lElbowY); c.lineTo(lFistX, lFistY); c.stroke();
+    // 左肘
+    c.fillStyle = '#b8c8d4';
+    c.beginPath(); c.arc(lElbowX, lElbowY, armW * 0.45, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#556'; c.lineWidth = 1.2*u; c.stroke();
+    // 左添え手
+    c.fillStyle = '#ccd8e4';
+    c.beginPath(); c.arc(lFistX, lFistY, armW * 0.58, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#556'; c.lineWidth = 1.2*u; c.stroke();
+
+  } else if (!isGiantPunching) {
+    // 通常時の左腕
+    c.fillStyle = '#c8d4de';
+    c.beginPath(); c.roundRect(cx - bodyW/2 - armW, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
+    c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
+  }
+
+  // 通常時の右腕
+  if (!isGiantPunching) {
+    c.fillStyle = '#c8d4de';
+    c.beginPath(); c.roundRect(cx + bodyW/2 + punchExtend, bodyTop + bodyH*0.08, armW + punchExtend*0.3, armH, 3*u); c.fill();
+    c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
+  }
+
+  // 発射フェーズの右腕（前方へ繰り出す）
+  if (isGiantPunching && giantPunchP > 0.05) {
+    const armWGiant = armW * (1 + (giantScale - 1) * 0.6);
+    const rFireX = rArmRootX + giantPunchExtend;
+    const rFireW = armWGiant + giantPunchExtend * 0.3;
+    c.fillStyle = '#c8d4de';
+    c.beginPath(); c.roundRect(rFireX, rArmRootY, rFireW, armH, 3*u); c.fill();
+    c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
+    c.fillStyle = '#dde8f0';
+    c.beginPath(); c.arc(rFireX + rFireW, rArmRootY + armH/2, armW * 0.55 * giantScale, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
+  }
+
+  // 通常パンチの拳
+  if (isPunching && punchProgress > 0.1) {
+    c.fillStyle = '#dde8f0';
+    c.beginPath(); c.arc(cx + bodyW/2 + punchExtend + armW + punchExtend*0.3, bodyTop + bodyH*0.08 + armH/2, armW * 0.55, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#555'; c.lineWidth = 1.5*u; c.stroke();
+  }
+
+  // ===== 胴体：台形で「上半身ねじれ」を描く =====
+  {
+    c.fillStyle = '#dde8f0';
+    c.beginPath();
+    c.moveTo(shoulderL, bodyTop);       // 肩・左
+    c.lineTo(shoulderR, bodyTop);       // 肩・右
+    c.lineTo(waistR,    bodyTop + bodyH); // 腰・右
+    c.lineTo(waistL,    bodyTop + bodyH); // 腰・左
+    c.closePath(); c.fill();
+    c.strokeStyle = '#444'; c.lineWidth = 2*u; c.stroke();
+
+    // 捻り時：側面の陰影グラデーションで立体感を追加
+    if (twistP > 0.1) {
+      const ea = Math.min(1, twistP * 1.5);
+      c.globalAlpha = ea * 0.45;
+      // 肩の左端から腰の右端にかけて暗くなるグラデ（ねじれた面の影）
+      const sg = c.createLinearGradient(shoulderL, bodyTop, waistR, bodyTop + bodyH);
+      sg.addColorStop(0, 'rgba(80,100,120,0.5)');
+      sg.addColorStop(0.5, 'rgba(80,100,120,0.0)');
+      sg.addColorStop(1, 'rgba(80,100,120,0.3)');
+      c.fillStyle = sg;
+      c.beginPath();
+      c.moveTo(shoulderL, bodyTop); c.lineTo(shoulderR, bodyTop);
+      c.lineTo(waistR, bodyTop + bodyH); c.lineTo(waistL, bodyTop + bodyH);
+      c.closePath(); c.fill();
+      c.globalAlpha = 1;
+    }
+
+    // コア：捻りが深くなると見えなくなる
+    if (twistP < 0.6) {
+      const cr = bodyW * 0.13;
+      const coreCx = shoulderCx * (1 - twistP * 0.5) + waistCx * (twistP * 0.5);
+      c.globalAlpha = 1 - twistP / 0.6;
+      c.fillStyle = '#5be7ff';
+      c.beginPath(); c.arc(coreCx, bodyTop + bodyH * 0.5, cr, 0, Math.PI*2); c.fill();
+      c.strokeStyle = '#0099cc'; c.lineWidth = 1*u; c.stroke();
       c.globalAlpha = 1;
     }
   }
 
-  // 胴体
-  c.fillStyle = '#dde8f0';
-  c.beginPath(); c.roundRect(cx - bodyW/2, bodyTop, bodyW, bodyH, 5*u); c.fill();
-  c.strokeStyle = '#444'; c.lineWidth = 2*u; c.stroke();
-  // コア（小さい青丸）
-  const cr = bodyW * 0.13;
-  c.fillStyle = '#5be7ff';
-  c.beginPath(); c.arc(cx, bodyTop + bodyH*0.5, cr, 0, Math.PI*2); c.fill();
-  c.strokeStyle = '#0099cc'; c.lineWidth = 1*u; c.stroke();
+  // ===== 頭：回転描写（正面→横向き）=====
+  // twistP=0 → 正面顔（幅広・バイザー・左右の目）
+  // twistP=1 → 横顔（前後の厚みを保ちながら、顔が進行方向=右を向く）
+  // 頭の位置：肩ライン中心（上半身の捻りに追従しつつ、少し遅れて回転）
+  {
+    const headCx = cx - shoulderOffset * 0.6; // 肩より少し遅れて捻る（首の柔軟性）
+    // 正面向き：headW の幅を持つ四角
+    // 横向き：頭の「奥行き（前後の厚み）」= headW * 0.52 の幅に変化
+    // ※ 横向きになっても縦（高さ）は変えない → 「潰れない」
+    const headDepth  = headW * 1.0;  // 頭の前後の厚み（正面向きと同じ幅）
+    // 横向きになったとき、頭のシルエット幅は「奥行き」になる
+    // 正面：幅 = headW、横：幅 = headDepth
+    // → twistP で補間（横になるにつれて幅が headDepth に近づく）
+    const headSilW   = headW  * (1 - twistP) + headDepth * twistP;
+    // 頭の左端・右端：正面は cx 中心、横向きは headCx を中心に headSilW
+    const hLeft  = headCx - headSilW * 0.5;
+    const hRight = headCx + headSilW * 0.5;
 
-  // 頭
-  c.fillStyle = '#eef2f6';
-  c.beginPath(); c.roundRect(cx - headW/2, headTop, headW, headH, 5*u); c.fill();
-  c.strokeStyle = '#333'; c.lineWidth = 2.5*u; c.stroke();
+    // --- 頭のベース（シルエット） ---
+    c.fillStyle = '#eef2f6';
+    c.beginPath(); c.roundRect(hLeft, headTop, headSilW, headH, 5*u); c.fill();
+    // 輪郭線：回転を示すため左右で太さを非対称に
+    // 正面向き：左右均等。横向き：進行方向側（右=前面）が細く・後頭部側（左）が太い
+    const frontEdgeW = (2.5 - twistP * 1.0) * u;  // 前面（顔の正面側）：細くなる
+    const backEdgeW  = (2.5 + twistP * 2.5) * u;  // 後頭部側：太くなる（後頭部の丸みが強調）
+    // 左辺（後頭部側）
+    c.strokeStyle = '#333'; c.lineWidth = backEdgeW;
+    c.beginPath(); c.moveTo(hLeft + backEdgeW/2, headTop + headH*0.1); c.lineTo(hLeft + backEdgeW/2, headTop + headH*0.9); c.stroke();
+    // 右辺（前面・顔側）
+    c.strokeStyle = '#444'; c.lineWidth = frontEdgeW;
+    c.beginPath(); c.moveTo(hRight - frontEdgeW/2, headTop + headH*0.1); c.lineTo(hRight - frontEdgeW/2, headTop + headH*0.9); c.stroke();
+    // 上辺・下辺
+    c.strokeStyle = '#333'; c.lineWidth = 2.5*u;
+    c.beginPath(); c.roundRect(hLeft, headTop, headSilW, headH, 5*u); c.stroke();
 
-  // バイザー（黒帯・頭の中央〜下寄り）
-  const vizTop = headTop + headH * 0.28;
-  const vizH   = headH * 0.55;
-  c.save();
-  c.beginPath(); c.roundRect(cx - headW/2, headTop, headW, headH, 5*u); c.clip();
-  c.fillStyle = '#111';
-  c.fillRect(cx - headW/2, vizTop, headW, vizH);
-  c.restore();
+    // 捻り時：後頭部の丸みを強調する半円
+    if (twistP > 0.2) {
+      const bulgeA = Math.min(1, (twistP - 0.2) / 0.5);
+      c.globalAlpha = bulgeA * 0.35;
+      c.strokeStyle = '#aabbcc'; c.lineWidth = 3*u;
+      c.beginPath();
+      c.arc(hLeft + headH*0.25, headTop + headH*0.5, headH*0.35, Math.PI*0.5, Math.PI*1.5);
+      c.stroke();
+      c.globalAlpha = 1;
+    }
 
-  // 目（バイザー内に左右対称・大きく）
-  const eyeW = headW * 0.28, eyeH = vizH * 0.80;
-  const eyeY  = vizTop + vizH * 0.10;
-  c.fillStyle = '#5be7ff';
-  c.fillRect(cx - eyeW - 2*u, eyeY, eyeW, eyeH);
-  c.fillRect(cx + 2*u,        eyeY, eyeW, eyeH);
-  // 目のハイライト
-  c.fillStyle = 'rgba(255,255,255,0.85)';
-  c.fillRect(cx - eyeW - 2*u + 1.5*u, eyeY + 1.5*u, eyeW*0.35, eyeH*0.32);
-  c.fillRect(cx + 2*u + 1.5*u,        eyeY + 1.5*u, eyeW*0.35, eyeH*0.32);
+    // 捻り時：側面グラデで奥行き感
+    if (twistP > 0.1) {
+      c.globalAlpha = Math.min(1, twistP * 1.2) * 0.35;
+      const hg = c.createLinearGradient(hRight, 0, hLeft, 0);
+      hg.addColorStop(0, 'rgba(200,215,225,0.0)');
+      hg.addColorStop(1, 'rgba(100,130,155,0.8)');
+      c.fillStyle = hg;
+      c.beginPath(); c.roundRect(hLeft, headTop, headSilW, headH, 5*u); c.fill();
+      c.globalAlpha = 1;
+    }
 
-  // 頭のハイライト
-  c.fillStyle = 'rgba(255,255,255,0.4)';
-  c.beginPath(); c.roundRect(cx - headW/2 + 3*u, headTop + 3*u, headW*0.5, headH*0.28, 3*u); c.fill();
+    // --- バイザー＋正面の目：twistPが増えるにつれフェードアウト ---
+    const vizTop   = headTop + headH * 0.28;
+    const vizH     = headH * 0.55;
+    const vizAlpha = Math.max(0, 1 - twistP * 1.4);
+    if (vizAlpha > 0.02) {
+      c.globalAlpha = vizAlpha;
+      c.save();
+      c.beginPath(); c.roundRect(hLeft, headTop, headSilW, headH, 5*u); c.clip();
+      c.fillStyle = '#111';
+      c.fillRect(hLeft, vizTop, headSilW, vizH);
+      c.restore();
+      const eyeWBase = headSilW * 0.26;
+      const eyeHFull = vizH * 0.80;
+      const eyeH2    = eyeHFull * _eyeOpen;
+      const eyeY2    = vizTop + vizH * 0.10 + eyeHFull * (1 - _eyeOpen) * 0.5;
+      const eyeCx    = headCx;
+      if (_eyeOpen > 0.05) {
+        c.fillStyle = '#5be7ff';
+        c.fillRect(eyeCx - eyeWBase - 2*u, eyeY2, eyeWBase, eyeH2);
+        c.fillRect(eyeCx + 2*u,            eyeY2, eyeWBase, eyeH2);
+        if (_eyeOpen > 0.4) {
+          c.fillStyle = `rgba(255,255,255,${0.85 * _eyeOpen})`;
+          c.fillRect(eyeCx - eyeWBase - 2*u + 1.5*u, eyeY2 + 1.5*u, eyeWBase*0.35, eyeH2*0.32);
+          c.fillRect(eyeCx + 2*u + 1.5*u,            eyeY2 + 1.5*u, eyeWBase*0.35, eyeH2*0.32);
+        }
+      }
+      c.globalAlpha = 1;
+    }
+
+    // --- 側面の目：横向きになるにつれフェードイン（進行方向=右側に出現）---
+    // 頭の右端（前面側）付近に、前方を向いた目が現れる
+    if (twistP > 0.4) {
+      const sA = Math.min(1, (twistP - 0.4) / 0.4);
+      c.globalAlpha = sA;
+      // 側面バイザー帯（頭の右端＝前方向き）
+      const svX = hRight - headSilW * 0.5;
+      const svW = headSilW * 0.5;
+      c.save();
+      c.beginPath(); c.roundRect(hLeft, headTop, headSilW, headH, 5*u); c.clip();
+      c.fillStyle = '#111';
+      c.fillRect(svX, vizTop, svW, vizH);
+      c.restore();
+      // 側面の目（前方＝右を向いている）
+      const sEyeX = hRight - headSilW * 0.18;
+      const sEyeY = headTop + headH * 0.50;
+      const sEyeR = Math.max(2*u, headSilW * 0.16) * _eyeOpen;
+      if (sEyeR > 0) {
+        c.fillStyle = '#5be7ff';
+        c.beginPath(); c.arc(sEyeX, sEyeY, sEyeR, 0, Math.PI*2); c.fill();
+        if (_eyeOpen > 0.4) {
+          c.fillStyle = `rgba(255,255,255,${0.7 * _eyeOpen})`;
+          c.beginPath(); c.arc(sEyeX - sEyeR*0.3, sEyeY - sEyeR*0.3, sEyeR*0.38, 0, Math.PI*2); c.fill();
+        }
+      }
+      c.globalAlpha = 1;
+    }
+
+    // 頭のハイライト
+    c.fillStyle = 'rgba(255,255,255,0.4)';
+    c.beginPath(); c.roundRect(hLeft + 3*u, headTop + 3*u, headSilW*0.5, headH*0.28, 3*u); c.fill();
+  }
 }
 
 
@@ -5114,9 +6024,16 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
   const headW = W * 0.55, headH = H * 0.32;
   const bodyW = W * 0.38;
   const armW  = W * 0.12, armH  = H * 0.20;
-  const headTop  = baseY - H;
+
+  // ===== アイドルモーション =====
+  const _now2 = performance.now();
+  const _isAttacking2 = !!attackAnim;
+  const _breath2 = _getBreathOffset(_now2, _isAttacking2);
+  const _eyeOpen2 = _isAttacking2 ? 1 : _idleAnim.update(_now2);
+
+  const headTop  = baseY - H + _breath2;
   const bodyTop  = headTop + headH + 2*u;
-  const bodyH    = baseY - bodyTop;
+  const bodyH    = baseY - bodyTop - _breath2;
 
   // 腕（左右）
   const isBowRainArm = cls.weapon === 'bow' && attackAnim && attackAnim.type === 'bow_rain';
@@ -5147,27 +6064,24 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
     }
   }
 
-  c.fillStyle = cls.color;
-  // 左腕（弦を引く・後方に下がる）
-  c.beginPath(); c.roundRect(cx - bodyW/2 - armW - leftArmPull, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
-  c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
+  // 武器ごとに専用の腕を描くケースを判定（ここでは共通の腕をスキップする）
+  const isThrowingArm  = cls.weapon === 'spear' && attackAnim && attackAnim.type === 'spear_throw';
+  const isThrustingArm = cls.weapon === 'spear' && attackAnim && attackAnim.type === 'spear_thrust';
+  const isSlashingArm  = cls.weapon === 'sword_shield' && attackAnim && attackAnim.type === 'sword_slash';
+  const isBowClass     = cls.weapon === 'bow'; // 弓は待機・通常・スキルすべて武器ブロックで腕を描く
 
-  // 右腕（spear_throw/sword_slash中は専用描画内で腕を描くのでスキップ）
-  const isThrowingArm = cls.weapon === 'spear' && attackAnim && attackAnim.type === 'spear_throw';
-  const isSlashingArm = cls.weapon === 'sword_shield' && attackAnim && attackAnim.type === 'sword_slash';
-  if (isBowRainArm) {
-    c.save();
-    const armPivotX = cx + bodyW/2 + armW/2;
-    const armPivotY = bodyTop + bodyH*0.08;
-    c.translate(armPivotX, armPivotY);
-    c.rotate(rightArmAngle);
-    c.translate(-armPivotX, -armPivotY);
+  c.fillStyle = cls.color;
+  // 左腕（弓・槍攻撃時は専用描画にまかせてスキップ）
+  if (!isBowClass && !isThrowingArm && !isThrustingArm) {
+    c.beginPath(); c.roundRect(cx - bodyW/2 - armW - leftArmPull, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
+    c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
+  }
+
+  // 右腕（弓・槍攻撃・剣振り中は専用描画にまかせてスキップ）
+  if (!isBowClass && !isThrowingArm && !isThrustingArm && !isSlashingArm) {
+    c.fillStyle = cls.color;
     c.beginPath(); c.roundRect(cx + bodyW/2, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
-    c.stroke();
-    c.restore();
-  } else if (!isThrowingArm && !isSlashingArm) {
-    c.beginPath(); c.roundRect(cx + bodyW/2, bodyTop + bodyH*0.08, armW, armH, 3*u); c.fill();
-    c.stroke();
+    c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
   }
 
   // 胴体
@@ -5194,18 +6108,23 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
   c.fillRect(cx - headW/2, vizTop, headW, vizH);
   c.restore();
 
-  // 目（バイザー内・アクセントカラー）
-  const eyeW = headW * 0.28, eyeH = vizH * 0.80;
-  const eyeY  = vizTop + vizH * 0.10;
+  // 目（バイザー内・アクセントカラー）瞬き対応
+  const eyeW = headW * 0.28, eyeHFull2 = vizH * 0.80;
+  const eyeH = eyeHFull2 * _eyeOpen2;
+  const eyeY  = vizTop + vizH * 0.10 + eyeHFull2 * (1 - _eyeOpen2) * 0.5;
   c.save();
   c.beginPath(); c.roundRect(cx - headW/2, headTop, headW, headH, 5*u); c.clip();
   c.beginPath(); c.rect(cx - headW/2, vizTop, headW, vizH); c.clip();
-  c.fillStyle = cls.accentColor;
-  c.fillRect(cx - eyeW - 2*u, eyeY, eyeW, eyeH);
-  c.fillRect(cx + 2*u,        eyeY, eyeW, eyeH);
-  c.fillStyle = 'rgba(255,255,255,0.7)';
-  c.fillRect(cx - eyeW - 2*u + 1.5*u, eyeY + 1.5*u, eyeW*0.35, eyeH*0.32);
-  c.fillRect(cx + 2*u + 1.5*u,        eyeY + 1.5*u, eyeW*0.35, eyeH*0.32);
+  if (_eyeOpen2 > 0.05) {
+    c.fillStyle = cls.accentColor;
+    c.fillRect(cx - eyeW - 2*u, eyeY, eyeW, eyeH);
+    c.fillRect(cx + 2*u,        eyeY, eyeW, eyeH);
+    if (_eyeOpen2 > 0.4) {
+      c.fillStyle = `rgba(255,255,255,${0.7 * _eyeOpen2})`;
+      c.fillRect(cx - eyeW - 2*u + 1.5*u, eyeY + 1.5*u, eyeW*0.35, eyeH*0.32);
+      c.fillRect(cx + 2*u + 1.5*u,        eyeY + 1.5*u, eyeW*0.35, eyeH*0.32);
+    }
+  }
   c.restore();
 
   // 頭のハイライト
@@ -5280,13 +6199,35 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       c.restore();
 
     } else if (!isSlashing) {
-      // ===== 通常時：ロビーと同じ配置（shieldActive中は盾を拡大維持） =====
-      const kx = cx - bodyW/2 - W*0.12 - 6*u;
-      const ky = bodyTop + bodyH*0.08;
-      c.fillStyle = '#c8c8c8'; c.fillRect(kx, ky, 3*u, 18*u);
-      c.fillStyle = '#c0a000'; c.fillRect(kx - 4*u, ky + 18*u, 11*u, 3*u);
-      c.fillStyle = '#8b5a2b'; c.fillRect(kx + 0.5*u, ky + 21*u, 2*u, 8*u);
-      c.strokeStyle = '#666'; c.lineWidth = 0.5*u; c.strokeRect(kx, ky, 3*u, 18*u);
+      // ===== 通常時（移動・棒立ち）：剣を左手で握って上段に構える =====
+      // 手の位置を左腕の拳あたりに合わせ、そこから刃を上へ伸ばす（地面近くに垂れ下げない）
+      const handX = cx - bodyW/2 - armW/2;            // 左手（拳）の中心
+      const handY = bodyTop + bodyH*0.08 + armH*0.42; // 拳の高さ（腕の中ほど）
+      const bladeLen = H*0.40;                         // 刃渡り
+      // 握り（手の中）
+      c.fillStyle = '#5a3a1e';
+      c.fillRect(handX - 1.3*u, handY - 1*u, 2.6*u, 7*u);
+      // 鍔（クロスガード）
+      c.fillStyle = '#c0a000';
+      c.fillRect(handX - 5*u, handY - 2.6*u, 10*u, 2.6*u);
+      // 刃（手の上から真上やや外向きへ）
+      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 5*u; }
+      c.fillStyle = shBlade;
+      const bTopY = handY - 2.6*u - bladeLen;
+      c.beginPath();
+      c.moveTo(handX - 1.9*u, handY - 2.6*u);
+      c.lineTo(handX - 1.9*u, bTopY + 4*u);
+      c.lineTo(handX,         bTopY);            // 切先
+      c.lineTo(handX + 1.9*u, bTopY + 4*u);
+      c.lineTo(handX + 1.9*u, handY - 2.6*u);
+      c.closePath(); c.fill();
+      c.shadowBlur = 0;
+      c.strokeStyle = shBlade2; c.lineWidth = 0.6*u; c.stroke();
+      // 刃の稜線（ハイライト）
+      c.strokeStyle = 'rgba(255,255,255,0.45)'; c.lineWidth = 0.7*u;
+      c.beginPath(); c.moveTo(handX, handY - 2.6*u); c.lineTo(handX, bTopY + 3*u); c.stroke();
+      // 拳
+      _hand(c, handX, handY + 2.5*u, cls.color, u);
 
       const shieldIsActive = (typeof shieldActive !== 'undefined') && shieldActive;
       const persistScale = shieldIsActive ? 1.8 : 1.0;
@@ -5481,96 +6422,76 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       const skillLv2 = (typeof getSkillLevel === 'function') ? getSkillLevel('spear').lv : 1;
       const spearCount = Math.min(11, 1 + skillLv2);
 
-      // 右肩をピボットに腕を回転させる
-      const pivotX = cx + bodyW/2;
-      const pivotY = headTop + headH * 0.6; // 頭の横（耳の高さ）
-      const upperArmLen = armH * 0.7;        // 上腕の長さ
-      const foreArmLen  = armH * 0.75;       // 前腕の長さ
+      // ===== やり投げの運動連鎖：脚→腰→体幹→肩→肘→手首 =====
+      const upperArmLen = armH * 0.80;   // 上腕
+      const foreArmLen  = armH * 0.84;   // 前腕
 
-      // ===== フェーズ定義 =====
-      // 構え  (0.00〜0.35): 槍を頭横で水平に構え、肘を曲げる
-      // テイクバック(0.35〜0.45): 腕を後ろへ引く
-      // リリース(0.45〜0.60): 前方へ一気に伸ばして放つ
-      // フォロー(0.60〜1.00): 腕が前方に伸びきる
-
-      let upperAngle, elbowAngle, showSpears;
-
-      if (ta < 0.35) {
-        // 構えフェーズ：頭横で水平構え。肘を約90度曲げた状態へ徐々に移行
-        const p = ta / 0.35;
-        const ease = 1 - Math.pow(1 - p, 2);
-        upperAngle = -Math.PI * 0.5 * ease;       // 上腕：下→後ろ水平
-        elbowAngle = -Math.PI * 0.5 * ease;       // 前腕：上腕に対して上→水平後ろ
+      // フェーズ別の関節角度（0=前方/右, +=下向き）
+      // コック(0-0.40)   : 腕を上後方へ引き、肘を畳む。手は頭の後ろ上。体は後傾。
+      // 駆動 (0.40-0.50) : 体幹→肩→肘→手首の順に前方へ解放（0.45で離手）。前へ踏み込む。
+      // フォロー(0.50-1.0): 腕を前方から下へ振り抜く（おでこ前で止めない）。体は前傾。
+      let upperAngle, elbowAngle, leftAngle, showSpears, leanShift;
+      if (ta < 0.40) {
+        const p = ta / 0.40, e = 1 - Math.pow(1 - p, 2);
+        upperAngle = _lerp(-Math.PI*0.50, -Math.PI*0.82, e);
+        elbowAngle = _lerp(-Math.PI*0.30,  Math.PI*0.60, e);
+        leftAngle  = _lerp( Math.PI*0.50, -Math.PI*0.10, e); // 左手は前方上へ（狙い）
+        leanShift  = _lerp(0, -3*u, e);                      // 重心を後ろへ
         showSpears = true;
-      } else if (ta < 0.45) {
-        // テイクバック：腕を後ろへ引く
-        const p = (ta - 0.35) / 0.10;
-        upperAngle = -Math.PI * 0.5 + Math.PI * 0.25 * p;  // 後ろへ少し上げる
-        elbowAngle = -Math.PI * 0.5 - Math.PI * 0.15 * p;  // 肘をさらに曲げる
-        showSpears = true;
-      } else if (ta < 0.60) {
-        // リリース：前方へ一気に
-        const p = (ta - 0.45) / 0.15;
-        const ease = 1 - Math.pow(1 - p, 2); // ease-out（最初速く）
-        upperAngle = (-Math.PI * 0.5 + Math.PI * 0.25) - (Math.PI * 0.25 + Math.PI * 0.3) * ease;
-        elbowAngle = (-Math.PI * 0.5 - Math.PI * 0.15) + (Math.PI * 0.65) * ease;
-        showSpears = p < 0.5;
+      } else if (ta < 0.50) {
+        const p = (ta - 0.40) / 0.10, e = p * p;             // 加速（ease-in）
+        upperAngle = _lerp(-Math.PI*0.82, -Math.PI*0.05, e);
+        elbowAngle = _lerp( Math.PI*0.60, -Math.PI*0.02, e);
+        leftAngle  = _lerp(-Math.PI*0.10,  Math.PI*0.85, e); // 左手は後方下へ
+        leanShift  = _lerp(-3*u, 6*u, e);                    // 前へ踏み込む
+        showSpears = ta < 0.45;                              // 0.45で離手（発射処理と一致）
       } else {
-        // フォロースルー：腕が前方に伸びきる
-        upperAngle = -Math.PI * 0.55;
-        elbowAngle =  Math.PI * 0.0;
+        const p = (ta - 0.50) / 0.50, e = 1 - Math.pow(1 - p, 2);
+        upperAngle = _lerp(-Math.PI*0.05,  Math.PI*0.46, e); // 前→下へ振り抜き
+        elbowAngle = _lerp(-Math.PI*0.02,  Math.PI*0.22, e);
+        leftAngle  = _lerp( Math.PI*0.85,  Math.PI*0.62, e);
+        leanShift  = _lerp(6*u, 3*u, e);
         showSpears = false;
       }
 
-      // 上腕の先端（肘）座標
+      // 投げ手（右肩起点）
+      const pivotX = cx + bodyW/2 - 2*u + leanShift;
+      const pivotY = bodyTop + bodyH*0.15;
       const elbowX = pivotX + Math.cos(upperAngle) * upperArmLen;
       const elbowY = pivotY + Math.sin(upperAngle) * upperArmLen;
-      // 前腕の先端（手首）座標
       const wristAngle = upperAngle + elbowAngle;
       const wristX = elbowX + Math.cos(wristAngle) * foreArmLen;
       const wristY = elbowY + Math.sin(wristAngle) * foreArmLen;
 
-      // 上腕描画
-      c.fillStyle = cls.color;
-      c.save();
-      c.translate(pivotX, pivotY);
-      c.rotate(upperAngle);
-      c.beginPath(); c.roundRect(0, -armW*0.45, upperArmLen, armW*0.9, 3*u); c.fill();
-      c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
-      c.restore();
+      // 左腕（非投げ手）の反対への振り：体幹始動を見せる
+      const lShX = cx - bodyW/2 + 2*u - leanShift*0.4;
+      const lShY = bodyTop + bodyH*0.16;
+      const lArmLen = armH * 0.95;
+      const lHandX = lShX + Math.cos(leftAngle) * lArmLen;
+      const lHandY = lShY + Math.sin(leftAngle) * lArmLen;
+      _arm2(c, lShX, lShY, lHandX, lHandY, 3*u, cls.color, armW*0.78, u);
+      _hand(c, lHandX, lHandY, cls.color, u);
 
-      // 前腕描画
-      c.save();
-      c.translate(elbowX, elbowY);
-      c.rotate(wristAngle);
-      c.beginPath(); c.roundRect(0, -armW*0.4, foreArmLen, armW*0.8, 3*u); c.fill();
-      c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
-      c.restore();
+      // 投げ手（肩→肘→手首）
+      _limb(c, [pivotX, pivotY, elbowX, elbowY, wristX, wristY], cls.color, armW*0.84, u);
+      _hand(c, wristX, wristY, cls.color, u);
 
-      // 槍（手首から槍の方向へ描画）
+      // 槍（離手前のみ・手首位置から腕の向きに合わせて描画）
       if (showSpears) {
-        // 槍は常に水平（構え中）→ リリース時に腕の向きへ追従
-        const spearAngle = ta < 0.45
-          ? -Math.PI * 0.02         // 構え・テイクバック中はほぼ水平
-          : wristAngle - Math.PI * 0.1; // リリース時は腕の向きに追従
-
+        const spearAngle = ta < 0.42 ? -Math.PI*0.02 : wristAngle; // 構え中は水平→駆動で追従
         for (let i = 0; i < spearCount; i++) {
           const oy = (i - (spearCount-1)/2) * 2.2*u;
-          const alpha = (ta >= 0.45 && showSpears) ? Math.max(0, 1 - (ta-0.45)/0.15*2) : 1;
+          const alpha = (ta >= 0.42) ? Math.max(0, 1 - (ta - 0.42) / 0.05) : 1;
           c.globalAlpha = alpha;
           c.save();
           c.translate(wristX, wristY + oy);
           c.rotate(spearAngle);
-          // レア武器は柄全体がほのかに発光する
           if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 8*u; }
-          // 柄
           c.strokeStyle = spShaft; c.lineWidth = 2.5*u; c.lineCap = 'round';
-          c.beginPath(); c.moveTo(-22*u, 0); c.lineTo(16*u, 0); c.stroke();
+          c.beginPath(); c.moveTo(-24*u, 0); c.lineTo(16*u, 0); c.stroke();
           c.shadowBlur = 0;
-          // 石突き
           c.fillStyle = '#888';
-          c.beginPath(); c.arc(-22*u, 0, 1.8*u, 0, Math.PI*2); c.fill();
-          // 穂先
+          c.beginPath(); c.arc(-24*u, 0, 1.8*u, 0, Math.PI*2); c.fill();
           const hw2 = 2.2*u;
           c.fillStyle = spHead;
           c.beginPath();
@@ -5582,9 +6503,9 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         }
       }
 
-      // フォロースルー：手首位置に残像
-      if (ta >= 0.60) {
-        const fade = Math.max(0, 1 - (ta - 0.60) / 0.40);
+      // フォロースルー：手首が前下方へ振り抜ける残像
+      if (ta >= 0.48) {
+        const fade = Math.max(0, 1 - (ta - 0.48) / 0.45);
         c.globalAlpha = fade * 0.22;
         c.save();
         c.translate(wristX, wristY);
@@ -5595,30 +6516,79 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.globalAlpha = 1;
       }
     } else if (isThrusting) {
-      // 通常攻撃：水平突き
-      const extend = thrust * TILE * 0.8;
-      const spx1 = cx + bodyW/2;
-      const spx2 = cx + bodyW/2 + 22*u + extend;
-      const spy  = bodyTop + bodyH * 0.3;
+      // ===== 通常攻撃：両手持ちで踏み込み、全身で突き刺す =====
+      // 突きは「脚→腰→肩→腕」の運動連鎖。ここでは肩を起点に前肩を前へ送り出し、
+      // 後ろ手(石突き側)で押し込み、前手(中ほど)で支えながら槍を一直線に突き出す。
+      const tp = attackAnim.t / attackAnim.duration; // 0→1
+      // 突き出し量 reach: 引き(テイクバック)→爆発的な突き→引き戻し
+      let reach;
+      if (tp < 0.18) {                 // わずかにテイクバック（タメ）
+        reach = -0.16 * (tp / 0.18);
+      } else if (tp < 0.50) {          // 突き出し（ease-out で一気に）
+        const p = (tp - 0.18) / 0.32;
+        reach = -0.16 + 1.16 * (1 - Math.pow(1 - p, 3));
+      } else {                         // 引き戻して構えへ
+        const p = (tp - 0.50) / 0.50;
+        reach = 1.0 - 0.86 * (1 - Math.pow(1 - p, 2));
+      }
+      const lunge = Math.max(0, reach) * TILE * 0.95;     // 前方への踏み込み距離
+      const lean  = Math.max(0, reach) * bodyW * 0.10;    // 上体の前傾（肩を前へ）
+
+      // 槍の幾何（水平・前傾に合わせて手の位置がスライド）
+      const spy      = bodyTop + bodyH * 0.34;
+      const frontGripX = cx + bodyW/2 + 4*u + lunge;       // 前の手（穂先寄り・支え手）
+      const rearGripX  = frontGripX - 17*u;                // 後ろの手（石突き寄り・押し手）
+      const tipX  = frontGripX + 30*u;                     // 穂先
+      const buttX = rearGripX - 13*u;                      // 石突き
+
+      // --- 後ろ脚で踏み込む土煙（突き出しの瞬間だけ） ---
+      if (reach > 0.55) {
+        c.globalAlpha = (reach - 0.55) * 0.6;
+        c.fillStyle = 'rgba(200,200,200,0.5)';
+        c.beginPath();
+        c.ellipse(cx - bodyW*0.1, baseY - 2*u, 8*u, 2.5*u, 0, 0, Math.PI*2);
+        c.fill();
+        c.globalAlpha = 1;
+      }
+
+      // --- 槍本体 ---
       if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 6*u; }
       c.strokeStyle = spShaft; c.lineWidth = 3.5*u; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(spx1, spy); c.lineTo(spx2, spy); c.stroke();
+      c.beginPath(); c.moveTo(buttX, spy); c.lineTo(tipX - 6*u, spy); c.stroke();
       c.shadowBlur = 0;
-      c.strokeStyle = '#aaa'; c.lineWidth = 4*u; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(spx1, spy); c.lineTo(spx1 - 4*u, spy); c.stroke();
-      const hw = (3 + thrust*2)*u;
+      // 石突き
+      c.fillStyle = '#888';
+      c.beginPath(); c.arc(buttX, spy, 2.2*u, 0, Math.PI*2); c.fill();
+      // 穂先
+      const hw = (3.2 + Math.max(0,reach)*1.8) * u;
       c.fillStyle = spHead;
       c.beginPath();
-      c.moveTo(spx2 + 8*u, spy); c.lineTo(spx2 + 2*u, spy - hw);
-      c.lineTo(spx2, spy);       c.lineTo(spx2 + 2*u, spy + hw);
+      c.moveTo(tipX + 8*u, spy); c.lineTo(tipX, spy - hw);
+      c.lineTo(tipX - 6*u, spy); c.lineTo(tipX, spy + hw);
       c.closePath(); c.fill();
       c.strokeStyle = spHead2; c.lineWidth = 0.8*u; c.stroke();
-      if (thrust > 0.4) {
-        c.globalAlpha = (thrust - 0.4) * 0.7;
-        c.strokeStyle = spAccent; c.lineWidth = 1.5*u;
-        for (let k = 1; k <= 2; k++) {
-          c.beginPath(); c.moveTo(spx1-k*5*u, spy-k*3*u); c.lineTo(spx1+8*u, spy-k*3*u); c.stroke();
-          c.beginPath(); c.moveTo(spx1-k*5*u, spy+k*3*u); c.lineTo(spx1+8*u, spy+k*3*u); c.stroke();
+
+      // --- 両腕（肩→肘→手）。後ろ手は押し込み、前手は支え ---
+      const rearShX  = cx + bodyW/2 - 6*u + lean;          // 後ろ肩
+      const rearShY  = bodyTop + bodyH*0.16;
+      const frontShX = cx + bodyW/2 + lean;                // 前肩
+      const frontShY = bodyTop + bodyH*0.30;
+      const handCol  = cls.color;
+      // 後ろ腕：タメ時は肘を強く曲げ、突き出しで伸びきる（肘の張り出しを reach で変化）
+      _arm2(c, rearShX, rearShY, rearGripX, spy, _lerp(7*u, 1*u, Math.max(0,reach)), handCol, armW*0.78, u);
+      // 前腕：常にほぼ伸ばして槍を支える
+      _arm2(c, frontShX, frontShY, frontGripX, spy, _lerp(5*u, 2*u, Math.max(0,reach)), handCol, armW*0.74, u);
+      // 拳（両手で握る）
+      _hand(c, rearGripX, spy, handCol, u);
+      _hand(c, frontGripX, spy, handCol, u);
+
+      // --- 突き出しの衝撃線 ---
+      if (reach > 0.45) {
+        c.globalAlpha = (reach - 0.45) * 0.8;
+        c.strokeStyle = spAccent; c.lineWidth = 1.5*u; c.lineCap = 'round';
+        for (let k = 1; k <= 3; k++) {
+          c.beginPath(); c.moveTo(tipX + 4*u + k*4*u, spy - k*2.5*u); c.lineTo(tipX + 10*u + k*4*u, spy - k*2.5*u); c.stroke();
+          c.beginPath(); c.moveTo(tipX + 4*u + k*4*u, spy + k*2.5*u); c.lineTo(tipX + 10*u + k*4*u, spy + k*2.5*u); c.stroke();
         }
         c.globalAlpha = 1;
       }
@@ -5688,54 +6658,27 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         drawAmount = 1 - p*p;
       }
 
+      // ===== 両腕（押し手＝弓手は弓へ伸展、引き手＝弦手は引き下ろす）=====
+      {
+        const rrLeadShX = cx + bodyW/2 - 2*u, rrLeadShY = bodyTop + bodyH*0.18;
+        const rrDrawShX = cx - bodyW/2 + 2*u, rrDrawShY = bodyTop + bodyH*0.16;
+        // 頭上構えでは弦を下方向へ引くため、引き手は弓中心の下に来る
+        const rrDrawHandX = bCXn - (0.10 + drawAmount*0.18) * bRn;
+        const rrDrawHandY = bCYn + (0.40 + drawAmount*0.55) * bRn;
+        _arm2(c, rrLeadShX, rrLeadShY, bCXn, bCYn, 4*u, cls.color, armW*0.80, u); // 押し手
+        _arm2(c, rrDrawShX, rrDrawShY, rrDrawHandX, rrDrawHandY, -4*u, cls.color, armW*0.76, u); // 引き手
+        _hand(c, rrDrawHandX, rrDrawHandY, cls.color, u);
+        _hand(c, bCXn, bCYn, cls.color, u);
+      }
+
       c.save();
       c.translate(bCXn, bCYn);
       c.rotate(-Math.PI/2 * riseProgress);
       c.translate(-bCXn, -bCYn);
 
-      // 弓本体
-      if (bwGlow) { c.shadowColor = bwGlow; c.shadowBlur = 5*u; }
-      c.strokeStyle = bwBow; c.lineWidth = 2.5*u; c.lineCap = 'round';
-      c.beginPath();
-      c.arc(bCXn, bCYn, bRn, -Math.PI*0.6, Math.PI*0.6);
-      c.stroke();
-      c.shadowBlur = 0;
-
-      // 弦（引き具合に応じてしなる）
-      const sTop = bCYn - bRn * Math.sin(Math.PI*0.6);
-      const sMid = bCXn - bRn * (0.6 + drawAmount * 0.5);
-      const sBot = bCYn + bRn * Math.sin(Math.PI*0.6);
-      c.strokeStyle = bwString; c.lineWidth = 1*u;
-      c.beginPath();
-      c.moveTo(bCXn - bRn * Math.cos(Math.PI*0.6), sTop);
-      c.quadraticCurveTo(sMid, bCYn, bCXn - bRn * Math.cos(Math.PI*0.6), sBot);
-      c.stroke();
-
-      // 矢：1本だけを番えて引く（放った瞬間だけ短く消える）
+      // 弓本体＋弦＋矢（武器ごとの形状・装飾・エフェクトをまとめて描画）
       const justReleased = !isSetupPhase && shotCycleP >= 0.92;
-      if (!justReleased) {
-        const arrowBaseX = bCXn + bRn*0.5;
-        const arrowPullback = drawAmount * bRn * 0.55;
-        const arrowY = bCYn - 1*u;
-
-        c.strokeStyle = '#A0784A'; c.lineWidth = 1.3*u;
-        c.beginPath();
-        c.moveTo(bCXn - bRn*0.5 - arrowPullback, arrowY); c.lineTo(arrowBaseX, arrowY);
-        c.stroke();
-        c.fillStyle = bwHead;
-        c.beginPath();
-        c.moveTo(arrowBaseX,         arrowY);
-        c.lineTo(arrowBaseX - 4*u,   arrowY - 2.3*u);
-        c.lineTo(arrowBaseX - 4*u,   arrowY + 2.3*u);
-        c.closePath(); c.fill();
-        c.strokeStyle = bwFletch; c.lineWidth = 1*u;
-        c.beginPath();
-        c.moveTo(bCXn - bRn*0.5 - arrowPullback,       arrowY);
-        c.lineTo(bCXn - bRn*0.5 - arrowPullback - 3*u, arrowY - 3*u);
-        c.moveTo(bCXn - bRn*0.5 - arrowPullback,       arrowY);
-        c.lineTo(bCXn - bRn*0.5 - arrowPullback - 3*u, arrowY + 3*u);
-        c.stroke();
-      }
+      drawBowFrame(c, bCXn, bCYn, bRn, u, bwv || {}, { draw: drawAmount, showArrow: !justReleased });
 
       // 引き絞り中：オーラ（引き具合が高いほど強く）
       if (!isSetupPhase && drawAmount > 0.3) {
@@ -5783,24 +6726,23 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       const bCY = bodyTop + bodyH * 0.4;
       const bR  = bodyH * 0.28;
 
-      // 左腕（弦を引く側）：drawで後方へ大きく引かれる
-      const leftArmDraw = nDrawAmount * 9*u;
-      c.save();
-      c.translate(cx - bodyW/2 - armW/2 - leftArmDraw, bodyTop + bodyH*0.08 + armH/2);
-      c.fillStyle = cls.color;
-      c.beginPath(); c.roundRect(-armW/2, -armH/2, armW, armH, 3*u); c.fill();
-      c.strokeStyle = '#333'; c.lineWidth = 1.5*u; c.stroke();
-      c.restore();
+      // フェーズ別の引き手の引き込み量（離れで手は弦から離れ後方へ抜ける＝「離れ」）
+      let handPull;
+      if (nPhase === 'set')          handPull = nPhaseT * 0.12;
+      else if (nPhase === 'draw')    handPull = 0.12 + 0.88 * nPhaseT;
+      else if (nPhase === 'release') handPull = 1.0 + 0.30 * nPhaseT;
+      else if (nPhase === 'zanshin') handPull = Math.max(0, 1.30 - 1.30 * nPhaseT);
+      else                           handPull = 0; // idle
 
-      // 弓本体
-      if (bwGlow) { c.shadowColor = bwGlow; c.shadowBlur = 5*u; }
-      c.strokeStyle = bwBow; c.lineWidth = 2.5*u; c.lineCap = 'round';
-      c.beginPath();
-      c.arc(bCX, bCY, bR, -Math.PI*0.6, Math.PI*0.6);
-      c.stroke();
-      c.shadowBlur = 0;
+      // 引き手（弦側）：引き込むほど顎（アンカー）へ寄り、肘が持ち上がる
+      const drawShX = cx - bodyW/2 + 2*u, drawShY = bodyTop + bodyH*0.14;
+      const drawHandX = bCX - bR*0.5 - handPull * bR * 0.55;
+      const drawHandY = bCY - 1*u - handPull * 4*u;
+      // 弦を引く後ろ腕（先に描いて弓の後ろに）。負のbendで肘を持ち上げる（チキンウィング）
+      _arm2(c, drawShX, drawShY, drawHandX, drawHandY, -(5 + handPull*5)*u, cls.color, armW*0.7, u);
+      _hand(c, drawHandX, drawHandY, cls.color, u);
 
-      // draw中：引き絞りの緊張オーラ（軽量）
+      // draw中：引き絞りの緊張オーラ（弓の背後に描く）
       if (nPhase === 'draw' && nPhaseT > 0.5) {
         c.globalAlpha = (nPhaseT - 0.5) * 0.5;
         c.strokeStyle = '#aaccff'; c.lineWidth = 1.5*u;
@@ -5808,39 +6750,9 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.globalAlpha = 1;
       }
 
-      const sTop = bCY - bR * Math.sin(Math.PI*0.6);
-      const sMid = bCX - bR * (0.6 + nDrawAmount * 0.45);
-      const sBot = bCY + bR * Math.sin(Math.PI*0.6);
-      c.strokeStyle = bwString; c.lineWidth = 1*u;
-      c.beginPath();
-      c.moveTo(bCX - bR * Math.cos(Math.PI*0.6), sTop);
-      c.quadraticCurveTo(sMid, bCY, bCX - bR * Math.cos(Math.PI*0.6), sBot);
-      c.stroke();
-
-      // 矢：release後半は番えていない（発射済み）
+      // 弓本体＋弦＋矢（武器ごとの形状・装飾・エフェクトをまとめて描画）
       const showNormalArrow = nPhase !== 'release' || nPhaseT < 0.3;
-      if (showNormalArrow) {
-        const arrowY = bCY - 1*u;
-        const arrowPullback = nDrawAmount * bR * 0.45;
-        const arrowTip = bCX + bR*0.5;
-        c.strokeStyle = '#A0784A'; c.lineWidth = 1.2*u;
-        c.beginPath();
-        c.moveTo(bCX - bR*0.5 - arrowPullback, arrowY); c.lineTo(arrowTip, arrowY);
-        c.stroke();
-        c.fillStyle = bwHead2;
-        c.beginPath();
-        c.moveTo(arrowTip,       arrowY);
-        c.lineTo(arrowTip - 4*u, arrowY - 2.5*u);
-        c.lineTo(arrowTip - 4*u, arrowY + 2.5*u);
-        c.closePath(); c.fill();
-        c.strokeStyle = bwFletch; c.lineWidth = 1*u;
-        c.beginPath();
-        c.moveTo(bCX - bR*0.5 - arrowPullback,       arrowY);
-        c.lineTo(bCX - bR*0.5 - arrowPullback - 3*u, arrowY - 3*u);
-        c.moveTo(bCX - bR*0.5 - arrowPullback,       arrowY);
-        c.lineTo(bCX - bR*0.5 - arrowPullback - 3*u, arrowY + 3*u);
-        c.stroke();
-      }
+      drawBowFrame(c, bCX, bCY, bR, u, bwv || {}, { draw: nDrawAmount, showArrow: showNormalArrow });
 
       // release直後：解放の閃光（軽量・小さめ）
       if (nPhase === 'release' && nPhaseT < 0.4) {
@@ -5851,6 +6763,11 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.fill();
         c.globalAlpha = 1;
       }
+
+      // 押し手（弓を支える前腕）：右肩から弓のグリップへ。最後に描いて弓の上に
+      const leadShX = cx + bodyW/2 - 2*u, leadShY = bodyTop + bodyH*0.18;
+      _arm2(c, leadShX, leadShY, bCX, bCY, 3*u, cls.color, armW*0.7, u);
+      _hand(c, bCX, bCY, cls.color, u);
     }
 
   // ===== 第2世代武器描画 =====
@@ -6468,10 +7385,10 @@ function drawTorch(g){
 // ======================================================
 
 
-</script>
 
-<!-- 08-render.js -->
+</script>
 <script>
+/* ===== 08-render.js ===== */
 // ==================== 08-render.js ====================
 // ======================================================
 // ===== 08-render.js =====
@@ -7418,10 +8335,10 @@ if (typeof canvas !== 'undefined') {
 // ======================================================
 
 
-</script>
 
-<!-- 09-profile-id.js -->
+</script>
 <script>
+/* ===== 09-profile-id.js ===== */
 // ==================== 09-profile-id.js ====================
 // ======================================================
 // ===== 09-profile-id.js =====
@@ -7744,10 +8661,10 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 // ======================================================
 
 
-</script>
 
-<!-- 10-lobby-world.js -->
+</script>
 <script>
+/* ===== 10-lobby-world.js ===== */
 // ==================== 10-lobby-world.js ====================
 // ======================================================
 // ===== 10-lobby-world.js =====
@@ -7760,7 +8677,7 @@ let lobbyRunning = false;
 let lobbyAnimId = null;
 
 // ロビーのプレイヤー状態
-const lobbyPlayer = { x:300, y:0, vx:0, vy:0, facing:1, w:32, h:48, onGround:false, walkTimer:0 };
+const lobbyPlayer = { x:300, y:0, vx:0, vy:0, facing:1, w:ROBOT.w, h:ROBOT.h, onGround:false, walkTimer:0 };
 
 // 施設定義（x座標・幅・ラベル・アイコン・action）
 const FACILITIES = [
@@ -7970,7 +8887,7 @@ function drawLobby() {
       const ghostP = {
         x: peer.lobbyX ?? 200,
         y: peer.lobbyY ?? (lobbyGround - 48),
-        w: 32, h: 48,
+        w: ROBOT.w, h: ROBOT.h,
         facing: peer.lobbyFacing ?? 1,
         walkTimer: peer.lobbyWalkTimer ?? 0,
       };
@@ -8141,7 +9058,7 @@ function drawGuildInterior() {
   if (window.RoomState && RoomState.roomId) {
     for (const [pid, peer] of Object.entries(RoomState.peers)) {
       if (!peer.online || peer.lobbyX === undefined) continue;
-      const ghostP = { x: peer.lobbyX ?? 200, y: peer.lobbyY ?? (lobbyGround - 48), w: 32, h: 48, facing: peer.lobbyFacing ?? 1, walkTimer: peer.lobbyWalkTimer ?? 0 };
+      const ghostP = { x: peer.lobbyX ?? 200, y: peer.lobbyY ?? (lobbyGround - ROBOT.h), w: ROBOT.w, h: ROBOT.h, facing: peer.lobbyFacing ?? 1, walkTimer: peer.lobbyWalkTimer ?? 0 };
       lctx.save(); lctx.globalAlpha = 0.75;
       drawLobbyRobot(ghostP, peer.classId);
       lctx.globalAlpha = 0.9; lctx.fillStyle = '#ffb347';
@@ -8673,7 +9590,7 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
   const bodyW = W * 0.38;
   const armW  = W * 0.12, armH  = H * 0.20;
   const headTop = baseY - H;
-  const bodyTop = headTop + headH + 2;
+  const bodyTop = headTop + headH + 2*u;
   const bodyH = baseY - bodyTop;
   const legH  = H * 0.14;
 
@@ -8820,43 +9737,8 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
     const bCX = headCX + bodyW/2 + W*0.14 + 8*u;
     const bCY = bodyTop + bodyH * 0.4;
     const bR  = bodyH * 0.28;
-    // 弓本体
-    if (lBwGlow) { lctx.shadowColor = lBwGlow; lctx.shadowBlur = 5*u; }
-    lctx.strokeStyle = lBwBow; lctx.lineWidth = 2.5*u; lctx.lineCap = 'round';
-    lctx.beginPath();
-    lctx.arc(bCX, bCY, bR, -Math.PI*0.6, Math.PI*0.6);
-    lctx.stroke();
-    lctx.shadowBlur = 0;
-    // 弦
-    const sTop = bCY - bR * Math.sin(Math.PI*0.6);
-    const sMid = bCX - bR * 0.6;
-    const sBot = bCY + bR * Math.sin(Math.PI*0.6);
-    lctx.strokeStyle = lBwString; lctx.lineWidth = 1*u;
-    lctx.beginPath();
-    lctx.moveTo(bCX - bR * Math.cos(Math.PI*0.6), sTop);
-    lctx.quadraticCurveTo(sMid, bCY, bCX - bR * Math.cos(Math.PI*0.6), sBot);
-    lctx.stroke();
-    // 矢
-    const arrowY = bCY - 1*u;
-    lctx.strokeStyle = '#A0784A'; lctx.lineWidth = 1.2*u;
-    lctx.beginPath();
-    lctx.moveTo(bCX - bR*0.5, arrowY); lctx.lineTo(bCX + bR*0.5, arrowY);
-    lctx.stroke();
-    // 矢じり
-    lctx.fillStyle = lBwHead;
-    lctx.beginPath();
-    lctx.moveTo(bCX + bR*0.5,       arrowY);
-    lctx.lineTo(bCX + bR*0.5 - 4*u, arrowY - 2.5*u);
-    lctx.lineTo(bCX + bR*0.5 - 4*u, arrowY + 2.5*u);
-    lctx.closePath(); lctx.fill();
-    // 矢羽根
-    lctx.strokeStyle = lBwFletch; lctx.lineWidth = 1*u;
-    lctx.beginPath();
-    lctx.moveTo(bCX - bR*0.5,       arrowY);
-    lctx.lineTo(bCX - bR*0.5 - 3*u, arrowY - 3*u);
-    lctx.moveTo(bCX - bR*0.5,       arrowY);
-    lctx.lineTo(bCX - bR*0.5 - 3*u, arrowY + 3*u);
-    lctx.stroke();
+    // 弓本体＋弦＋矢（武器ごとの形状・装飾・エフェクトをまとめて描画。ロビーは構え姿勢）
+    drawBowFrame(lctx, bCX, bCY, bR, u, bwvLobby || {}, { draw: 0.4, showArrow: true });
 
   } else if (cls.weapon === 'long_spear') {
     // スピラ：身長の2倍の大槍（斜め持ち）
@@ -9339,6 +10221,7 @@ document.getElementById('backFromRoom').addEventListener('click', async () => {
   document.getElementById('roomInfoCard').style.display = 'none';
   document.getElementById('joinRoomMsg').style.display = 'none';
   hideAllOverlays();
+  document.getElementById('lobbyScreen').style.display = 'block';
 });
 
 // フレンドへの招待リスト描画（roomScreen内）
@@ -9474,10 +10357,10 @@ window.addEventListener('resize', resizeLobbyCanvas);
 // ======================================================
 
 
-</script>
 
-<!-- 11-quest-screen.js -->
+</script>
 <script>
+/* ===== 11-quest-screen.js ===== */
 // ==================== 11-quest-screen.js ====================
 // ======================================================
 // ===== 11-quest-screen.js =====
@@ -10203,10 +11086,10 @@ if (!myProfile.name) {
 
 
 
-</script>
 
-<!-- 13-webrtc-room.js -->
+</script>
 <script>
+/* ===== 13-webrtc-room.js ===== */
 // ==================== 13-webrtc-room.js ====================
 // ===== 13-webrtc-room.js =====
 // ======================================================
@@ -11069,10 +11952,10 @@ function showRoomScreen() {
 window.showRoomScreen = showRoomScreen;
 
 
-</script>
 
-<!-- ===== 12-cloud-sync.js: インライン ===== -->
+</script>
 <script>
+/* ===== 12-cloud-sync.js ===== */
 /* ===== 12-cloud-sync.js (REST API版) =====
    Firebase SDK不要。Firestore REST APIを直接呼び出す。
    GitHub Pagesなどtype="module"やCDNが使えない環境向け。
@@ -11579,12 +12462,8 @@ console.log('[CloudSync] REST API版 初期化完了');
 setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 
-</script>
 
-
-
-
-<div id="roomInvitePopup" style="
+</script><div id="roomInvitePopup" style="
   display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
   z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
   border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
