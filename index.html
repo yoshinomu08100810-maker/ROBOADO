@@ -1037,8 +1037,8 @@ html, body {
 
 
 <!-- ===== JavaScript ===== -->
-<!-- ===== 01-core-setup.js ===== -->
 <script>
+// ===== 01-core-setup.js =====
 // ==================== 01-core-setup.js ====================
 // === 01-core-setup.js ===
 // ======================================================
@@ -1270,9 +1270,8 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-</script>
-<!-- ===== 02-input-controls.js ===== -->
-<script>
+
+// ===== 02-input-controls.js =====
 // ==================== 02-input-controls.js ====================
 // ======================================================
 // ===== 02-input-controls.js =====
@@ -1698,9 +1697,8 @@ function drawSkillGauge() {
 
 
 
-</script>
-<!-- ===== 03-class-defs.js ===== -->
-<script>
+
+// ===== 03-class-defs.js =====
 // ==================== 03-class-defs.js ====================
 // ======================================================
 // ===== 03-class-defs.js =====
@@ -3477,9 +3475,8 @@ function applyStageDifficulty(stageId) {
 
 
 
-</script>
-<!-- ===== 04-robot-config.js ===== -->
-<script>
+
+// ===== 04-robot-config.js =====
 // ==================== 04-robot-config.js ====================
 // ======================================================
 // ===== 04-robot-config.js =====
@@ -3567,9 +3564,8 @@ function rectsOverlap(a,b){
 
 
 
-</script>
-<!-- ===== 05-game-loop.js ===== -->
-<script>
+
+// ===== 05-game-loop.js =====
 // ==================== 05-game-loop.js ====================
 // ======================================================
 // ===== 05-game-loop.js =====
@@ -3669,12 +3665,12 @@ function update(dt){
         const thrownWeapon = (typeof getEquippedWeapon === 'function') ? getEquippedWeapon('spear') : null;
         const thrownWeaponId = thrownWeapon ? thrownWeapon.id : 'spear_n';
         for (let i = 0; i < count; i++) {
-          const spread = (i - (count-1)/2) * 0.3;
+          const spread = (i - (count-1)/2);  // 中心0の整数列（縦の重なり防止用）
           arrows.push({
             x: player.x + player.w/2,
-            y: player.y + player.h * 0.3,
-            vx: player.facing * TILE * 20,
-            vy: -TILE * 4.5 + spread * TILE * 8,
+            y: player.y + player.h * 0.3 + spread * TILE * 0.35, // 縦に少しずらして槍が重ならないように
+            vx: player.facing * TILE * (20 + Math.abs(spread) * 1.2), // 横速度を少しだけ変えて広がりを出す
+            vy: 0,                                              // ★出だしは全て水平に発射（あとは重力で素早く落下）
             atk: spearAtk,
             life: 1.5,
             trail: [],
@@ -4106,7 +4102,7 @@ function update(dt){
     const _grav = (a.type === 'rain')          ? 600
                 : (a.type === 'heavy_arrow')    ? 850
                 : (a.type === 'ballista_bolt' || a.type === 'magic_bolt') ? 0
-                : (a.type === 'spear_throw')    ? 480
+                : (a.type === 'spear_throw')    ? 1300
                 : 280;
     a.vy += _grav * dt;
     if (a.x < 0 || a.x > WORLD_W) { arrows.splice(i, 1); continue; }
@@ -4628,9 +4624,8 @@ window.onRevived = onRevived;
 
 
 
-</script>
-<!-- ===== 06-enemy-draw.js ===== -->
-<script>
+
+// ===== 06-enemy-draw.js =====
 // ==================== 06-enemy-draw.js ====================
 // ======================================================
 // ===== 06-enemy-draw.js =====
@@ -5595,9 +5590,8 @@ function drawBird(p, cfg){
 
 
 
-</script>
-<!-- ===== 07-course-draw.js ===== -->
-<script>
+
+// ===== 07-course-draw.js =====
 // ==================== 07-course-draw.js ====================
 // ======================================================
 // ===== 07-course-draw.js =====
@@ -6478,6 +6472,11 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       // 槍（離手前のみ・手首位置から腕の向きに合わせて描画）
       if (showSpears) {
         const spearAngle = ta < 0.42 ? -Math.PI*0.02 : wristAngle; // 構え中は水平→駆動で追従
+        // 投げ槍も持ち槍と同じ全長（背の高さの1.5倍）。手首を握り点として前後に伸ばす
+        const throwLen = H * 1.5;
+        const fwd  = throwLen * 0.47;  // 手首→穂先
+        const back = throwLen * 0.53;  // 手首→石突き
+        const hL1 = 8*u, hL2 = 11*u, hw2 = 3*u; // 穂先は持ち槍と同様に小さめ固定
         for (let i = 0; i < spearCount; i++) {
           const oy = (i - (spearCount-1)/2) * 2.2*u;
           const alpha = (ta >= 0.42) ? Math.max(0, 1 - (ta - 0.42) / 0.05) : 1;
@@ -6487,14 +6486,13 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
           c.rotate(spearAngle);
           if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 8*u; }
           c.strokeStyle = spShaft; c.lineWidth = 2.5*u; c.lineCap = 'round';
-          c.beginPath(); c.moveTo(-24*u, 0); c.lineTo(16*u, 0); c.stroke();
+          c.beginPath(); c.moveTo(-back, 0); c.lineTo(fwd - hL1, 0); c.stroke();
           c.shadowBlur = 0;
           c.fillStyle = '#888';
-          c.beginPath(); c.arc(-24*u, 0, 1.8*u, 0, Math.PI*2); c.fill();
-          const hw2 = 2.2*u;
+          c.beginPath(); c.arc(-back, 0, 1.8*u, 0, Math.PI*2); c.fill();
           c.fillStyle = spHead;
           c.beginPath();
-          c.moveTo(21*u, 0); c.lineTo(15*u, -hw2); c.lineTo(13*u, 0); c.lineTo(15*u, hw2);
+          c.moveTo(fwd, 0); c.lineTo(fwd - hL1, -hw2); c.lineTo(fwd - hL2, 0); c.lineTo(fwd - hL1, hw2);
           c.closePath(); c.fill();
           c.strokeStyle = spHead2; c.lineWidth = 0.5*u; c.stroke();
           c.restore();
@@ -6537,8 +6535,10 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       const spy      = bodyTop + bodyH * 0.34;
       const frontGripX = cx + bodyW/2 + 4*u + lunge;       // 前の手（穂先寄り・支え手）
       const rearGripX  = frontGripX - 17*u;                // 後ろの手（石突き寄り・押し手）
-      const tipX  = frontGripX + 30*u;                     // 穂先
-      const buttX = rearGripX - 13*u;                      // 石突き
+      // 槍の全長 = プレイヤーの背の高さ(H)の1.5倍。握りは体側に残し、石突きから前方へ伸ばす
+      const spearLen = H * 1.5;
+      const buttX = rearGripX - 13*u;                      // 石突き（後ろ手の少し後ろ）
+      const tipX  = buttX + spearLen;                      // 穂先（全長 = 1.5×身長）
 
       // --- 後ろ脚で踏み込む土煙（突き出しの瞬間だけ） ---
       if (reach > 0.55) {
@@ -6594,11 +6594,14 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
     } else if (typeof skillCooldown !== 'undefined' && skillCooldown > 2.5) {
       // スキルクールダウン直後（投げた直後）：槍が手元にない
     } else {
-      // 通常待機：斜め持ち
-      const spx1 = cx + bodyW/2 + 2*u;
+      // 通常待機：斜め持ち（槍の全長 = 背の高さ(H)の1.5倍。元の傾きは維持）
+      const spearLen = H * 1.5;
+      const spx1 = cx + bodyW/2 + 2*u;                    // 石突き側（下の握り）
       const spy1 = bodyTop + bodyH * 0.6;
-      const spx2 = cx + bodyW/2 + 24*u;
-      const spy2 = headTop - 10*u;
+      const _sdx = 22*u, _sdy = (headTop - 10*u) - spy1;  // 元の向きベクトル
+      const _sdl = Math.hypot(_sdx, _sdy) || 1;
+      const spx2 = spx1 + (_sdx / _sdl) * spearLen;       // 穂先
+      const spy2 = spy1 + (_sdy / _sdl) * spearLen;
       if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 5*u; }
       c.strokeStyle = spShaft; c.lineWidth = 3.5*u; c.lineCap = 'round';
       c.beginPath(); c.moveTo(spx1, spy1); c.lineTo(spx2, spy2); c.stroke();
@@ -7385,9 +7388,8 @@ function drawTorch(g){
 
 
 
-</script>
-<!-- ===== 08-render.js ===== -->
-<script>
+
+// ===== 08-render.js =====
 // ==================== 08-render.js ====================
 // ======================================================
 // ===== 08-render.js =====
@@ -8062,18 +8064,27 @@ function draw(){
       const wvFly = (typeof getWeaponVisual === 'function') ? getWeaponVisual(a.weaponId || 'spear_n') : null;
       const flyShaft = wvFly ? wvFly.shaftColor : '#5aaad0';
       const flyHead  = wvFly ? wvFly.headColor  : '#d0d8e0';
+      const flyHead2 = wvFly ? wvFly.headColor2 : '#888';
       const flyAura  = wvFly && wvFly.glowColor ? wvFly.glowColor : 'rgba(255,136,0,0.4)';
+      // 全長 = プレイヤーの背の高さの1.5倍（持ち槍と統一）。中心(origin)から前後へ伸ばす
+      const spLen = (player && player.h ? player.h : 44) * 1.5;
+      const sBack = spLen * 0.6;   // origin→石突き
+      const sFwd  = spLen * 0.4;   // origin→穂先
+      const hL = Math.min(16, sFwd * 0.45), hw = 3.5; // 穂先は控えめ固定
       // オーラ
       ctx.globalAlpha = 0.4;
       ctx.strokeStyle = flyAura; ctx.lineWidth = 8; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(-len*1.5, 0); ctx.lineTo(len, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-sBack, 0); ctx.lineTo(sFwd, 0); ctx.stroke();
       ctx.globalAlpha = 1;
       // 柄
-      ctx.strokeStyle = flyShaft; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(-len*1.5, 0); ctx.lineTo(len*0.3, 0); ctx.stroke();
+      ctx.strokeStyle = flyShaft; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(-sBack, 0); ctx.lineTo(sFwd - hL, 0); ctx.stroke();
+      // 石突き
+      ctx.fillStyle = flyHead2;
+      ctx.beginPath(); ctx.arc(-sBack, 0, 2.4, 0, Math.PI*2); ctx.fill();
       // 穂先
       ctx.fillStyle = flyHead;
-      ctx.beginPath(); ctx.moveTo(len, 0); ctx.lineTo(len*0.3, 3); ctx.lineTo(len*0.3, -3); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(sFwd, 0); ctx.lineTo(sFwd - hL, hw); ctx.lineTo(sFwd - hL, -hw); ctx.closePath(); ctx.fill();
     } else if (a.type === 'rain') {
       // 雨矢：オーラ付き（装備中の弓の見た目に合わせる）
       const wvRain = (typeof getWeaponVisual === 'function') ? getWeaponVisual(a.weaponId || 'bow_n') : null;
@@ -8335,9 +8346,8 @@ if (typeof canvas !== 'undefined') {
 
 
 
-</script>
-<!-- ===== 09-profile-id.js ===== -->
-<script>
+
+// ===== 09-profile-id.js =====
 // ==================== 09-profile-id.js ====================
 // ======================================================
 // ===== 09-profile-id.js =====
@@ -8661,9 +8671,8 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-</script>
-<!-- ===== 10-lobby-world.js ===== -->
-<script>
+
+// ===== 10-lobby-world.js =====
 // ==================== 10-lobby-world.js ====================
 // ======================================================
 // ===== 10-lobby-world.js =====
@@ -9707,10 +9716,13 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
     const lpHead   = wvLobby ? wvLobby.headColor  : '#ddd';
     const lpHead2  = wvLobby ? wvLobby.headColor2 : '#999';
     const lpGlow   = wvLobby ? wvLobby.glowColor  : null;
-    const spx1 = headCX + bodyW/2 + 2*u;
+    const spearLen = H * 1.5;                            // 全長 = 背の高さ(H)の1.5倍
+    const spx1 = headCX + bodyW/2 + 2*u;                 // 石突き側（下の握り）
     const spy1 = bodyTop + bodyH * 0.6;
-    const spx2 = headCX + bodyW/2 + 24*u;
-    const spy2 = headTop - 10*u;
+    const _sdx = 22*u, _sdy = (headTop - 10*u) - spy1;   // 元の向きベクトル
+    const _sdl = Math.hypot(_sdx, _sdy) || 1;
+    const spx2 = spx1 + (_sdx / _sdl) * spearLen;        // 穂先
+    const spy2 = spy1 + (_sdy / _sdl) * spearLen;
     if (lpGlow) { lctx.shadowColor = lpGlow; lctx.shadowBlur = 6*u; }
     lctx.strokeStyle = lpShaft; lctx.lineWidth = 3.5*u; lctx.lineCap = 'round';
     lctx.beginPath(); lctx.moveTo(spx1, spy1); lctx.lineTo(spx2, spy2); lctx.stroke();
@@ -10357,9 +10369,8 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-</script>
-<!-- ===== 11-quest-screen.js ===== -->
-<script>
+
+// ===== 11-quest-screen.js =====
 // ==================== 11-quest-screen.js ====================
 // ======================================================
 // ===== 11-quest-screen.js =====
@@ -11086,9 +11097,8 @@ if (!myProfile.name) {
 
 
 
-</script>
-<!-- ===== 13-webrtc-room.js ===== -->
-<script>
+
+// ===== 13-webrtc-room.js =====
 // ==================== 13-webrtc-room.js ====================
 // ===== 13-webrtc-room.js =====
 // ======================================================
@@ -11952,9 +11962,8 @@ window.showRoomScreen = showRoomScreen;
 
 
 
-</script>
-<!-- ===== 12-cloud-sync.js ===== -->
-<script>
+
+// ===== 12-cloud-sync.js =====
 /* ===== 12-cloud-sync.js (REST API版) =====
    Firebase SDK不要。Firestore REST APIを直接呼び出す。
    GitHub Pagesなどtype="module"やCDNが使えない環境向け。
