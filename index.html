@@ -1037,8 +1037,8 @@ html, body {
 
 
 <!-- ===== JavaScript ===== -->
+<!-- ===== 01-core-setup.js ===== -->
 <script>
-/* ===== 01-core-setup.js ===== */
 // ==================== 01-core-setup.js ====================
 // === 01-core-setup.js ===
 // ======================================================
@@ -1271,8 +1271,8 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 </script>
+<!-- ===== 02-input-controls.js ===== -->
 <script>
-/* ===== 02-input-controls.js ===== */
 // ==================== 02-input-controls.js ====================
 // ======================================================
 // ===== 02-input-controls.js =====
@@ -1699,8 +1699,8 @@ function drawSkillGauge() {
 
 
 </script>
+<!-- ===== 03-class-defs.js ===== -->
 <script>
-/* ===== 03-class-defs.js ===== */
 // ==================== 03-class-defs.js ====================
 // ======================================================
 // ===== 03-class-defs.js =====
@@ -3478,8 +3478,8 @@ function applyStageDifficulty(stageId) {
 
 
 </script>
+<!-- ===== 04-robot-config.js ===== -->
 <script>
-/* ===== 04-robot-config.js ===== */
 // ==================== 04-robot-config.js ====================
 // ======================================================
 // ===== 04-robot-config.js =====
@@ -3568,8 +3568,8 @@ function rectsOverlap(a,b){
 
 
 </script>
+<!-- ===== 05-game-loop.js ===== -->
 <script>
-/* ===== 05-game-loop.js ===== */
 // ==================== 05-game-loop.js ====================
 // ======================================================
 // ===== 05-game-loop.js =====
@@ -3804,18 +3804,17 @@ function update(dt){
     }
 
     // mumei_punch: 手が最大限伸びるタイミング（50%）で1度だけヒット判定
+    // ※ isInMeleeRange() を使い「矩形の隙間」で判定することで、
+    //   大きな敵でも中心点間距離のズレなく腕が実際に触れる範囲を正確に判定する。
     if (player.attackAnim.type === 'mumei_punch' && !player.attackAnim.hitChecked) {
       if (player.attackAnim.t / player.attackAnim.duration >= 0.50) {
         player.attackAnim.hitChecked = true;
-        const range = player.attackAnim.hitRange;
+        const range = player.attackAnim.hitRange || player.w * 1.04;
         const punchAtk = player.attackAnim.hitAtk || 1;
         let mumeiHit = false;
         for (const e of enemies) {
           if (!e.alive) continue;
-          const dx = (e.x + e.w/2) - (player.x + player.w/2);
-          const dy = Math.abs((e.y + e.h/2) - (player.y + player.h/2));
-          // 前方向きの敵のみ・縦方向は体の高さ範囲内
-          if (Math.sign(dx) === player.facing && Math.abs(dx) < range && dy < player.h * 0.85) {
+          if (isInMeleeRange(player, e, range, player.facing)) {
             e.hp -= punchAtk; e.dmgFlash = 0.18;
             if (e.hp <= 0) { e.alive = false; score += getEnemyKillScore(e); }
             mumeiHit = true;
@@ -4630,8 +4629,8 @@ window.onRevived = onRevived;
 
 
 </script>
+<!-- ===== 06-enemy-draw.js ===== -->
 <script>
-/* ===== 06-enemy-draw.js ===== */
 // ==================== 06-enemy-draw.js ====================
 // ======================================================
 // ===== 06-enemy-draw.js =====
@@ -5597,8 +5596,8 @@ function drawBird(p, cfg){
 
 
 </script>
+<!-- ===== 07-course-draw.js ===== -->
 <script>
-/* ===== 07-course-draw.js ===== */
 // ==================== 07-course-draw.js ====================
 // ======================================================
 // ===== 07-course-draw.js =====
@@ -7387,8 +7386,8 @@ function drawTorch(g){
 
 
 </script>
+<!-- ===== 08-render.js ===== -->
 <script>
-/* ===== 08-render.js ===== */
 // ==================== 08-render.js ====================
 // ======================================================
 // ===== 08-render.js =====
@@ -8337,8 +8336,8 @@ if (typeof canvas !== 'undefined') {
 
 
 </script>
+<!-- ===== 09-profile-id.js ===== -->
 <script>
-/* ===== 09-profile-id.js ===== */
 // ==================== 09-profile-id.js ====================
 // ======================================================
 // ===== 09-profile-id.js =====
@@ -8663,8 +8662,8 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 </script>
+<!-- ===== 10-lobby-world.js ===== -->
 <script>
-/* ===== 10-lobby-world.js ===== */
 // ==================== 10-lobby-world.js ====================
 // ======================================================
 // ===== 10-lobby-world.js =====
@@ -10359,8 +10358,8 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 </script>
+<!-- ===== 11-quest-screen.js ===== -->
 <script>
-/* ===== 11-quest-screen.js ===== */
 // ==================== 11-quest-screen.js ====================
 // ======================================================
 // ===== 11-quest-screen.js =====
@@ -11088,8 +11087,8 @@ if (!myProfile.name) {
 
 
 </script>
+<!-- ===== 13-webrtc-room.js ===== -->
 <script>
-/* ===== 13-webrtc-room.js ===== */
 // ==================== 13-webrtc-room.js ====================
 // ===== 13-webrtc-room.js =====
 // ======================================================
@@ -11954,8 +11953,8 @@ window.showRoomScreen = showRoomScreen;
 
 
 </script>
+<!-- ===== 12-cloud-sync.js ===== -->
 <script>
-/* ===== 12-cloud-sync.js ===== */
 /* ===== 12-cloud-sync.js (REST API版) =====
    Firebase SDK不要。Firestore REST APIを直接呼び出す。
    GitHub Pagesなどtype="module"やCDNが使えない環境向け。
@@ -12463,7 +12462,13 @@ setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 
 
-</script><div id="roomInvitePopup" style="
+</script>
+
+
+
+
+
+<div id="roomInvitePopup" style="
   display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
   z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
   border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
