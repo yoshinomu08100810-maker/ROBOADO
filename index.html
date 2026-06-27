@@ -1037,32 +1037,8 @@ html, body {
 
 
 <!-- ===== JavaScript ===== -->
-<div id="roomInvitePopup" style="
-  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
-  border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
-  box-shadow:0 0 40px rgba(142,68,173,0.6);text-align:center;
-  font-family:sans-serif;
-">
-  <div style="font-size:22px;margin-bottom:8px;">🎮</div>
-  <div id="roomInvitePopupTitle" style="font-size:15px;font-weight:bold;color:#d7bde2;margin-bottom:6px;"></div>
-  <div id="roomInvitePopupSub" style="font-size:12px;color:#7fa8c8;margin-bottom:18px;line-height:1.6;"></div>
-  <div style="display:flex;gap:10px;justify-content:center;">
-    <button id="roomInviteAcceptBtn" style="
-      flex:1;background:rgba(39,174,96,0.85);border:1px solid #2ecc71;
-      color:#fff;border-radius:10px;padding:10px;font-size:13px;
-      font-weight:bold;cursor:pointer;">✅ 参加する</button>
-    <button id="roomInviteDeclineBtn" style="
-      flex:1;background:rgba(80,80,100,0.7);border:1px solid #555;
-      color:#ccc;border-radius:10px;padding:10px;font-size:13px;
-      cursor:pointer;">✖ 断る</button>
-  </div>
-</div>
-<div id="roomInviteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5);"></div>
-
 <script>
-
-// ===== 01-core-setup.js =====
+/* ===== 01-core-setup.js ===== */
 // ==================== 01-core-setup.js ====================
 // === 01-core-setup.js ===
 // ======================================================
@@ -1295,7 +1271,7 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-// ===== 02-input-controls.js =====
+/* ===== 02-input-controls.js ===== */
 // ==================== 02-input-controls.js ====================
 // ======================================================
 // ===== 02-input-controls.js =====
@@ -1722,7 +1698,7 @@ function drawSkillGauge() {
 
 
 
-// ===== 03-class-def.js =====
+/* ===== 03-class-def.js ===== */
 // ==================== 03-class-defs.js ====================
 // ======================================================
 // ===== 03-class-defs.js =====
@@ -3752,7 +3728,7 @@ function applyStageDifficulty(stageId) {
 
 
 
-// ===== 04-robot-config.js =====
+/* ===== 04-robot-config.js ===== */
 // ==================== 04-robot-config.js ====================
 // ======================================================
 // ===== 04-robot-config.js =====
@@ -3841,7 +3817,7 @@ function rectsOverlap(a,b){
 
 
 
-// ===== 05-game-loop.js =====
+/* ===== 05-game-loop.js ===== */
 // ==================== 05-game-loop.js ====================
 // ======================================================
 // ===== 05-game-loop.js =====
@@ -4901,7 +4877,7 @@ window.onRevived = onRevived;
 
 
 
-// ===== 06-enemy-draw.js =====
+/* ===== 06-enemy-draw.js ===== */
 // ==================== 06-enemy-draw.js ====================
 // ======================================================
 // ===== 06-enemy-draw.js =====
@@ -5867,7 +5843,7 @@ function drawBird(p, cfg){
 
 
 
-// ===== 07-course-draw.js =====
+/* ===== 07-course-draw.js ===== */
 // ==================== 07-course-draw.js ====================
 // ======================================================
 // ===== 07-course-draw.js =====
@@ -6750,28 +6726,16 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         const spearAngle = ta < 0.42 ? -Math.PI*0.02 : wristAngle; // 構え中は水平→駆動で追従
         // 投げ槍も持ち槍と同じ全長（背の高さの1.5倍）。手首を握り点として前後に伸ばす
         const throwLen = H * 1.5;
-        const fwd  = throwLen * 0.47;  // 手首→穂先
         const back = throwLen * 0.53;  // 手首→石突き
-        const hL1 = 8*u, hL2 = 11*u, hw2 = 3*u; // 穂先は持ち槍と同様に小さめ固定
         for (let i = 0; i < spearCount; i++) {
           const oy = (i - (spearCount-1)/2) * 2.2*u;
           const alpha = (ta >= 0.42) ? Math.max(0, 1 - (ta - 0.42) / 0.05) : 1;
+          // 石突き座標（drawSpearFrame の起点）を手首から逆算
+          const bx = wristX - Math.cos(spearAngle) * back;
+          const by = wristY + oy - Math.sin(spearAngle) * back;
           c.globalAlpha = alpha;
-          c.save();
-          c.translate(wristX, wristY + oy);
-          c.rotate(spearAngle);
-          if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 8*u; }
-          c.strokeStyle = spShaft; c.lineWidth = 2.5*u; c.lineCap = 'round';
-          c.beginPath(); c.moveTo(-back, 0); c.lineTo(fwd - hL1, 0); c.stroke();
-          c.shadowBlur = 0;
-          c.fillStyle = '#888';
-          c.beginPath(); c.arc(-back, 0, 1.8*u, 0, Math.PI*2); c.fill();
-          c.fillStyle = spHead;
-          c.beginPath();
-          c.moveTo(fwd, 0); c.lineTo(fwd - hL1, -hw2); c.lineTo(fwd - hL2, 0); c.lineTo(fwd - hL1, hw2);
-          c.closePath(); c.fill();
-          c.strokeStyle = spHead2; c.lineWidth = 0.5*u; c.stroke();
-          c.restore();
+          // drawSpearFrame で装備武器の完全な見た目（模様・デコ・オーラ）を再現
+          drawSpearFrame(c, bx, by, spearAngle, throwLen, u, wv || {}, { shaftWidth: 2.5 });
           c.globalAlpha = 1;
         }
       }
@@ -7643,7 +7607,7 @@ function drawTorch(g){
 
 
 
-// ===== 08-render.js =====
+/* ===== 08-render.js ===== */
 // ==================== 08-render.js ====================
 // ======================================================
 // ===== 08-render.js =====
@@ -8601,7 +8565,7 @@ if (typeof canvas !== 'undefined') {
 
 
 
-// ===== 09-profile-id.js =====
+/* ===== 09-profile-id.js ===== */
 // ==================== 09-profile-id.js ====================
 // ======================================================
 // ===== 09-profile-id.js =====
@@ -8926,7 +8890,7 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-// ===== 10-lobby-world.js =====
+/* ===== 10-lobby-world.js ===== */
 // ==================== 10-lobby-world.js ====================
 // ======================================================
 // ===== 10-lobby-world.js =====
@@ -10614,7 +10578,7 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-// ===== 11-quest-screen.js =====
+/* ===== 11-quest-screen.js ===== */
 // ==================== 11-quest-screen.js ====================
 // ======================================================
 // ===== 11-quest-screen.js =====
@@ -11342,7 +11306,7 @@ if (!myProfile.name) {
 
 
 
-// ===== 13-webrtc-room.js =====
+/* ===== 13-webrtc-room.js ===== */
 // ==================== 13-webrtc-room.js ====================
 // ===== 13-webrtc-room.js =====
 // ======================================================
@@ -12207,7 +12171,7 @@ window.showRoomScreen = showRoomScreen;
 
 
 
-// ===== 12-cloud-sync.js =====
+/* ===== 12-cloud-sync.js ===== */
 /* ===== 12-cloud-sync.js (REST API版) =====
    Firebase SDK不要。Firestore REST APIを直接呼び出す。
    GitHub Pagesなどtype="module"やCDNが使えない環境向け。
@@ -12715,8 +12679,35 @@ setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 
 
-
 </script>
+
+
+
+
+
+<div id="roomInvitePopup" style="
+  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
+  border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
+  box-shadow:0 0 40px rgba(142,68,173,0.6);text-align:center;
+  font-family:sans-serif;
+">
+  <div style="font-size:22px;margin-bottom:8px;">🎮</div>
+  <div id="roomInvitePopupTitle" style="font-size:15px;font-weight:bold;color:#d7bde2;margin-bottom:6px;"></div>
+  <div id="roomInvitePopupSub" style="font-size:12px;color:#7fa8c8;margin-bottom:18px;line-height:1.6;"></div>
+  <div style="display:flex;gap:10px;justify-content:center;">
+    <button id="roomInviteAcceptBtn" style="
+      flex:1;background:rgba(39,174,96,0.85);border:1px solid #2ecc71;
+      color:#fff;border-radius:10px;padding:10px;font-size:13px;
+      font-weight:bold;cursor:pointer;">✅ 参加する</button>
+    <button id="roomInviteDeclineBtn" style="
+      flex:1;background:rgba(80,80,100,0.7);border:1px solid #555;
+      color:#ccc;border-radius:10px;padding:10px;font-size:13px;
+      cursor:pointer;">✖ 断る</button>
+  </div>
+</div>
+<div id="roomInviteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5);"></div>
+
 </body>
 </html>
 
