@@ -1037,7 +1037,31 @@ html, body {
 
 
 <!-- ===== JavaScript ===== -->
+<div id="roomInvitePopup" style="
+  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
+  border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
+  box-shadow:0 0 40px rgba(142,68,173,0.6);text-align:center;
+  font-family:sans-serif;
+">
+  <div style="font-size:22px;margin-bottom:8px;">🎮</div>
+  <div id="roomInvitePopupTitle" style="font-size:15px;font-weight:bold;color:#d7bde2;margin-bottom:6px;"></div>
+  <div id="roomInvitePopupSub" style="font-size:12px;color:#7fa8c8;margin-bottom:18px;line-height:1.6;"></div>
+  <div style="display:flex;gap:10px;justify-content:center;">
+    <button id="roomInviteAcceptBtn" style="
+      flex:1;background:rgba(39,174,96,0.85);border:1px solid #2ecc71;
+      color:#fff;border-radius:10px;padding:10px;font-size:13px;
+      font-weight:bold;cursor:pointer;">✅ 参加する</button>
+    <button id="roomInviteDeclineBtn" style="
+      flex:1;background:rgba(80,80,100,0.7);border:1px solid #555;
+      color:#ccc;border-radius:10px;padding:10px;font-size:13px;
+      cursor:pointer;">✖ 断る</button>
+  </div>
+</div>
+<div id="roomInviteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5);"></div>
+
 <script>
+
 // ===== 01-core-setup.js =====
 // ==================== 01-core-setup.js ====================
 // === 01-core-setup.js ===
@@ -1698,7 +1722,7 @@ function drawSkillGauge() {
 
 
 
-// ===== 03-class-defs.js =====
+// ===== 03-class-def.js =====
 // ==================== 03-class-defs.js ====================
 // ======================================================
 // ===== 03-class-defs.js =====
@@ -2382,31 +2406,31 @@ const WEAPON_VISUALS = {
     shaftColor:'#cc9900', crystalColor:'#ffffff', crystal2Color:'#ffee88',
     accentColor:'#fffabb', glowColor:'rgba(255,255,180,0.65)',
   },
-  // --- 槍（ヤリーン） ---
-  spear_n: {  // 木の槍（ノーマル）
-    shaftColor:'#8b5a2b', shaftHighlight:'#c89a5a',
-    headColor:'#c9c9c9', headColor2:'#8a8a8a',
-    accentColor:'#999', glowColor:null, lengthMul:1.0,
+  // --- 槍（ヤリーン） --- 刃形(blade)/プロファイル(profile)/模様(pattern)/装飾(deco) で5種を描き分け。発光はSR以上のみ。
+  spear_n: {  // 木の槍（ノーマル）：直線葉型＋革巻き
+    shaftColor:'#8b5a2b', shaftHighlight:'#c89a5a', headColor:'#cfcfcf', headColor2:'#8a8a8a',
+    accentColor:'#5e3f1c', glowColor:null, auraColor:null, glowBlur:0,
+    blade:'leaf', profile:'B', pattern:'plain', deco:['wrap'], shaftW:3.4, lengthMul:1.0,
   },
-  spear_r: {  // 鉄の槍（レア）
-    shaftColor:'#5aaad0', shaftHighlight:'#8fd0ee',
-    headColor:'#d8e4ee', headColor2:'#999',
-    accentColor:'#5aaad0', glowColor:null, lengthMul:1.0,
+  spear_r: {  // 鉄の槍（レア）：幅広菱形＋金属リング(マルチストライプ)＋リベット
+    shaftColor:'#7c8a9a', shaftHighlight:'#cdd9e4', headColor:'#dde7ef', headColor2:'#5a6a7a',
+    accentColor:'#aebccc', glowColor:null, auraColor:null, glowBlur:0,
+    blade:'rhombus', profile:'B', pattern:'stripe', deco:['collar','rivet'], shaftW:3.8, lengthMul:1.0,
   },
-  spear_sr: { // 長槍（スーパーレア）：紫がかった長めの槍、淡い光をまとう
-    shaftColor:'#8a5fd8', shaftHighlight:'#b89af2',
-    headColor:'#e8dcff', headColor2:'#9a72d8',
-    accentColor:'#a35ee0', glowColor:'rgba(163,94,224,0.5)', lengthMul:1.18,
+  spear_sr: { // 長槍（スーパーレア）：二股(S字主刃＋対をなす逆反り副刃)＋螺旋彫り＋宝玉、淡い紫の弱オーラ
+    shaftColor:'#7a52c0', shaftHighlight:'#c4a8f0', headColor:'#ece0ff', headColor2:'#7a4fc0',
+    accentColor:'#a35ee0', glowColor:'rgba(163,94,224,0.5)', auraColor:'#c9a0ff', glowBlur:4,
+    blade:'scfork', profile:'B', pattern:'spiral', deco:['collar','gem','dot'], shaftW:3.4, lengthMul:1.18,
   },
-  spear_ur: { // 雷光の槍（ウルトラレア）：金色の槍、電光をまとう
-    shaftColor:'#e0a83a', shaftHighlight:'#ffd866',
-    headColor:'#fff6c8', headColor2:'#d4a800',
-    accentColor:'#ffe066', glowColor:'rgba(255,224,80,0.55)', lengthMul:1.1,
+  spear_ur: { // 雷光の槍（ウルトラレア）：二股(ランス型)＋太柄に細線＋突起＋シャワードット、淡い金の弱オーラ
+    shaftColor:'#d2a238', shaftHighlight:'#ffe27a', headColor:'#fff6c8', headColor2:'#caa022',
+    accentColor:'#ffe066', glowColor:'rgba(255,224,80,0.5)', auraColor:'#ffe89a', glowBlur:5,
+    blade:'fork', profile:'A', pattern:'showerdot', deco:['collar','spike','rivet'], shaftW:4.2, lengthMul:1.1,
   },
-  spear_l: {  // 天穿の神槍（レジェンド）：紅と金の神々しい槍、強い光をまとう
-    shaftColor:'#ff5577', shaftHighlight:'#ffb0c0',
-    headColor:'#fff2e0', headColor2:'#ffcf80',
-    accentColor:'#ffd700', glowColor:'rgba(255,90,120,0.6)', lengthMul:1.3,
+  spear_l: {  // 天穿の神槍（レジェンド）：幅広トライデント(ランス型)＋金線フィリグリー＋宝玉＋突起、紅金の弱オーラ
+    shaftColor:'#e0405f', shaftHighlight:'#ffb0c0', headColor:'#fff2e0', headColor2:'#ffcf80',
+    accentColor:'#ffd700', glowColor:'rgba(255,90,120,0.5)', auraColor:'#ffd86a', glowBlur:6,
+    blade:'trident', profile:'A', pattern:'filigree', deco:['collar','gem','spike','wrap'], shaftW:4.4, lengthMul:1.3,
   },
 };
 const DEFAULT_WEAPON_VISUAL = WEAPON_VISUALS.spear_n;
@@ -2425,15 +2449,44 @@ function getEquippedWeaponVisual(classId) {
 function getSpearSvg(weaponId, size) {
   const wv = getWeaponVisual(weaponId);
   const s = size || 22;
-  const glow = wv.glowColor ? `<circle cx="11" cy="10" r="9.5" fill="${wv.glowColor}"/>` : '';
+  const blade = wv.blade || 'leaf';
+  const shaft = wv.shaftColor || '#8b5a2b';
+  const head  = wv.headColor  || '#cfcfcf';
+  const head2 = wv.headColor2 || '#888';
+  const acc   = wv.accentColor || shaft;
+  const aura  = wv.auraColor || acc;
+  // SR以上は発光ハロー。オーラ型はさらに柄に沿った発光帯。
+  const glow = wv.glowColor
+    ? `<circle cx="11" cy="10" r="9.5" fill="${wv.glowColor}"/>`
+      + (wv.auraColor ? `<line x1="15" y1="7" x2="3" y2="19" stroke="${aura}" stroke-width="5" stroke-linecap="round" opacity="0.5"/>` : '')
+    : '';
+  // 穂先（刃形で分岐）
+  let headSvg;
+  if (blade === 'rhombus') {
+    headSvg = `<path d="M21,1 L18.4,6 L13.5,8 L16.5,3 Z" fill="${head}" stroke="#444" stroke-width="0.7"/>`;
+  } else if (blade === 'fork') {
+    headSvg = `<path d="M21,1 L15,7.5 L17.6,4.2 Z" fill="${head}" stroke="#444" stroke-width="0.6"/>`
+            + `<path d="M17.2,4 L13.6,8 L15.6,5.4 Z" fill="${head}" stroke="#444" stroke-width="0.6"/>`;
+  } else if (blade === 'trident') {
+    headSvg = `<path d="M21,1 L15.5,7 L17.5,3.5 Z" fill="${head}" stroke="#444" stroke-width="0.55"/>`
+            + `<path d="M22,3.4 L16.6,7 L18.6,4.4 Z" fill="${head}" stroke="#444" stroke-width="0.55"/>`
+            + `<path d="M18.4,1.8 L13.8,7 L15.8,4 Z" fill="${head}" stroke="#444" stroke-width="0.55"/>`;
+  } else if (blade === 'scfork') {
+    headSvg = `<path d="M21,1 Q16,2 14,8 Q20,6 21,1Z" fill="${head}" stroke="#444" stroke-width="0.7"/>`
+            + `<path d="M18.6,4 Q16.6,4.8 15.6,7.6 Q18,6.4 18.6,4Z" fill="${head}" stroke="#444" stroke-width="0.5"/>`;
+  } else { // leaf / scurve
+    headSvg = `<path d="M21,1 Q16,2 14,8 Q20,6 21,1Z" fill="${head}" stroke="#444" stroke-width="0.8"/>`;
+  }
+  const collar = (wv.deco && wv.deco.includes('collar'))
+    ? `<line x1="13.4" y1="8.6" x2="15.6" y2="6.4" stroke="${acc}" stroke-width="3" stroke-linecap="round"/>`
+    : `<line x1="13.5" y1="8.5" x2="15" y2="7" stroke="#aaa" stroke-width="3" stroke-linecap="round"/>`;
   return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
     + glow
     + `<line x1="3" y1="19" x2="1" y2="21" stroke="#aaa" stroke-width="2" stroke-linecap="round"/>`
-    + `<line x1="15" y1="7" x2="3" y2="19" stroke="${wv.shaftColor}" stroke-width="1.8" stroke-linecap="round"/>`
-    + `<line x1="13.5" y1="8.5" x2="15" y2="7" stroke="#aaa" stroke-width="3" stroke-linecap="round"/>`
-    + `<path d="M21,1 Q16,2 14,8 Q20,6 21,1Z" fill="${wv.headColor}" stroke="#444" stroke-width="0.8"/>`
-    + `<line x1="21" y1="1" x2="14" y2="8" stroke="${wv.headColor2}" stroke-width="0.6"/>`
-    + `<path d="M21,1 Q20,3 18,5 Q19,3 21,1Z" fill="${wv.shaftHighlight}" stroke="none"/>`
+    + `<line x1="15" y1="7" x2="3" y2="19" stroke="${shaft}" stroke-width="1.8" stroke-linecap="round"/>`
+    + collar
+    + headSvg
+    + `<line x1="21" y1="1" x2="14" y2="8" stroke="${head2}" stroke-width="0.5"/>`
     + `</svg>`;
 }
 // 盾アイコンSVGを武器IDの見た目で生成
@@ -2885,6 +2938,229 @@ function drawBowFrame(ctx, cx, cy, r, u, wv, opts) {
       ctx.beginPath(); ctx.moveTo(px - sz * 2, py); ctx.lineTo(px, py + sz * 0.5); ctx.lineTo(px + sz * 2, py); ctx.lineTo(px, py - sz * 0.5); ctx.closePath(); ctx.fill();
     }
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+
+// ===== 槍の見た目を共通描画するヘルパー（弓の drawBowFrame と同じ思想） =====
+// 柄(石突き)→穂先までを一本のフレームとして描画する。すべての槍描画
+// （突き攻撃・通常待機・ロビー…）をこのヘルパー経由に統一することで、
+// 弓と同様に「描き分けが一箇所に集約され、見た目がズレない」状態を保つ。
+//
+// 発光の段階制：
+//   ・glowColor あり (SR以上) … 柄・穂先・石突きが淡く発光
+//   ・auraColor あり (現状レジェンドのみ) … さらに柄ごとエネルギーのオーラを
+//                                          まとい、淡い光の粒子(オーラ)が柄に沿って流れる
+//
+// 引数 … ctx:2Dコンテキスト, bx/by:石突き位置, angle:穂先方向(rad),
+//        len:全長(石突き→穂先), u:スケール係数, wv:武器ビジュアル,
+//        opts:{ shaftWidth? } 柄の太さ(u単位, 既定3.5)
+// 鋭利プロファイルの刃ポリゴン（ローカル：穂先=tipX、-x方向へ length 伸びる。clFn(s)=中心線のy方向ずれ）
+// profile 'A'=根元側1/3が平行→鋭くテーパー / 'B'=根元から穂先まで連続テーパー（針型）
+function _spBladePoly(ctx, tipX, L, hw, profile, clFn) {
+  clFn = clFn || (() => 0);
+  const Wf = (s) => { if (profile === 'A') { const k = 2 * L / 3; return s >= k ? hw : hw * (s / k); } return hw * (s / L); };
+  const N = 16, top = [], bot = [];
+  for (let i = 0; i <= N; i++) { const s = L * i / N, x = tipX - s, yc = clFn(s), w = Wf(s); top.push([x, yc - w]); bot.push([x, yc + w]); }
+  ctx.beginPath();
+  ctx.moveTo(top[0][0], top[0][1]);
+  for (let i = 1; i <= N; i++) ctx.lineTo(top[i][0], top[i][1]);
+  for (let i = N; i >= 0; i--) ctx.lineTo(bot[i][0], bot[i][1]);
+  ctx.closePath();
+}
+function _spRidge(ctx, tipX, L, clFn, col, u) {
+  clFn = clFn || (() => 0);
+  ctx.strokeStyle = col; ctx.lineWidth = Math.max(0.6, 0.7 * u);
+  ctx.beginPath();
+  for (let i = 0; i <= 10; i++) { const s = L * i / 10, x = tipX - s, y = clFn(s); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+  ctx.stroke();
+}
+// 穂先（5形）。tipX=穂先位置, BL=刃の長さ。
+function _spBlade(ctx, tipX, BL, u, blade, profile, head, head2, accent, glow, gb) {
+  const setG = (m) => { if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = gb * u * 0.8 * (m || 1); } };
+  const clr = () => { ctx.shadowBlur = 0; };
+  if (blade === 'leaf' || blade === 'scurve') {
+    const L = BL, hw = BL * (blade === 'scurve' ? 0.20 : 0.19);
+    let cl = null;
+    if (blade === 'scurve') { const amp = BL * 0.16; cl = (s) => Math.sin((s / L) * Math.PI) * amp; }
+    setG(); _spBladePoly(ctx, tipX, L, hw, profile, cl); ctx.fillStyle = head; ctx.fill(); clr();
+    _spRidge(ctx, tipX, L, cl, head2, u);
+  }
+  else if (blade === 'rhombus') {
+    const L = BL, hw = BL * 0.28;
+    setG(); _spBladePoly(ctx, tipX, L, hw, profile, null); ctx.fillStyle = head; ctx.fill(); clr();
+    _spRidge(ctx, tipX, L, null, head2, u);
+    ctx.strokeStyle = _shade(head, 0.25); ctx.lineWidth = Math.max(0.6, 0.8 * u);
+    ctx.beginPath(); ctx.moveTo(tipX - 2 * u, 0); ctx.lineTo(tipX - L + 2 * u, -hw * 0.5); ctx.stroke();
+  }
+  else if (blade === 'scfork') {
+    // 二股：主刃(S字・+y反り) ＋ 対をなす副刃(-y側・逆反り・拡大版) を同じ根元から
+    const L = BL, hw = BL * 0.18, amp = BL * 0.14;
+    const clM = (s) => Math.sin((s / L) * Math.PI) * amp;
+    setG(); _spBladePoly(ctx, tipX, L, hw, profile, clM); ctx.fillStyle = head; ctx.fill();
+    const L2 = L * 2 / 3, hw2 = hw * 0.675, amp2 = amp * 0.5, offS = BL * 0.17;
+    const sTipX = tipX - (L - L2);                                  // 副刃の穂先（根元は主刃と同じ位置）
+    const clS = (s) => -offS * (1 - s / L2) - Math.sin((s / L2) * Math.PI) * amp2;
+    _spBladePoly(ctx, sTipX, L2, hw2, profile, clS); ctx.fill(); clr();
+    _spRidge(ctx, tipX, L, clM, head2, u);
+    _spRidge(ctx, sTipX, L2, clS, head2, u);
+  }
+  else if (blade === 'fork') {
+    const L = BL, hw = BL * 0.12, pg = BL * 0.20, conv = pg - BL * 0.07;
+    const clU = (s) => pg - (s / L) * conv;     // +y側プロング（根元へ収束）
+    const clD = (s) => -pg + (s / L) * conv;    // -y側プロング
+    setG();
+    _spBladePoly(ctx, tipX, L, hw, profile, clU); ctx.fillStyle = head; ctx.fill();
+    _spBladePoly(ctx, tipX, L, hw, profile, clD); ctx.fill(); clr();
+    _spRidge(ctx, tipX, L, clU, head2, u); _spRidge(ctx, tipX, L, clD, head2, u);
+    // 根元の合流ソケット
+    ctx.fillStyle = _shade(head, -0.16);
+    const rx = tipX - L;
+    ctx.beginPath(); ctx.moveTo(rx, -pg * 0.55); ctx.lineTo(rx - 6 * u, 0); ctx.lineTo(rx, pg * 0.55); ctx.closePath(); ctx.fill();
+  }
+  else if (blade === 'trident') {
+    const cL = BL, cHw = BL * 0.13, sL = BL * 0.71, sHw = BL * 0.11, pg = BL * 0.26, conv = pg - BL * 0.08;
+    const sTipX = tipX - cL * 0.16;
+    const clU = (s) => pg - (s / sL) * conv, clD = (s) => -pg + (s / sL) * conv;
+    setG();
+    _spBladePoly(ctx, tipX, cL, cHw, profile, null); ctx.fillStyle = head; ctx.fill();       // 中央（長）
+    _spBladePoly(ctx, sTipX, sL, sHw, profile, clU); ctx.fill();                              // +y側
+    _spBladePoly(ctx, sTipX, sL, sHw, profile, clD); ctx.fill(); clr();                       // -y側
+    _spRidge(ctx, tipX, cL, null, head2, u);
+    // クロスバー（三股の付け根を繋ぐ帯）
+    const cbX = tipX - Math.max(cL, cL * 0.16 + sL);
+    if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = gb * u * 0.7; }
+    ctx.fillStyle = accent;
+    ctx.beginPath(); ctx.roundRect(cbX - 1.5 * u, -pg - 2 * u, 4.5 * u, (pg + 2 * u) * 2, 2 * u); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+// 柄の模様（x=0:石突き 〜 shaftEnd:刃の根元）
+function _spPattern(ctx, shaftEnd, sw, u, pattern, accent, shaftHi, glow, gb) {
+  const L = shaftEnd;
+  const rnd = (k) => { const v = Math.sin(k * 12.9898) * 43758.5453; return v - Math.floor(v); };
+  if (pattern === 'stripe') {
+    ctx.strokeStyle = accent; ctx.lineWidth = Math.max(1.4, 1.0 * u);
+    for (let x = L * 0.12; x < L - 3; x += 6 * u) { ctx.beginPath(); ctx.moveTo(x, -sw * 0.7); ctx.lineTo(x, sw * 0.7); ctx.stroke(); }
+  } else if (pattern === 'spiral') {
+    ctx.strokeStyle = accent; ctx.lineWidth = Math.max(1.0, 0.7 * u); ctx.globalAlpha = 0.9;
+    for (let sgn = 0; sgn < 2; sgn++) {
+      ctx.beginPath();
+      for (let x = 2 * u; x <= L - 2 * u; x += 2 * u) { const y = Math.sin(x * 0.06 / u + sgn * Math.PI) * sw * 0.62; if (x <= 2 * u) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (pattern === 'showerdot') {
+    for (let i = 0; i < 46; i++) {
+      const x = L * rnd(i * 1.7), off = (rnd(i * 2.3) - 0.5) * sw * 1.3, r = (0.4 + rnd(i * 3.1) * 1.4);
+      ctx.globalAlpha = 0.35 + rnd(i * 4.7) * 0.5; ctx.fillStyle = rnd(i * 5.9) < 0.5 ? accent : shaftHi;
+      ctx.beginPath(); ctx.arc(x, off, r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  } else if (pattern === 'filigree') {
+    ctx.strokeStyle = accent; ctx.lineWidth = Math.max(0.8, 0.55 * u); ctx.globalAlpha = 0.95;
+    for (const dy of [-sw * 0.34, sw * 0.34]) { ctx.beginPath(); ctx.moveTo(3 * u, dy); ctx.lineTo(L - 3 * u, dy); ctx.stroke(); }
+    ctx.globalAlpha = 0.85;
+    for (let x = L * 0.16; x < L - 6 * u; x += 8 * u) { ctx.beginPath(); ctx.moveTo(x, -sw * 0.5); ctx.lineTo(x + 1.5 * u, 0); ctx.lineTo(x, sw * 0.5); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+}
+// 柄の装飾
+function _spDeco(ctx, shaftEnd, sw, u, deco, wv, glow, gb, aura, accent) {
+  const L = shaftEnd;
+  if (deco.includes('dot')) { ctx.fillStyle = wv.shaftHighlight || '#fff'; for (let x = 10 * u; x < L - 8 * u; x += 11 * u) { ctx.beginPath(); ctx.arc(x, 0, Math.max(1.0, 0.9 * u), 0, Math.PI * 2); ctx.fill(); } }
+  if (deco.includes('wrap')) { ctx.strokeStyle = accent; ctx.lineWidth = sw * 1.15; ctx.lineCap = 'butt'; const gx = L * 0.40; for (let k = 0; k < 4; k++) { const x = gx - k * 3 * u; ctx.beginPath(); ctx.moveTo(x, -sw * 0.55); ctx.lineTo(x, sw * 0.55); ctx.stroke(); } ctx.lineCap = 'round'; }
+  if (deco.includes('rivet')) { for (const fx of [0.26, 0.5, 0.74]) { const x = L * fx; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.arc(x, 0, Math.max(1.2, 1.0 * u), 0, Math.PI * 2); ctx.fill(); } }
+  if (deco.includes('spike')) {
+    ctx.fillStyle = _shade(accent, 0.05); if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = gb * u * 0.5; }
+    for (const fx of [0.34, 0.58]) { const x = L * fx;
+      ctx.beginPath(); ctx.moveTo(x, -sw * 0.5); ctx.lineTo(x + 3 * u, -sw * 0.5 - 6 * u); ctx.lineTo(x - 3 * u, -sw * 0.5); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x, sw * 0.5); ctx.lineTo(x + 3 * u, sw * 0.5 + 6 * u); ctx.lineTo(x - 3 * u, sw * 0.5); ctx.closePath(); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  }
+  if (deco.includes('collar')) { ctx.fillStyle = accent; if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = gb * u * 0.5; } ctx.beginPath(); ctx.roundRect(L - 2.5 * u, -sw * 0.8, 5 * u, sw * 1.6, 2 * u); ctx.fill(); ctx.shadowBlur = 0; }
+  if (deco.includes('gem')) {
+    const gx = L - 1 * u; if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = gb * u; }
+    ctx.fillStyle = aura; ctx.beginPath(); ctx.moveTo(gx, -3 * u); ctx.lineTo(gx + 3 * u, 0); ctx.lineTo(gx, 3 * u); ctx.lineTo(gx - 3 * u, 0); ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(gx - 0.6 * u, -0.6 * u, 0.8 * u, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ===== 槍の共通フレーム：石突き(bx,by)→穂先(angle方向, 長さlen)を一本で描く =====
+// 刃形/プロファイル/模様/装飾/弱オーラは wv のフィールドで切替（弓の drawBowFrame と同じ思想）。
+function drawSpearFrame(ctx, bx, by, angle, len, u, wv, opts) {
+  wv = wv || {}; opts = opts || {};
+  const t = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const shaftCol = wv.shaftColor || '#8b5a2b';
+  const shaftHi  = wv.shaftHighlight || _shade(shaftCol, 0.3);
+  const headCol  = wv.headColor  || '#cfcfcf';
+  const headCol2 = wv.headColor2 || '#8a8a8a';
+  const accent   = wv.accentColor || shaftCol;
+  const glow     = wv.glowColor || null;                       // SR以上で発光
+  const hasAura  = !!wv.auraColor;                             // この武器がオーラ型か
+  const aura     = wv.auraColor || glow || accent;
+  const gb       = (wv.glowBlur != null ? wv.glowBlur : (glow ? 4 : 0));
+  const blade    = wv.blade   || 'leaf';
+  const profile  = wv.profile || 'B';
+  const pattern  = wv.pattern || 'plain';
+  const deco     = wv.deco    || [];
+  const sw       = (wv.shaftW || opts.shaftWidth || 3.6) * u;  // 柄の太さ
+  const headFrac = ({ leaf:0.16, scurve:0.18, rhombus:0.15, scfork:0.20, fork:0.18, trident:0.21 }[blade]) || 0.16;
+  const bladeLen = len * headFrac;
+  const shaftEnd = len - bladeLen;                              // 柄は石突き(0)→刃の根元
+
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.rotate(angle);
+  ctx.lineCap = 'round';
+
+  // ① じんわりオーラ（柄ごと弱く包む・auraColor を持つ武器のみ）
+  if (hasAura) {
+    const pulse = 0.84 + 0.16 * Math.sin(t * 0.0026 + (bx + by) * 0.01); // ゆっくり・浅い明滅
+    ctx.save();
+    ctx.shadowColor = glow || aura; ctx.shadowBlur = gb * u * 1.1 * pulse;
+    ctx.strokeStyle = aura; ctx.lineCap = 'round'; ctx.globalAlpha = 0.10 * pulse;
+    ctx.lineWidth = sw * 2.3;
+    ctx.beginPath(); ctx.moveTo(-sw * 0.5, 0); ctx.lineTo(len, 0); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ② 柄＋ハイライト
+  if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = gb * u * 0.5; }
+  ctx.strokeStyle = shaftCol; ctx.lineWidth = sw;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(shaftEnd, 0); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = shaftHi; ctx.lineWidth = sw * 0.32;
+  ctx.beginPath(); ctx.moveTo(sw * 0.5, -sw * 0.20); ctx.lineTo(shaftEnd - sw, -sw * 0.20); ctx.stroke();
+
+  // ③ 模様 → 装飾
+  _spPattern(ctx, shaftEnd, sw, u, pattern, accent, shaftHi, glow, gb);
+  _spDeco(ctx, shaftEnd, sw, u, deco, wv, glow, gb, aura, accent);
+
+  // ④ 石突き
+  if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = gb * u * 0.6; }
+  ctx.fillStyle = hasAura ? aura : '#888';
+  ctx.beginPath(); ctx.arc(0, 0, sw * 0.62, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // ⑤ 穂先（5形・鋭利プロファイル）
+  _spBlade(ctx, len, bladeLen, u, blade, profile, headCol, headCol2, accent, glow, gb);
+
+  // ⑥ オーラ粒子（ごく淡く柄に沿って流れる・auraColor を持つ武器のみ）
+  if (hasAura) {
+    ctx.save(); ctx.shadowColor = glow || aura; ctx.shadowBlur = gb * u; ctx.fillStyle = aura;
+    for (let i = 0; i < 3; i++) {
+      const p = (t * 0.00018 + i / 3) % 1;
+      const x = p * shaftEnd;
+      const wob = Math.sin(t * 0.0022 + i * 2) * sw * 0.7;
+      ctx.globalAlpha = Math.sin(p * Math.PI) * 0.3;
+      const sz = (0.9 + 0.5 * Math.sin(t * 0.003 + i)) * u;
+      ctx.beginPath(); ctx.arc(x, wob, sz, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore(); ctx.globalAlpha = 1;
   }
 
   ctx.restore();
@@ -6550,22 +6826,8 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.globalAlpha = 1;
       }
 
-      // --- 槍本体 ---
-      if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 6*u; }
-      c.strokeStyle = spShaft; c.lineWidth = 3.5*u; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(buttX, spy); c.lineTo(tipX - 6*u, spy); c.stroke();
-      c.shadowBlur = 0;
-      // 石突き
-      c.fillStyle = '#888';
-      c.beginPath(); c.arc(buttX, spy, 2.2*u, 0, Math.PI*2); c.fill();
-      // 穂先
-      const hw = (3.2 + Math.max(0,reach)*1.8) * u;
-      c.fillStyle = spHead;
-      c.beginPath();
-      c.moveTo(tipX + 8*u, spy); c.lineTo(tipX, spy - hw);
-      c.lineTo(tipX - 6*u, spy); c.lineTo(tipX, spy + hw);
-      c.closePath(); c.fill();
-      c.strokeStyle = spHead2; c.lineWidth = 0.8*u; c.stroke();
+      // --- 槍本体（共通フレーム：柄＋オーラ＋穂先＋石突きをまとめて描画）---
+      drawSpearFrame(c, buttX, spy, 0, tipX - buttX, u, wv || {}, { shaftWidth: 3.5 });
 
       // --- 両腕（肩→肘→手）。後ろ手は押し込み、前手は支え ---
       const rearShX  = cx + bodyW/2 - 6*u + lean;          // 後ろ肩
@@ -6602,17 +6864,9 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       const _sdl = Math.hypot(_sdx, _sdy) || 1;
       const spx2 = spx1 + (_sdx / _sdl) * spearLen;       // 穂先
       const spy2 = spy1 + (_sdy / _sdl) * spearLen;
-      if (spGlow) { c.shadowColor = spGlow; c.shadowBlur = 5*u; }
-      c.strokeStyle = spShaft; c.lineWidth = 3.5*u; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(spx1, spy1); c.lineTo(spx2, spy2); c.stroke();
-      c.shadowBlur = 0;
-      c.fillStyle = '#888';
-      c.beginPath(); c.arc(spx1, spy1 + 3*u, 2.5*u, 0, Math.PI*2); c.fill();
-      c.fillStyle = spHead;
-      c.beginPath();
-      c.moveTo(spx2, spy2); c.lineTo(spx2-6*u, spy2+10*u); c.lineTo(spx2+3*u, spy2+12*u);
-      c.closePath(); c.fill();
-      c.strokeStyle = spHead2; c.lineWidth = 0.8*u; c.stroke();
+      // 共通フレームで描画（石突き spx1 → 穂先 spx2 の向き・長さを渡す）
+      const _sAng = Math.atan2(spy2 - spy1, spx2 - spx1);
+      drawSpearFrame(c, spx1, spy1, _sAng, spearLen, u, wv || {}, { shaftWidth: 3.5 });
     }
 
   } else if (cls.weapon === 'bow') {
@@ -9723,19 +9977,9 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
     const _sdl = Math.hypot(_sdx, _sdy) || 1;
     const spx2 = spx1 + (_sdx / _sdl) * spearLen;        // 穂先
     const spy2 = spy1 + (_sdy / _sdl) * spearLen;
-    if (lpGlow) { lctx.shadowColor = lpGlow; lctx.shadowBlur = 6*u; }
-    lctx.strokeStyle = lpShaft; lctx.lineWidth = 3.5*u; lctx.lineCap = 'round';
-    lctx.beginPath(); lctx.moveTo(spx1, spy1); lctx.lineTo(spx2, spy2); lctx.stroke();
-    lctx.shadowBlur = 0;
-    lctx.fillStyle = '#888';
-    lctx.beginPath(); lctx.arc(spx1, spy1 + 3*u, 2.5*u, 0, Math.PI*2); lctx.fill();
-    lctx.fillStyle = lpHead;
-    lctx.beginPath();
-    lctx.moveTo(spx2, spy2);
-    lctx.lineTo(spx2 - 6*u, spy2 + 10*u);
-    lctx.lineTo(spx2 + 3*u, spy2 + 12*u);
-    lctx.closePath(); lctx.fill();
-    lctx.strokeStyle = lpHead2; lctx.lineWidth = 0.8*u; lctx.stroke();
+    // 共通フレームで描画（クエスト中・アイコンと同じ見た目になる）
+    const _sAng = Math.atan2(spy2 - spy1, spx2 - spx1);
+    drawSpearFrame(lctx, spx1, spy1, _sAng, spearLen, u, wvLobby || {}, { shaftWidth: 3.5 });
 
   } else if (cls.weapon === 'bow') {
     // 弓（右腕外側・短い弓、装備中の武器の見た目に合わせる）
@@ -12471,35 +12715,8 @@ setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 
 
+
 </script>
-
-
-
-
-
-<div id="roomInvitePopup" style="
-  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
-  border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
-  box-shadow:0 0 40px rgba(142,68,173,0.6);text-align:center;
-  font-family:sans-serif;
-">
-  <div style="font-size:22px;margin-bottom:8px;">🎮</div>
-  <div id="roomInvitePopupTitle" style="font-size:15px;font-weight:bold;color:#d7bde2;margin-bottom:6px;"></div>
-  <div id="roomInvitePopupSub" style="font-size:12px;color:#7fa8c8;margin-bottom:18px;line-height:1.6;"></div>
-  <div style="display:flex;gap:10px;justify-content:center;">
-    <button id="roomInviteAcceptBtn" style="
-      flex:1;background:rgba(39,174,96,0.85);border:1px solid #2ecc71;
-      color:#fff;border-radius:10px;padding:10px;font-size:13px;
-      font-weight:bold;cursor:pointer;">✅ 参加する</button>
-    <button id="roomInviteDeclineBtn" style="
-      flex:1;background:rgba(80,80,100,0.7);border:1px solid #555;
-      color:#ccc;border-radius:10px;padding:10px;font-size:13px;
-      cursor:pointer;">✖ 断る</button>
-  </div>
-</div>
-<div id="roomInviteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5);"></div>
-
 </body>
 </html>
 
