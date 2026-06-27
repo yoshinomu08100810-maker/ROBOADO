@@ -1037,31 +1037,8 @@ html, body {
 
 
 <!-- ===== JavaScript ===== -->
-<div id="roomInvitePopup" style="
-  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
-  border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
-  box-shadow:0 0 40px rgba(142,68,173,0.6);text-align:center;
-  font-family:sans-serif;
-">
-  <div style="font-size:22px;margin-bottom:8px;">🎮</div>
-  <div id="roomInvitePopupTitle" style="font-size:15px;font-weight:bold;color:#d7bde2;margin-bottom:6px;"></div>
-  <div id="roomInvitePopupSub" style="font-size:12px;color:#7fa8c8;margin-bottom:18px;line-height:1.6;"></div>
-  <div style="display:flex;gap:10px;justify-content:center;">
-    <button id="roomInviteAcceptBtn" style="
-      flex:1;background:rgba(39,174,96,0.85);border:1px solid #2ecc71;
-      color:#fff;border-radius:10px;padding:10px;font-size:13px;
-      font-weight:bold;cursor:pointer;">✅ 参加する</button>
-    <button id="roomInviteDeclineBtn" style="
-      flex:1;background:rgba(80,80,100,0.7);border:1px solid #555;
-      color:#ccc;border-radius:10px;padding:10px;font-size:13px;
-      cursor:pointer;">✖ 断る</button>
-  </div>
-</div>
-<div id="roomInviteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5);"></div>
-
 <script>
-// ===== 01-core-setup.js =====
+/* ===== 01-core-setup.js ===== */
 // ==================== 01-core-setup.js ====================
 // === 01-core-setup.js ===
 // ======================================================
@@ -1294,7 +1271,7 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 
 
 
-// ===== 02-input-controls.js =====
+/* ===== 02-input-controls.js ===== */
 // ==================== 02-input-controls.js ====================
 // ======================================================
 // ===== 02-input-controls.js =====
@@ -1721,7 +1698,7 @@ function drawSkillGauge() {
 
 
 
-// ===== 03-class-def.js =====
+/* ===== 03-class-def.js ===== */
 // ==================== 03-class-defs.js ====================
 // ======================================================
 // ===== 03-class-defs.js =====
@@ -2018,7 +1995,7 @@ const RARITY_DEFS = {
 // 武器データベース（カテゴリ別）。今後武器を追加する場合はこの配列に足すだけでよい
 const WEAPON_DB = {
   shield: [
-    { id:'shield_n', name:'こわれかけの盾', rarity:'normal' },
+    { id:'shield_n', name:'木の盾',         rarity:'normal' },
     { id:'shield_r', name:'鉄の盾',         rarity:'rare' },
     { id:'shield_sr',name:'騎士の盾',       rarity:'superRare' },
     { id:'shield_ur',name:'竜鱗の盾',       rarity:'ultraRare' },
@@ -2116,31 +2093,49 @@ const WEAPON_DB = {
 // すべてこのデータを参照することで、見た目を完全に同期させる。
 // 今後 槍以外（盾・弓）を見た目分岐させたい場合もこの形式でエントリを追加するだけでよい。
 const WEAPON_VISUALS = {
-  // --- 盾（タッテン：短剣＋盾のセット） ---
-  shield_n: {  // こわれかけの盾（ノーマル）：くすんだ灰色、刃もくすんでいる
-    shieldColor:'#7a8290', shieldColor2:'#565d68',
-    bladeColor:'#b8c0c8', bladeColor2:'#888',
-    accentColor:'#999', glowColor:null,
+  // --- 盾（タッテン：剣＋盾のセット） ---
+  // shieldStyle: 形状アーキタイプ（wood/heater/kite/dragon/holy）。色だけでなくシルエット・
+  // 装飾・発光をレアリティごとに変えて、ランクが上がるほど強そうに見せる。
+  // bladeMul: 剣の刃幅倍率（ランクが上がるほど太く迫力を増す）。
+  shield_n: {  // 木の盾（ノーマル）：丸みのある木板＋鉄鋲。素朴だが頑丈そうな盾
+    shieldColor:'#9a6b3a', shieldColor2:'#5e3f1c',
+    bladeColor:'#c8d0d8', bladeColor2:'#888',
+    accentColor:'#7a5128', glowColor:'rgba(160,110,50,0.30)', glowBlur:3,
+    shieldStyle:'wood', studColor:'#3a2a16', grainColor:'rgba(70,45,20,0.55)',
+    bladeMul:1.0,
+    swordStyle:'bronze', guardColor:'#7a5a2a', gripColor:'#5a3a1e', pommelColor:'#8a6a30',
   },
-  shield_r: {  // 鉄の盾（レア）：現状の青い鉄盾
+  shield_r: {  // 鉄の盾（レア）：騎士のヒーターシールド。青鋼に中央リブ
     shieldColor:'#3a5fbb', shieldColor2:'#88aaff',
-    bladeColor:'#d8e4ee', bladeColor2:'#888',
-    accentColor:'#5a8fe0', glowColor:null,
+    bladeColor:'#d8e4ee', bladeColor2:'#7088a0',
+    accentColor:'#5a8fe0', glowColor:'rgba(110,160,255,0.38)', glowBlur:4,
+    shieldStyle:'heater', studColor:'#cfe0ff', ribColor:'rgba(220,235,255,0.6)',
+    bladeMul:1.12,
+    swordStyle:'iron', guardColor:'#c0a000', gripColor:'#5a3a1e', pommelColor:'#c0a000',
   },
-  shield_sr: { // 騎士の盾（スーパーレア）：銀白の装飾盾、淡く発光
+  shield_sr: { // 騎士の盾（スーパーレア）：縦長カイトシールド、銀白に紋章ライン
     shieldColor:'#c8d4e0', shieldColor2:'#7e92ad',
     bladeColor:'#eef4fa', bladeColor2:'#aab8c8',
-    accentColor:'#d0e0ff', glowColor:'rgba(190,215,255,0.45)',
+    accentColor:'#d0e0ff', glowColor:'rgba(190,215,255,0.55)', glowBlur:5,
+    shieldStyle:'kite', crestColor:'#6f86c8', trimColor:'#e8eef6',
+    bladeMul:1.22,
+    swordStyle:'knight', guardColor:'#d8e0ec', gripColor:'#3a4a6a', pommelColor:'#aab8c8',
   },
-  shield_ur: { // 竜鱗の盾（ウルトラレア）：緑の竜鱗模様、強めの発光
-    shieldColor:'#2e8b57', shieldColor2:'#1c5c38',
+  shield_ur: { // 竜鱗の盾（ウルトラレア）：トゲ付き重厚盾、緑の竜鱗、強い発光
+    shieldColor:'#2e8b57', shieldColor2:'#13502f',
     bladeColor:'#bff0d0', bladeColor2:'#2e8b57',
-    accentColor:'#4ee08a', glowColor:'rgba(60,220,140,0.5)',
+    accentColor:'#4ee08a', glowColor:'rgba(60,220,140,0.62)', glowBlur:6,
+    shieldStyle:'dragon', spikeColor:'#d9ffe9', scaleColor:'rgba(20,90,55,0.55)',
+    bladeMul:1.32,
+    swordStyle:'dragon', guardColor:'#4ee08a', gripColor:'#13502f', pommelColor:'#d9ffe9',
   },
-  shield_l: {  // 聖なる大盾（レジェンド）：黄金の聖盾、強い光をまとう
-    shieldColor:'#ffd700', shieldColor2:'#c8a000',
+  shield_l: {  // 聖なる大盾（レジェンド）：翼を広げた黄金の聖盾＋宝玉＋光の粒
+    shieldColor:'#ffd700', shieldColor2:'#b8860b',
     bladeColor:'#fff8dc', bladeColor2:'#e8c860',
-    accentColor:'#fff0a0', glowColor:'rgba(255,225,110,0.6)',
+    accentColor:'#fff0a0', glowColor:'rgba(255,225,110,0.78)', glowBlur:8,
+    shieldStyle:'holy', wingColor:'#fff4c0', gemColor:'#ff5577', crossColor:'#fff8dc',
+    particle:'holy', bladeMul:1.42,
+    swordStyle:'holy', guardColor:'#ffd700', gripColor:'#b8860b', pommelColor:'#fff0a0',
   },
   // --- 弓（ユミカゼ） ---
   // bowStyle: 形状アーキタイプ（wood/metal/longbow/recurve/celestial）。色だけでなく
@@ -2488,17 +2483,59 @@ function getSpearSvg(weaponId, size) {
     + `<line x1="21" y1="1" x2="14" y2="8" stroke="${head2}" stroke-width="0.5"/>`
     + `</svg>`;
 }
-// 盾アイコンSVGを武器IDの見た目で生成
+// 盾アイコンSVGを武器IDの見た目で生成（shieldStyleごとに形・装飾・発光を変える）
 function getShieldSvg(weaponId, size) {
   const wv = getWeaponVisual(weaponId);
   const s = size || 22;
-  const glow = wv.glowColor ? `<circle cx="11" cy="11" r="10" fill="${wv.glowColor}"/>` : '';
+  const style = wv.shieldStyle || 'heater';
+  const sc = wv.shieldColor || '#3a5fbb', sc2 = wv.shieldColor2 || '#88aaff';
+  const glow = wv.glowColor
+    ? `<ellipse cx="11" cy="11" rx="10.5" ry="11" fill="${wv.glowColor}"/>` : '';
+  const cross = `<line x1="11" y1="4" x2="11" y2="18" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>`
+    + `<line x1="5" y1="10.5" x2="17" y2="10.5" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>`;
+  let body = '';
+
+  if (style === 'wood') {
+    // 木の盾：角丸の縦長板＋鉄鋲4つ＋木目
+    body = `<rect x="3.5" y="2.5" width="15" height="17" rx="3.5" fill="${sc}" stroke="${sc2}" stroke-width="1.2"/>`
+      + `<line x1="11" y1="3.5" x2="11" y2="18.5" stroke="${wv.grainColor||'rgba(70,45,20,0.55)'}" stroke-width="0.8"/>`
+      + `<line x1="7.5" y1="3.5" x2="7.5" y2="18.5" stroke="${wv.grainColor||'rgba(70,45,20,0.4)'}" stroke-width="0.6"/>`
+      + `<line x1="14.5" y1="3.5" x2="14.5" y2="18.5" stroke="${wv.grainColor||'rgba(70,45,20,0.4)'}" stroke-width="0.6"/>`
+      + [[5.5,4.5],[16.5,4.5],[5.5,17.5],[16.5,17.5]].map(([x,y])=>
+          `<circle cx="${x}" cy="${y}" r="1.1" fill="${wv.studColor||'#3a2a16'}"/>`).join('');
+  } else if (style === 'heater') {
+    // 鉄の盾：上辺フラット、下が尖るヒーターシールド＋中央リブ＋鋲
+    body = `<path d="M4,3 L18,3 L18,9 Q18,16 11,20 Q4,16 4,9 Z" fill="${sc}" stroke="${sc2}" stroke-width="1.2"/>`
+      + `<line x1="11" y1="4" x2="11" y2="18" stroke="${wv.ribColor||'rgba(220,235,255,0.6)'}" stroke-width="1.4"/>`
+      + cross
+      + [[6.5,5],[15.5,5]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1" fill="${wv.studColor||'#cfe0ff'}"/>`).join('');
+  } else if (style === 'kite') {
+    // 騎士の盾：肩が張り出しS字でくびれ、下が鋭く尖る輪郭
+    body = `<path d="M11,1.5 C14,1.8 18,3 17.6,6 C17.2,8.5 16.4,8 17,11 C17.4,14 14,17.5 11,21 C8,17.5 4.6,14 5,11 C5.6,8 4.8,8.5 4.4,6 C4,3 8,1.8 11,1.5 Z" fill="${sc}" stroke="${sc2}" stroke-width="1.2"/>`
+      + `<path d="M5,6 Q11,4 17,6" fill="none" stroke="${wv.trimColor||'#e8eef6'}" stroke-width="1" opacity="0.6"/>`
+      + `<line x1="11" y1="3.5" x2="11" y2="18.5" stroke="${wv.crestColor||'#6f86c8'}" stroke-width="1.3"/>`
+      + `<line x1="6" y1="10" x2="16" y2="10" stroke="${wv.crestColor||'#6f86c8'}" stroke-width="1.1"/>`;
+  } else if (style === 'dragon') {
+    // 竜鱗の盾：大きく鋭いトゲ＋S字でうねる竜翼風の輪郭
+    const spikes = [[3.5,5.5,1,4],[2.5,10,0.6,9.5],[3.8,14.5,1.5,15.5],
+                    [18.5,5.5,21,4],[19.5,10,21.4,9.5],[18.2,14.5,20.5,15.5]]
+      .map(([bx,by,tx,ty])=>`<path d="M${bx},${by-1.4} L${tx},${ty} L${bx},${by+1.4} Z" fill="${wv.spikeColor||'#d9ffe9'}"/>`).join('');
+    body = spikes
+      + `<path d="M11,1.5 C13.5,1.8 17.5,3 16.8,6 C16.2,8.5 17.6,8 16.5,11 C15.6,13.5 14,17.5 11,21 C8,17.5 6.4,13.5 5.5,11 C4.4,8 5.8,8.5 5.2,6 C4.5,3 8.5,1.8 11,1.5 Z" fill="${sc}" stroke="${sc2}" stroke-width="1.3"/>`
+      + `<path d="M8,7 Q11,9 14,7 M7,11 Q11,13.5 15,11 M8,15 Q11,17 14,15" fill="none" stroke="${wv.scaleColor||'rgba(20,90,55,0.55)'}" stroke-width="1"/>`
+      + `<circle cx="11" cy="10" r="1.6" fill="${wv.spikeColor||'#d9ffe9'}"/>`;
+  } else { // holy（聖なる大盾）：翼＋S字輪郭＋装飾突起＋宝玉＋十字
+    body = `<path d="M3,5 Q1,4 1.5,8 Q3,7 4.5,9 Z" fill="${wv.wingColor||'#fff4c0'}"/>`
+      + `<path d="M19,5 Q21,4 20.5,8 Q19,7 17.5,9 Z" fill="${wv.wingColor||'#fff4c0'}"/>`
+      + `<path d="M11,0.6 L11.7,1.8 L10.3,1.8 Z" fill="${wv.crossColor||'#fff8dc'}"/>`
+      + `<path d="M11,1.8 C13.5,2.1 17,3.2 16.5,6 C16,8.4 15.8,8 16.3,11 C16.7,14 14,17.5 11,21 C8,17.5 5.3,14 5.7,11 C6.2,8 6,8.4 5.5,6 C5,3.2 8.5,2.1 11,1.8 Z" fill="${sc}" stroke="${sc2}" stroke-width="1.3"/>`
+      + `<line x1="11" y1="4" x2="11" y2="17.5" stroke="${wv.crossColor||'#fff8dc'}" stroke-width="1.6"/>`
+      + `<line x1="6.5" y1="8.5" x2="15.5" y2="8.5" stroke="${wv.crossColor||'#fff8dc'}" stroke-width="1.4"/>`
+      + `<circle cx="11" cy="11.2" r="2" fill="${wv.gemColor||'#ff5577'}" stroke="${wv.crossColor||'#fff8dc'}" stroke-width="0.6"/>`;
+  }
+
   return `<svg width="${s}" height="${s}" viewBox="0 0 22 22" style="vertical-align:middle;display:inline-block">`
-    + glow
-    + `<path d="M11,1 L19,5 L19,12 L11,21 L3,12 L3,5 Z" fill="${wv.shieldColor}" stroke="${wv.shieldColor2}" stroke-width="1"/>`
-    + `<line x1="11" y1="5" x2="11" y2="16" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>`
-    + `<line x1="6" y1="10.5" x2="16" y2="10.5" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>`
-    + `</svg>`;
+    + glow + body + `</svg>`;
 }
 // ===== 弓の見た目を共通描画するヘルパー（ロビー・クエスト中の両方で使用） =====
 // 弓身(リム)・先端リカーブ・握り(リサー)・発光・パーティクルをまとめて描く。
@@ -2937,6 +2974,508 @@ function drawBowFrame(ctx, cx, cy, r, u, wv, opts) {
       ctx.beginPath(); ctx.moveTo(px - sz * 2, py); ctx.lineTo(px, py + sz * 0.5); ctx.lineTo(px + sz * 2, py); ctx.lineTo(px, py - sz * 0.5); ctx.closePath(); ctx.fill();
     }
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+
+// ===== 盾の見た目を共通描画するヘルパー（弓の drawBowFrame と同じ思想） =====
+// shieldStyle（wood/heater/kite/dragon/holy）ごとに形・装飾・発光を描き分ける。
+// ロビー・クエスト待機・通常攻撃・シールドバッシュのすべてがこのヘルパー経由で
+// 盾を描くことで、見た目のズレを防ぐ。
+//   ctx:2Dコンテキスト, cx/cy:盾の中心, R:盾の基準半径, u:スケール係数, wv:武器ビジュアル
+//   opts.face : 盾を向ける向き（1=右, -1=左）。デフォルト1
+//   opts.glowMul : 発光倍率（被弾フラッシュ等で一時的に強める用）
+// 盾の表示サイズ一括管理（基準を約1.4倍に。微調整はこの定数のみ変更すればよい）
+const SHIELD_SCALE = 1.4;
+
+// 多角形の頂点列からギザギザ（鋸歯）の輪郭パスを引くヘルパー。
+// pts: [{x,y}] の閉路頂点。teeth: 各辺に入れる切れ込みの数。depth: 切れ込みの深さ(0〜)。
+// 各辺の中点付近を内側へ凹ませて、シルエット自体をトゲトゲしく見せる。
+function _serratedShieldPath(ctx, pts, teeth, depth, cx, cy) {
+  ctx.beginPath();
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n];
+    if (i === 0) ctx.moveTo(a.x, a.y);
+    // 辺a→bをteeth区間に分け、各境界を法線方向に交互へずらしてギザギザに
+    for (let s = 1; s <= teeth; s++) {
+      const tt = s / teeth;
+      let px = a.x + (b.x - a.x) * tt;
+      let py = a.y + (b.y - a.y) * tt;
+      if (s < teeth) {
+        // 中心から外向きの法線方向に、内へ凹ませる（奇数=内, 偶数=やや外）
+        const dx = px - cx, dy = py - cy;
+        const len = Math.hypot(dx, dy) || 1;
+        const dir = (s % 2 === 1) ? -depth : depth * 0.4;
+        px += (dx / len) * dir;
+        py += (dy / len) * dir;
+      }
+      ctx.lineTo(px, py);
+    }
+  }
+  ctx.closePath();
+}
+
+// 盾の面に「立体感のある縁取り」を描く（内側に一回り小さい多角形フチ）
+function _shieldRim(ctx, pts, cx, cy, inset, color, lw) {
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const dx = p.x - cx, dy = p.y - cy, len = Math.hypot(dx, dy) || 1;
+    const ix = p.x - (dx / len) * inset, iy = p.y - (dy / len) * inset;
+    if (i === 0) ctx.moveTo(ix, iy); else ctx.lineTo(ix, iy);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke();
+}
+
+function drawShieldFrame(ctx, cx, cy, R, u, wv, opts) {
+  wv = wv || {}; opts = opts || {};
+  const style   = wv.shieldStyle || 'heater';
+  const face    = (opts.face != null ? opts.face : 1);
+  const sc      = wv.shieldColor  || '#3a5fbb';
+  const sc2     = wv.shieldColor2 || '#88aaff';
+  const glow    = wv.glowColor || null;
+  const glowBlur= (wv.glowBlur != null ? wv.glowBlur : (glow ? 4 : 0)) * u * (opts.glowMul || 1);
+  const t = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const r = R * SHIELD_SCALE;   // 1.4倍を一括適用
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(face, 1);           // 左右向きの反転
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  const grad = ctx.createLinearGradient(-r, -r, r, r);
+  grad.addColorStop(0, _shade(sc, 0.18));
+  grad.addColorStop(0.5, sc);
+  grad.addColorStop(1, sc2);
+
+  const setGlow = (m) => { if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = glowBlur * (m || 1); } };
+  const clr = () => { ctx.shadowBlur = 0; };
+
+  if (style === 'wood') {
+    // 木の盾：角丸の縦長板＋木目＋鉄鋲4つ。発光は淡い
+    const w = 0.92 * r, h = 1.15 * r, rad = 0.28 * r;
+    setGlow(0.7);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.roundRect(-w, -h, w * 2, h * 2, rad); ctx.fill();
+    clr();
+    ctx.strokeStyle = sc2; ctx.lineWidth = 0.18 * r;
+    ctx.beginPath(); ctx.roundRect(-w, -h, w * 2, h * 2, rad); ctx.stroke();
+    // 木目
+    ctx.strokeStyle = wv.grainColor || 'rgba(70,45,20,0.5)';
+    ctx.lineWidth = 0.06 * r;
+    for (const gx of [-0.4, 0, 0.42]) {
+      ctx.beginPath(); ctx.moveTo(gx * w, -h * 0.9); ctx.lineTo(gx * w, h * 0.9); ctx.stroke();
+    }
+    // 鉄鋲
+    ctx.fillStyle = wv.studColor || '#3a2a16';
+    for (const [sx, sy] of [[-0.62,-0.78],[0.62,-0.78],[-0.62,0.78],[0.62,0.78]]) {
+      ctx.beginPath(); ctx.arc(sx * w, sy * h, 0.1 * r, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (style === 'heater') {
+    // 鉄の盾：上辺フラット、下が尖るヒーターシールド＋中央リブ＋鋲
+    const w = 0.92 * r, top = -1.0 * r, sh = 0.55 * r, bot = 1.25 * r;
+    setGlow(0.8);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(-w, top); ctx.lineTo(w, top); ctx.lineTo(w, sh);
+    ctx.quadraticCurveTo(w, bot * 0.78, 0, bot);
+    ctx.quadraticCurveTo(-w, bot * 0.78, -w, sh);
+    ctx.closePath(); ctx.fill();
+    clr();
+    ctx.strokeStyle = sc2; ctx.lineWidth = 0.16 * r; ctx.stroke();
+    // 中央リブ
+    ctx.strokeStyle = wv.ribColor || 'rgba(220,235,255,0.6)';
+    ctx.lineWidth = 0.16 * r;
+    ctx.beginPath(); ctx.moveTo(0, top + 0.12 * r); ctx.lineTo(0, bot - 0.12 * r); ctx.stroke();
+    ctx.lineWidth = 0.1 * r;
+    ctx.beginPath(); ctx.moveTo(-w * 0.7, -0.05 * r); ctx.lineTo(w * 0.7, -0.05 * r); ctx.stroke();
+    // 鋲
+    ctx.fillStyle = wv.studColor || '#cfe0ff';
+    for (const [sx, sy] of [[-0.62,-0.75],[0.62,-0.75]]) {
+      ctx.beginPath(); ctx.arc(sx * w, sy * r, 0.09 * r, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (style === 'kite') {
+    // 騎士の盾：ギザギザ輪郭＋パネル分割＋二重縁取り＋鋲で重厚に
+    const w = 0.94 * r, top = -1.2 * r, bot = 1.5 * r;
+    // 輪郭の頂点（多角形）。肩を張らせ、側面に角、下を尖らせる
+    const pts = [
+      {x:0,         y:top},
+      {x:w*0.55,    y:top+0.12*r},
+      {x:w*1.0,     y:top+0.45*r},   // 右肩の角
+      {x:w*0.82,    y:top+0.85*r},
+      {x:w*0.95,    y:0.2*r},        // 側面の張り
+      {x:w*0.62,    y:0.75*r},
+      {x:w*0.34,    y:bot*0.78},
+      {x:0,         y:bot},          // 下の尖り
+      {x:-w*0.34,   y:bot*0.78},
+      {x:-w*0.62,   y:0.75*r},
+      {x:-w*0.95,   y:0.2*r},
+      {x:-w*0.82,   y:top+0.85*r},
+      {x:-w*1.0,    y:top+0.45*r},
+      {x:-w*0.55,   y:top+0.12*r},
+    ];
+    setGlow(0.9);
+    ctx.fillStyle = grad;
+    _serratedShieldPath(ctx, pts, 2, 0.05 * r, 0, 0);  // 各辺に浅いギザを入れる
+    ctx.fill();
+    clr();
+    ctx.strokeStyle = sc2; ctx.lineWidth = 0.16 * r;
+    _serratedShieldPath(ctx, pts, 2, 0.05 * r, 0, 0); ctx.stroke();
+    // 二重の縁取り（立体感）
+    _shieldRim(ctx, pts, 0, 0, 0.12 * r, wv.trimColor || '#e8eef6', 0.07 * r);
+    // パネル分割：中央を縦に走る隆起線＋左右を分けるライン
+    ctx.strokeStyle = wv.crestColor || '#6f86c8'; ctx.lineWidth = 0.14 * r;
+    ctx.beginPath(); ctx.moveTo(0, top + 0.35 * r); ctx.lineTo(0, bot - 0.3 * r); ctx.stroke();
+    ctx.lineWidth = 0.1 * r;
+    ctx.beginPath(); ctx.moveTo(-w * 0.62, 0); ctx.lineTo(w * 0.62, 0); ctx.stroke();
+    // 上部の肩パネルを縁取り
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.82, top + 0.5 * r);
+    ctx.quadraticCurveTo(0, top + 0.28 * r, w * 0.82, top + 0.5 * r);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // 中央エンブレム（菱形）
+    ctx.fillStyle = wv.trimColor || '#e8eef6';
+    ctx.beginPath();
+    ctx.moveTo(0, -0.28 * r); ctx.lineTo(0.16 * r, 0); ctx.lineTo(0, 0.28 * r); ctx.lineTo(-0.16 * r, 0);
+    ctx.closePath(); ctx.fill();
+    // 鋲（リベット）：縁に沿って配置
+    ctx.fillStyle = wv.crestColor || '#6f86c8';
+    for (const [rx, ry] of [[-0.66,top+0.55],[0.66,top+0.55],[-0.7,0.55],[0.7,0.55]]) {
+      ctx.beginPath(); ctx.arc(rx * w, ry * r, 0.07 * r, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (style === 'dragon') {
+    // 竜鱗の盾：外付けの鋭いトゲ＋本体のギザギザ輪郭＋鱗パネル＋縁取り＋鋲。重厚で攻撃的
+    const w = 0.82 * r, top = -1.2 * r, bot = 1.55 * r;
+    // 大きな鋭いトゲ（背面に先に描く）
+    setGlow(1.2);
+    ctx.fillStyle = wv.spikeColor || '#d9ffe9';
+    const bigSpikes = [
+      [-0.95, -0.55, -1.7, -0.75, 0.32],
+      [-1.05,  0.15, -1.85, 0.1,  0.3],
+      [-0.8,   0.7,  -1.3,  0.95, 0.26],
+      [ 0.95, -0.55,  1.7, -0.75, 0.32],
+      [ 1.05,  0.15,  1.85, 0.1,  0.3],
+      [ 0.8,   0.7,   1.3,  0.95, 0.26],
+    ];
+    for (const [bx, by, tx, ty, ww] of bigSpikes) {
+      ctx.beginPath();
+      ctx.moveTo(bx * r, (by - ww) * r);
+      ctx.lineTo(tx * r, ty * r);
+      ctx.lineTo(bx * r, (by + ww) * r);
+      ctx.closePath(); ctx.fill();
+    }
+    // 本体：頂点ベースで、辺を深くギザギザに刻んだ攻撃的シルエット
+    const pts = [
+      {x:0,        y:top},
+      {x:w*0.5,    y:top+0.15*r},
+      {x:w*0.95,   y:top+0.5*r},
+      {x:w*0.78,   y:top+0.9*r},
+      {x:w*0.9,    y:0.2*r},
+      {x:w*0.58,   y:0.7*r},
+      {x:w*0.3,    y:bot*0.78},
+      {x:0,        y:bot},
+      {x:-w*0.3,   y:bot*0.78},
+      {x:-w*0.58,  y:0.7*r},
+      {x:-w*0.9,   y:0.2*r},
+      {x:-w*0.78,  y:top+0.9*r},
+      {x:-w*0.95,  y:top+0.5*r},
+      {x:-w*0.5,   y:top+0.15*r},
+    ];
+    ctx.fillStyle = grad;
+    _serratedShieldPath(ctx, pts, 2, 0.08 * r, 0, 0);  // 深めのギザ
+    ctx.fill();
+    clr();
+    ctx.strokeStyle = sc2; ctx.lineWidth = 0.17 * r;
+    _serratedShieldPath(ctx, pts, 2, 0.08 * r, 0, 0); ctx.stroke();
+    // 縁取り（一回り内側）
+    _shieldRim(ctx, pts, 0, 0, 0.13 * r, _shade(wv.spikeColor || '#d9ffe9', -0.1), 0.06 * r);
+    // 鱗パネル（V字を重ねた立体的な鱗）
+    ctx.strokeStyle = wv.scaleColor || 'rgba(20,90,55,0.55)'; ctx.lineWidth = 0.1 * r;
+    for (const sy of [-0.45, -0.05, 0.35, 0.72]) {
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.5, sy * r);
+      ctx.lineTo(0, sy * r + 0.2 * r);
+      ctx.lineTo(w * 0.5, sy * r);
+      ctx.stroke();
+    }
+    // 中央の竜眼エンブレム（縦長の菱形＋宝玉）
+    ctx.fillStyle = _shade(wv.shieldColor || '#2e8b57', -0.15);
+    ctx.beginPath();
+    ctx.moveTo(0, -0.4 * r); ctx.lineTo(0.2 * r, -0.05 * r); ctx.lineTo(0, 0.3 * r); ctx.lineTo(-0.2 * r, -0.05 * r);
+    ctx.closePath(); ctx.fill();
+    // 鋲
+    ctx.fillStyle = wv.spikeColor || '#d9ffe9';
+    for (const [rx, ry] of [[-0.62,top+0.6],[0.62,top+0.6],[-0.66,0.5],[0.66,0.5]]) {
+      ctx.beginPath(); ctx.arc(rx * w, ry * r, 0.06 * r, 0, Math.PI * 2); ctx.fill();
+    }
+    // 中央宝玉（竜眼）
+    setGlow(1.3);
+    ctx.fillStyle = wv.spikeColor || '#d9ffe9';
+    ctx.beginPath(); ctx.arc(0, -0.05 * r, 0.13 * r, 0, Math.PI * 2); ctx.fill();
+    clr();
+  } else { // holy（聖なる大盾）：S字の反り＋装飾突起＋翼＋十字＋宝玉＋光の粒。発光最強
+    const w = 0.86 * r, top = -1.25 * r, bot = 1.6 * r;
+    const pulse = 1 + 0.12 * Math.sin(t / 260);
+    // 翼
+    setGlow(1.3 * pulse);
+    ctx.fillStyle = wv.wingColor || '#fff4c0';
+    for (const sgn of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(sgn * w * 0.9, top + 0.55 * r);
+      ctx.quadraticCurveTo(sgn * (w + 0.8 * r), top + 0.05 * r, sgn * (w + 0.62 * r), top + 0.95 * r);
+      ctx.quadraticCurveTo(sgn * (w + 0.32 * r), top + 0.82 * r, sgn * w * 0.9, top + 1.1 * r);
+      ctx.closePath(); ctx.fill();
+    }
+    // 上下の装飾突起（フィニアル）
+    ctx.fillStyle = wv.crossColor || '#fff8dc';
+    ctx.beginPath();
+    ctx.moveTo(-0.12 * r, top); ctx.lineTo(0, top - 0.22 * r); ctx.lineTo(0.12 * r, top);
+    ctx.closePath(); ctx.fill();
+    // 本体：頂点ベースで縁に浅いギザを刻んだ荘厳かつ重厚な輪郭
+    const pts = [
+      {x:0,        y:top},
+      {x:w*0.5,    y:top+0.12*r},
+      {x:w*0.98,   y:top+0.45*r},
+      {x:w*0.82,   y:top+0.88*r},
+      {x:w*0.9,    y:0.22*r},
+      {x:w*0.58,   y:0.72*r},
+      {x:w*0.3,    y:bot*0.78},
+      {x:0,        y:bot},
+      {x:-w*0.3,   y:bot*0.78},
+      {x:-w*0.58,  y:0.72*r},
+      {x:-w*0.9,   y:0.22*r},
+      {x:-w*0.82,  y:top+0.88*r},
+      {x:-w*0.98,  y:top+0.45*r},
+      {x:-w*0.5,   y:top+0.12*r},
+    ];
+    ctx.fillStyle = grad;
+    _serratedShieldPath(ctx, pts, 2, 0.045 * r, 0, 0);
+    ctx.fill();
+    ctx.strokeStyle = sc2; ctx.lineWidth = 0.18 * r;
+    _serratedShieldPath(ctx, pts, 2, 0.045 * r, 0, 0); ctx.stroke();
+    // 二重縁取り（金の厚み）
+    _shieldRim(ctx, pts, 0, 0, 0.1 * r, wv.crossColor || '#fff8dc', 0.07 * r);
+    _shieldRim(ctx, pts, 0, 0, 0.2 * r, _shade(wv.shieldColor || '#ffd700', -0.15), 0.05 * r);
+    clr();
+    // 放射状の彫り模様（中央から外へ伸びる光条）
+    ctx.strokeStyle = _shade(wv.shieldColor || '#ffd700', 0.25); ctx.lineWidth = 0.05 * r;
+    ctx.globalAlpha = 0.6;
+    for (let i = 0; i < 8; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 4;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * 0.25 * r, Math.sin(a) * 0.25 * r + 0.05 * r);
+      ctx.lineTo(Math.cos(a) * 0.7 * r, Math.sin(a) * 0.7 * r + 0.05 * r);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // 十字
+    ctx.strokeStyle = wv.crossColor || '#fff8dc'; ctx.lineWidth = 0.16 * r;
+    ctx.beginPath(); ctx.moveTo(0, top + 0.35 * r); ctx.lineTo(0, bot - 0.3 * r); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-w * 0.55, -0.2 * r); ctx.lineTo(w * 0.55, -0.2 * r); ctx.stroke();
+    clr();
+    // 鋲（金の縁に沿って）
+    ctx.fillStyle = wv.crossColor || '#fff8dc';
+    for (const [rx, ry] of [[-0.6,top+0.55],[0.6,top+0.55],[-0.64,0.55],[0.64,0.55]]) {
+      ctx.beginPath(); ctx.arc(rx * w, ry * r, 0.06 * r, 0, Math.PI * 2); ctx.fill();
+    }
+    // 宝玉
+    setGlow(1.4 * pulse);
+    ctx.fillStyle = wv.gemColor || '#ff5577';
+    ctx.beginPath(); ctx.arc(0, 0.05 * r, 0.18 * r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = wv.crossColor || '#fff8dc'; ctx.lineWidth = 0.05 * r; ctx.stroke();
+    clr();
+    // 光の粒
+    ctx.fillStyle = wv.wingColor || '#fff4c0';
+    for (let i = 0; i < 4; i++) {
+      const a = t / 600 + i * Math.PI / 2;
+      const pr = r * (1.05 + 0.1 * Math.sin(t / 300 + i));
+      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t / 250 + i);
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * pr * 0.7, Math.sin(a) * pr, 0.07 * r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+
+// ===== 剣の見た目を共通描画するヘルパー（盾の drawShieldFrame と同じ思想） =====
+// swordStyle（bronze/iron/knight/dragon/holy）ごとに刃の形・鍔・握り・発光を描き分ける。
+// 待機時・通常攻撃の両方がこのヘルパー経由で剣を描くことで見た目のズレを防ぐ。
+//   ctx:2Dコンテキスト, ox/oy:柄頭(握りの根本)の位置, u:スケール係数, wv:武器ビジュアル
+//   opts.angle : 剣全体の回転（ラジアン）。0で刃が真上(-Y)を向く。デフォルト0
+//   opts.lenMul: 刃の長さ倍率（デフォルト1）
+//   opts.glowMul: 発光倍率
+// 剣の刃の長さ基準（待機時の見た目に合わせる）
+const SWORD_BASE_LEN = 40;
+
+function drawSwordFrame(ctx, ox, oy, u, wv, opts) {
+  wv = wv || {}; opts = opts || {};
+  const style    = wv.swordStyle || 'iron';
+  const angle    = opts.angle || 0;
+  const lenMul   = opts.lenMul || 1;
+  const blade    = wv.bladeColor  || '#d8e4ee';
+  const blade2   = wv.bladeColor2 || '#888';
+  const guardC   = wv.guardColor  || '#c0a000';
+  const gripC    = wv.gripColor   || '#5a3a1e';
+  const pommelC  = wv.pommelColor || guardC;
+  const glow     = wv.glowColor || null;
+  const glowBlur = (wv.glowBlur != null ? wv.glowBlur : (glow ? 4 : 0)) * u * (opts.glowMul || 1);
+  const bladeMul = wv.bladeMul || 1.0;
+  const t = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+  const L = SWORD_BASE_LEN * u * lenMul;  // 刃の長さ
+  const hw = 1.9 * u * bladeMul;          // 刃の半幅（ランクで太く）
+  const gripLen = 7 * u;                  // 握りの長さ
+
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.rotate(angle);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
+  // 刃の縦グラデ
+  const grad = ctx.createLinearGradient(-hw, 0, hw, 0);
+  grad.addColorStop(0, _shade(blade, -0.1));
+  grad.addColorStop(0.45, _shade(blade, 0.25));
+  grad.addColorStop(1, blade2);
+
+  const setGlow = (m) => { if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = glowBlur * (m || 1); } };
+  const clr = () => { ctx.shadowBlur = 0; };
+
+  // --- 握り（柄）。原点から下(+Y)へ ---
+  ctx.fillStyle = gripC;
+  ctx.fillRect(-1.3 * u, 0, 2.6 * u, gripLen);
+  // 柄頭（ポンメル）
+  ctx.fillStyle = pommelC;
+  ctx.beginPath(); ctx.arc(0, gripLen + 1 * u, 1.7 * u, 0, Math.PI * 2); ctx.fill();
+
+  // --- 刃の起点（鍔の上端）。鍔は y=0 付近 ---
+  const bladeBaseY = -1 * u;            // 鍔の少し上から刃
+  const tipY = bladeBaseY - L;          // 切先
+
+  // --- 刃本体（styleで形を変える） ---
+  setGlow(1);
+  ctx.fillStyle = grad;
+  if (style === 'bronze') {
+    // 木の盾相当：短め・素朴な刃（先がやや丸い）
+    const bw = hw * 0.95, sL = L * 0.82, tY = bladeBaseY - sL;
+    ctx.beginPath();
+    ctx.moveTo(-bw, bladeBaseY);
+    ctx.lineTo(-bw, tY + 5 * u);
+    ctx.quadraticCurveTo(0, tY - 1 * u, bw, tY + 5 * u);
+    ctx.lineTo(bw, bladeBaseY);
+    ctx.closePath(); ctx.fill();
+  } else if (style === 'iron') {
+    // 鉄の盾相当：標準的な直刃
+    ctx.beginPath();
+    ctx.moveTo(-hw, bladeBaseY);
+    ctx.lineTo(-hw, tipY + 5 * u);
+    ctx.lineTo(0, tipY);
+    ctx.lineTo(hw, tipY + 5 * u);
+    ctx.lineTo(hw, bladeBaseY);
+    ctx.closePath(); ctx.fill();
+  } else if (style === 'knight') {
+    // 騎士の盾相当：幅広で先がシャープなロングソード（フラー付き）
+    const bw = hw * 1.15;
+    ctx.beginPath();
+    ctx.moveTo(-bw, bladeBaseY);
+    ctx.lineTo(-bw, tipY + 8 * u);
+    ctx.lineTo(0, tipY);
+    ctx.lineTo(bw, tipY + 8 * u);
+    ctx.lineTo(bw, bladeBaseY);
+    ctx.closePath(); ctx.fill();
+    // フラー（樋）
+    clr();
+    ctx.strokeStyle = _shade(blade2, -0.1); ctx.lineWidth = 0.6 * u;
+    ctx.beginPath(); ctx.moveTo(0, bladeBaseY - 1 * u); ctx.lineTo(0, tipY + 6 * u); ctx.stroke();
+    setGlow(1);
+  } else if (style === 'dragon') {
+    // 竜鱗の盾相当：刃が波打ち、根本に小さなトゲ
+    const bw = hw * 1.1;
+    ctx.beginPath();
+    ctx.moveTo(-bw, bladeBaseY);
+    ctx.quadraticCurveTo(-bw * 1.5, bladeBaseY - L * 0.45, -bw * 0.5, tipY + 9 * u);
+    ctx.lineTo(0, tipY);
+    ctx.lineTo(bw * 0.5, tipY + 9 * u);
+    ctx.quadraticCurveTo(bw * 1.5, bladeBaseY - L * 0.45, bw, bladeBaseY);
+    ctx.closePath(); ctx.fill();
+    // 根本のトゲ
+    ctx.beginPath();
+    ctx.moveTo(-bw, bladeBaseY);
+    ctx.lineTo(-bw - 2.5 * u, bladeBaseY - 2 * u);
+    ctx.lineTo(-bw, bladeBaseY - 4 * u);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(bw, bladeBaseY);
+    ctx.lineTo(bw + 2.5 * u, bladeBaseY - 2 * u);
+    ctx.lineTo(bw, bladeBaseY - 4 * u);
+    ctx.closePath(); ctx.fill();
+  } else { // holy（聖なる大盾相当）：幅広の聖剣、刃が脈動発光
+    const pulse = 1 + 0.1 * Math.sin(t / 240);
+    setGlow(1.3 * pulse);
+    const bw = hw * 1.25;
+    ctx.beginPath();
+    ctx.moveTo(-bw, bladeBaseY);
+    ctx.lineTo(-bw, tipY + 9 * u);
+    ctx.lineTo(0, tipY);
+    ctx.lineTo(bw, tipY + 9 * u);
+    ctx.lineTo(bw, bladeBaseY);
+    ctx.closePath(); ctx.fill();
+  }
+  clr();
+  // 刃の輪郭・稜線ハイライト
+  ctx.strokeStyle = blade2; ctx.lineWidth = 0.6 * u;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 0.7 * u;
+  ctx.beginPath(); ctx.moveTo(0, bladeBaseY - 1 * u); ctx.lineTo(0, tipY + 4 * u); ctx.stroke();
+
+  // --- 鍔（ガード）。styleで形を変える ---
+  setGlow(0.6);
+  ctx.fillStyle = guardC;
+  if (style === 'knight' || style === 'holy') {
+    // 騎士・聖：左右に張り出し、先が反り上がるクロスガード
+    const gw = 7.5 * u;
+    ctx.beginPath();
+    ctx.moveTo(-gw, bladeBaseY + 0.5 * u);
+    ctx.quadraticCurveTo(-gw - 1 * u, bladeBaseY - 2.5 * u, -gw * 0.6, bladeBaseY - 1.5 * u);
+    ctx.lineTo(gw * 0.6, bladeBaseY - 1.5 * u);
+    ctx.quadraticCurveTo(gw + 1 * u, bladeBaseY - 2.5 * u, gw, bladeBaseY + 0.5 * u);
+    ctx.lineTo(gw * 0.7, bladeBaseY + 2.6 * u);
+    ctx.lineTo(-gw * 0.7, bladeBaseY + 2.6 * u);
+    ctx.closePath(); ctx.fill();
+  } else if (style === 'dragon') {
+    // 竜：トゲ状に尖ったガード
+    const gw = 6.5 * u;
+    ctx.beginPath();
+    ctx.moveTo(-gw, bladeBaseY - 1.5 * u);
+    ctx.lineTo(-gw * 0.4, bladeBaseY + 0.5 * u);
+    ctx.lineTo(gw * 0.4, bladeBaseY + 0.5 * u);
+    ctx.lineTo(gw, bladeBaseY - 1.5 * u);
+    ctx.lineTo(gw * 0.5, bladeBaseY + 2.6 * u);
+    ctx.lineTo(-gw * 0.5, bladeBaseY + 2.6 * u);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // bronze/iron：シンプルな横棒の鍔
+    const gw = 5 * u;
+    ctx.fillRect(-gw, bladeBaseY, gw * 2, 2.6 * u);
+  }
+  clr();
+
+  // 聖剣は鍔中央に宝玉
+  if (style === 'holy') {
+    setGlow(1.2);
+    ctx.fillStyle = wv.gemColor || '#ff5577';
+    ctx.beginPath(); ctx.arc(0, bladeBaseY + 1 * u, 1.5 * u, 0, Math.PI * 2); ctx.fill();
+    clr();
   }
 
   ctx.restore();
@@ -3751,7 +4290,7 @@ function applyStageDifficulty(stageId) {
 
 
 
-// ===== 04-robot-config.js =====
+/* ===== 04-robot-config.js ===== */
 // ==================== 04-robot-config.js ====================
 // ======================================================
 // ===== 04-robot-config.js =====
@@ -3840,7 +4379,7 @@ function rectsOverlap(a,b){
 
 
 
-// ===== 05-game-loop.js =====
+/* ===== 05-game-loop.js ===== */
 // ==================== 05-game-loop.js ====================
 // ======================================================
 // ===== 05-game-loop.js =====
@@ -4900,7 +5439,7 @@ window.onRevived = onRevived;
 
 
 
-// ===== 06-enemy-draw.js =====
+/* ===== 06-enemy-draw.js ===== */
 // ==================== 06-enemy-draw.js ====================
 // ======================================================
 // ===== 06-enemy-draw.js =====
@@ -5866,7 +6405,7 @@ function drawBird(p, cfg){
 
 
 
-// ===== 07-course-draw.js =====
+/* ===== 07-course-draw.js ===== */
 // ==================== 07-course-draw.js ====================
 // ======================================================
 // ===== 07-course-draw.js =====
@@ -6413,6 +6952,7 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
     const shBlade  = shv ? shv.bladeColor   : '#d8e4ee';
     const shBlade2 = shv ? shv.bladeColor2  : '#888';
     const shGlow   = shv ? shv.glowColor    : null;
+    const bladeMul = shv && shv.bladeMul ? shv.bladeMul : 1.0;
 
     if (isShieldBash) {
       // ===== スキル発動：盾を前方に構えて拡大 =====
@@ -6437,95 +6977,38 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         bashOffset = shieldStillActive ? 14*u : 14*u * (1 - ease);
       }
 
-      const kx = cx - bodyW/2 - W*0.12 - 6*u;
-      const ky = bodyTop + bodyH*0.08;
-      c.fillStyle = '#c8c8c8'; c.fillRect(kx, ky, 3*u, 18*u);
-      c.fillStyle = '#c0a000'; c.fillRect(kx - 4*u, ky + 18*u, 11*u, 3*u);
-      c.fillStyle = '#8b5a2b'; c.fillRect(kx + 0.5*u, ky + 21*u, 2*u, 8*u);
-      c.strokeStyle = '#666'; c.lineWidth = 0.5*u; c.strokeRect(kx, ky, 3*u, 18*u);
+      // 剣（左腕の外側）：共通ヘルパーで描画
+      const kx = cx - bodyW/2 - W*0.12 - 4*u;
+      const ky = bodyTop + bodyH*0.08 + 6*u;
+      if (shv) drawSwordFrame(c, kx, ky, u, shv, { angle: 0, lenMul: 0.85 });
 
       const shieldCenterX = cx + bodyW/2 + W*0.12 + 4*u + bashOffset;
-      const shieldCenterY = bodyTop + bodyH*0.16;
+      const shieldCenterY = bodyTop + bodyH*0.16 + 11*u;
       c.save();
       c.translate(shieldCenterX, shieldCenterY);
       c.scale(bashScale, bashScale);
-      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 8*u; }
-      c.fillStyle = shColor;
-      c.beginPath();
-      c.moveTo(0,      -11*u);
-      c.lineTo(9*u,    -6*u);
-      c.lineTo(9*u,    7*u);
-      c.lineTo(0,       12*u);
-      c.lineTo(-9*u,    7*u);
-      c.lineTo(-9*u,   -6*u);
-      c.closePath(); c.fill();
-      c.shadowBlur = 0;
-      c.strokeStyle = shColor2; c.lineWidth = 1.2*u; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1*u;
-      c.beginPath(); c.moveTo(0, -5*u); c.lineTo(0, 6*u); c.stroke();
-      c.beginPath(); c.moveTo(-4*u, 0); c.lineTo(8*u, 0); c.stroke();
+      if (shv) drawShieldFrame(c, 0, 0, 11*u, u, shv, { face: 1, glowMul: 1.3 });
       c.restore();
 
     } else if (!isSlashing) {
       // ===== 通常時（移動・棒立ち）：剣を左手で握って上段に構える =====
-      // 手の位置を左腕の拳あたりに合わせ、そこから刃を上へ伸ばす（地面近くに垂れ下げない）
       const handX = cx - bodyW/2 - armW/2;            // 左手（拳）の中心
       const handY = bodyTop + bodyH*0.08 + armH*0.42; // 拳の高さ（腕の中ほど）
-      const bladeLen = H*0.40;                         // 刃渡り
-      // 握り（手の中）
-      c.fillStyle = '#5a3a1e';
-      c.fillRect(handX - 1.3*u, handY - 1*u, 2.6*u, 7*u);
-      // 鍔（クロスガード）
-      c.fillStyle = '#c0a000';
-      c.fillRect(handX - 5*u, handY - 2.6*u, 10*u, 2.6*u);
-      // 刃（手の上から真上やや外向きへ）
-      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 5*u; }
-      c.fillStyle = shBlade;
-      const bTopY = handY - 2.6*u - bladeLen;
-      c.beginPath();
-      c.moveTo(handX - 1.9*u, handY - 2.6*u);
-      c.lineTo(handX - 1.9*u, bTopY + 4*u);
-      c.lineTo(handX,         bTopY);            // 切先
-      c.lineTo(handX + 1.9*u, bTopY + 4*u);
-      c.lineTo(handX + 1.9*u, handY - 2.6*u);
-      c.closePath(); c.fill();
-      c.shadowBlur = 0;
-      c.strokeStyle = shBlade2; c.lineWidth = 0.6*u; c.stroke();
-      // 刃の稜線（ハイライト）
-      c.strokeStyle = 'rgba(255,255,255,0.45)'; c.lineWidth = 0.7*u;
-      c.beginPath(); c.moveTo(handX, handY - 2.6*u); c.lineTo(handX, bTopY + 3*u); c.stroke();
-      // 拳
+      // 剣を共通ヘルパーで描画（柄頭を拳に合わせ、刃を真上へ）
+      if (shv) drawSwordFrame(c, handX, handY - 2*u, u, shv, { angle: 0 });
+      // 拳（柄を握る手）を上から重ねる
       _hand(c, handX, handY + 2.5*u, cls.color, u);
 
       const shieldIsActive = (typeof shieldActive !== 'undefined') && shieldActive;
       const persistScale = shieldIsActive ? 1.8 : 1.0;
       const persistOffset = shieldIsActive ? 14*u : 0;
 
-      const sX0 = cx + bodyW/2 + W*0.12 + 9*u + persistOffset;
-      const sY0 = bodyTop + bodyH*0.05;
+      const shCX = cx + bodyW/2 + W*0.12 + 9*u + persistOffset + 2*u;
+      const shCY = bodyTop + bodyH*0.05 + 11.5*u;
       c.save();
-      if (shieldIsActive) {
-        // 拡大時：盾の中心基準でスケール
-        const scx = sX0 + 2*u, scy = sY0 + 11.5*u;
-        c.translate(scx, scy);
-        c.scale(persistScale, persistScale);
-        c.translate(-scx, -scy);
-      }
-      c.fillStyle = shColor;
-      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 6*u; }
-      c.beginPath();
-      c.moveTo(sX0,        sY0);
-      c.lineTo(sX0 + 9*u,  sY0 + 5*u);
-      c.lineTo(sX0 + 9*u,  sY0 + 18*u);
-      c.lineTo(sX0,        sY0 + 23*u);
-      c.lineTo(sX0 - 5*u,  sY0 + 18*u);
-      c.lineTo(sX0 - 5*u,  sY0 + 5*u);
-      c.closePath(); c.fill();
-      c.shadowBlur = 0;
-      c.strokeStyle = shColor2; c.lineWidth = 1.2*u; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1*u;
-      c.beginPath(); c.moveTo(sX0 + 4*u, sY0 + 6*u); c.lineTo(sX0 + 4*u, sY0 + 17*u); c.stroke();
-      c.beginPath(); c.moveTo(sX0 - 4*u, sY0 + 11*u); c.lineTo(sX0 + 8*u, sY0 + 11*u); c.stroke();
+      c.translate(shCX, shCY);
+      if (shieldIsActive) c.scale(persistScale, persistScale);
+      if (shv) drawShieldFrame(c, 0, 0, 11*u, u, shv, { face: 1, glowMul: shieldIsActive ? 1.3 : 1 });
       c.restore();
 
     } else {
@@ -6564,23 +7047,12 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
       // 剣本体
       const swordTipPivotX = armPivotX2 + Math.cos(swordAngle) * swordArmLen;
       const swordTipPivotY = armPivotY2 + Math.sin(swordAngle) * swordArmLen;
-      c.save();
-      c.translate(swordTipPivotX, swordTipPivotY);
-      c.rotate(swordAngle);
-      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 6*u; }
-      c.fillStyle = shBlade;
-      c.beginPath();
-      c.moveTo(0, -1.5*u);
-      c.lineTo(20*u, -2.5*u);
-      c.lineTo(23*u, 0);
-      c.lineTo(20*u, 2.5*u);
-      c.lineTo(0, 1.5*u);
-      c.closePath(); c.fill();
-      c.shadowBlur = 0;
-      c.strokeStyle = shBlade2; c.lineWidth = 0.6*u; c.stroke();
-      c.fillStyle = '#c0a000'; c.fillRect(-2.5*u, -3.5*u, 2*u, 7*u);
-      c.fillStyle = '#5a3a1e'; c.fillRect(-7*u, -1.3*u, 5*u, 2.6*u);
-      c.restore();
+      // 剣を共通ヘルパーで描画。柄頭を原点に、刃を腕の延長方向(+X→回転)へ向ける
+      // drawSwordFrameは刃が-Y方向なので、swordAngle+90度で腕方向に合わせる
+      if (shv) {
+        drawSwordFrame(c, swordTipPivotX, swordTipPivotY, u, shv,
+          { angle: swordAngle + Math.PI / 2, lenMul: 0.62, glowMul: 1.1 });
+      }
 
       // 振り下ろし中の風切り線
       if (slashT >= 0.40 && slashT < 0.65) {
@@ -6593,24 +7065,10 @@ function drawCourseGeneric(c, cx, baseY, W, H, cls, attackAnim) {
         c.globalAlpha = 1;
       }
 
-      // 盾（左腕に保持・防御姿勢のまま）
-      const sX = cx - bodyW/2 - W*0.12 - 9*u;
-      const sY = bodyTop + bodyH*0.05;
-      if (shGlow) { c.shadowColor = shGlow; c.shadowBlur = 6*u; }
-      c.fillStyle = shColor;
-      c.beginPath();
-      c.moveTo(sX,        sY);
-      c.lineTo(sX - 9*u,  sY + 5*u);
-      c.lineTo(sX - 9*u,  sY + 18*u);
-      c.lineTo(sX,        sY + 23*u);
-      c.lineTo(sX + 5*u,  sY + 18*u);
-      c.lineTo(sX + 5*u,  sY + 5*u);
-      c.closePath(); c.fill();
-      c.shadowBlur = 0;
-      c.strokeStyle = shColor2; c.lineWidth = 1.2*u; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1*u;
-      c.beginPath(); c.moveTo(sX - 4*u, sY + 6*u); c.lineTo(sX - 4*u, sY + 17*u); c.stroke();
-      c.beginPath(); c.moveTo(sX - 8*u, sY + 11*u); c.lineTo(sX + 4*u, sY + 11*u); c.stroke();
+      // 盾（左腕に保持・防御姿勢のまま）：左向きで共通ヘルパー描画
+      const shCXa = cx - bodyW/2 - W*0.12 - 9*u - 2*u;
+      const shCYa = bodyTop + bodyH*0.05 + 11.5*u;
+      if (shv) drawShieldFrame(c, shCXa, shCYa, 11*u, u, shv, { face: -1 });
     }
 
   } else if (cls.weapon === 'tower_shield') {
@@ -7630,7 +8088,7 @@ function drawTorch(g){
 
 
 
-// ===== 08-render.js =====
+/* ===== 08-render.js ===== */
 // ==================== 08-render.js ====================
 // ======================================================
 // ===== 08-render.js =====
@@ -8368,30 +8826,21 @@ function draw(){
     const py = player.y + player.h * 0.45;
     const flashP = shieldFlash / 0.6; // 1→0
     const popScale = 0.6 + (1 - flashP) * 0.7; // 出現時にポップ（拡大→落ち着く）
-    const shieldSize = 26; // 大きめサイズ
+    // 装備中の盾のビジュアルを取得（形・色・発光を反映）
+    const shvHit = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('shield') : null;
+    const ringColor = shvHit && shvHit.accentColor ? shvHit.accentColor : '#ffffff';
     ctx.save();
     ctx.globalAlpha = flashP;
     ctx.translate(px, py);
     ctx.scale(popScale, popScale);
-    // 盾本体
-    ctx.fillStyle = '#3a5fbb';
-    ctx.beginPath();
-    ctx.moveTo(0,              -shieldSize);
-    ctx.lineTo(shieldSize*0.85, -shieldSize*0.5);
-    ctx.lineTo(shieldSize*0.85,  shieldSize*0.65);
-    ctx.lineTo(0,                shieldSize*1.15);
-    ctx.lineTo(-shieldSize*0.85, shieldSize*0.65);
-    ctx.lineTo(-shieldSize*0.85,-shieldSize*0.5);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 3; ctx.stroke();
-    // 紋章
-    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, -shieldSize*0.45); ctx.lineTo(0, shieldSize*0.55); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-shieldSize*0.45, 0); ctx.lineTo(shieldSize*0.55, 0); ctx.stroke();
+    // 盾本体（装備中の盾を共通ヘルパーで。敵の方向を向ける）
+    if (shvHit) {
+      drawShieldFrame(ctx, 0, 0, 17, 1, shvHit, { face: dirToEnemy < 0 ? -1 : 1, glowMul: 1.4 });
+    }
     // 出現時の光の輪
     ctx.globalAlpha = flashP * 0.7;
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, shieldSize * 1.25, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = ringColor; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
   }
 
@@ -8573,7 +9022,7 @@ if (typeof canvas !== 'undefined') {
 
 
 
-// ===== 09-profile-id.js =====
+/* ===== 09-profile-id.js ===== */
 // ==================== 09-profile-id.js ====================
 // ======================================================
 // ===== 09-profile-id.js =====
@@ -8898,7 +9347,7 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 
 
 
-// ===== 10-lobby-world.js =====
+/* ===== 10-lobby-world.js ===== */
 // ==================== 10-lobby-world.js ====================
 // ======================================================
 // ===== 10-lobby-world.js =====
@@ -9881,37 +10330,18 @@ function drawLobbyRobotGeneric(p, cls, W, H, baseY, headCX) {
 
   // ===== 武器描画 =====
   if (cls.weapon === 'sword_shield') {
-    // 装備中の盾の見た目（色・発光）を取得
+    // 装備中の盾・剣の見た目（色・発光・形状）を取得
     const shvLobby = (typeof getEquippedWeaponVisual === 'function') ? getEquippedWeaponVisual('shield') : null;
-    const lShColor  = shvLobby ? shvLobby.shieldColor  : '#3a5fbb';
-    const lShColor2 = shvLobby ? shvLobby.shieldColor2 : cls.accentColor;
-    const lShGlow   = shvLobby ? shvLobby.glowColor    : null;
-    // 短剣（左腕の外側・後方）
-    const kx = headCX - bodyW/2 - W*0.12 - 6*u;
-    const ky = bodyTop + bodyH*0.08;
-    lctx.fillStyle = '#c8c8c8'; lctx.fillRect(kx, ky, 3*u, 18*u);
-    lctx.fillStyle = '#c0a000'; lctx.fillRect(kx - 4*u, ky + 18*u, 11*u, 3*u);
-    lctx.fillStyle = '#8b5a2b'; lctx.fillRect(kx + 0.5*u, ky + 21*u, 2*u, 8*u);
-    lctx.strokeStyle = '#666'; lctx.lineWidth = 0.5*u; lctx.strokeRect(kx, ky, 3*u, 18*u);
-    // 盾（右腕の外側・前方）
-    const sX = headCX + bodyW/2 + W*0.12 + 9*u;
-    const sY = bodyTop + bodyH*0.05;
-    if (lShGlow) { lctx.shadowColor = lShGlow; lctx.shadowBlur = 6*u; }
-    lctx.fillStyle = lShColor;
-    lctx.beginPath();
-    lctx.moveTo(sX,        sY);
-    lctx.lineTo(sX + 9*u,  sY + 5*u);
-    lctx.lineTo(sX + 9*u,  sY + 18*u);
-    lctx.lineTo(sX,        sY + 23*u);
-    lctx.lineTo(sX - 5*u,  sY + 18*u);
-    lctx.lineTo(sX - 5*u,  sY + 5*u);
-    lctx.closePath(); lctx.fill();
-    lctx.shadowBlur = 0;
-    lctx.strokeStyle = lShColor2; lctx.lineWidth = 1.2*u; lctx.stroke();
-    // 盾の紋章
-    lctx.strokeStyle = 'rgba(255,255,255,0.5)'; lctx.lineWidth = 1*u;
-    lctx.beginPath(); lctx.moveTo(sX + 4*u, sY + 6*u); lctx.lineTo(sX + 4*u, sY + 17*u); lctx.stroke();
-    lctx.beginPath(); lctx.moveTo(sX - 4*u, sY + 11*u); lctx.lineTo(sX + 8*u, sY + 11*u); lctx.stroke();
+    // 剣（左腕の外側）。共通ヘルパーで柄頭を下・刃を上に
+    const kx = headCX - bodyW/2 - W*0.12 - 4*u;
+    const ky = bodyTop + bodyH*0.08 + 6*u;   // 柄頭の高さ
+    if (shvLobby) drawSwordFrame(lctx, kx, ky, u, shvLobby, { angle: 0, lenMul: 0.85 });
+    // 盾（右腕の外側・前方）：共通ヘルパーで形状・装飾・発光を描く
+    const sCX = headCX + bodyW/2 + W*0.12 + 9*u;
+    const sCY = bodyTop + bodyH*0.05 + 11*u;
+    if (shvLobby) {
+      drawShieldFrame(lctx, sCX, sCY, 11*u, u, shvLobby, { face: 1 });
+    }
 
   } else if (cls.weapon === 'tower_shield') {
     // バスティオン：身長の2倍ほどの大盾を常時前方に構える（ロビーでも同じ見た目）
@@ -10586,7 +11016,7 @@ window.addEventListener('resize', resizeLobbyCanvas);
 
 
 
-// ===== 11-quest-screen.js =====
+/* ===== 11-quest-screen.js ===== */
 // ==================== 11-quest-screen.js ====================
 // ======================================================
 // ===== 11-quest-screen.js =====
@@ -11314,7 +11744,7 @@ if (!myProfile.name) {
 
 
 
-// ===== 13-webrtc-room.js =====
+/* ===== 13-webrtc-room.js ===== */
 // ==================== 13-webrtc-room.js ====================
 // ===== 13-webrtc-room.js =====
 // ======================================================
@@ -12179,7 +12609,7 @@ window.showRoomScreen = showRoomScreen;
 
 
 
-// ===== 12-cloud-sync.js =====
+/* ===== 12-cloud-sync.js ===== */
 /* ===== 12-cloud-sync.js (REST API版) =====
    Firebase SDK不要。Firestore REST APIを直接呼び出す。
    GitHub Pagesなどtype="module"やCDNが使えない環境向け。
@@ -12688,6 +13118,34 @@ setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 
 </script>
+
+
+
+
+
+<div id="roomInvitePopup" style="
+  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:9999;background:rgba(10,14,26,0.97);border:2px solid #d7bde2;
+  border-radius:20px;padding:24px 20px;min-width:260px;max-width:320px;
+  box-shadow:0 0 40px rgba(142,68,173,0.6);text-align:center;
+  font-family:sans-serif;
+">
+  <div style="font-size:22px;margin-bottom:8px;">🎮</div>
+  <div id="roomInvitePopupTitle" style="font-size:15px;font-weight:bold;color:#d7bde2;margin-bottom:6px;"></div>
+  <div id="roomInvitePopupSub" style="font-size:12px;color:#7fa8c8;margin-bottom:18px;line-height:1.6;"></div>
+  <div style="display:flex;gap:10px;justify-content:center;">
+    <button id="roomInviteAcceptBtn" style="
+      flex:1;background:rgba(39,174,96,0.85);border:1px solid #2ecc71;
+      color:#fff;border-radius:10px;padding:10px;font-size:13px;
+      font-weight:bold;cursor:pointer;">✅ 参加する</button>
+    <button id="roomInviteDeclineBtn" style="
+      flex:1;background:rgba(80,80,100,0.7);border:1px solid #555;
+      color:#ccc;border-radius:10px;padding:10px;font-size:13px;
+      cursor:pointer;">✖ 断る</button>
+  </div>
+</div>
+<div id="roomInviteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5);"></div>
+
 </body>
 </html>
 
