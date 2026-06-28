@@ -1147,8 +1147,8 @@ function isInMeleeRange(player, e, range, facing) {
 
 // 敵撃破時の獲得スコア（種別ごと）
 function getEnemyKillScore(e) {
-  if (e.type === 'queenSlime') return 3000;
-  if (e.type === 'large') return 500;
+  if (e.type === 'queenSlime' || e.type === 'boss') return 3000;
+  if (e.type === 'large' || e.type === 'mid') return 500;
   return 200;
 }
 
@@ -1205,50 +1205,164 @@ for (let r=0; r<ROWS; r++){
       solids.push({x,y,w:TILE,h:TILE,type:ch});
     } else if (ch === '3') {
       coins.push({x:x+TILE/2-8,y:y+TILE/2-8,w:16,h:16,got:false});
-    } else if (ch === '4') {
-      const eh = Math.round(TILE * 1.0), ew = Math.round(TILE * 1.1);
-      enemies.push({x:x, y:groundRowY - eh, w:ew, h:eh, dir:1, speed:TILE*1.7, alive:true, baseX:x,
-        type:'small', frame:0, frameTimer:0, attacking:false, attackTimer:0,
-        hp:10, maxHp:10,
-        baseMaxHp:10, baseSpeed:TILE*1.7}); // ステージ難易度倍率の計算元になる「素のステータス」
-    } else if (ch === '6') {
-      const eh = Math.round(TILE * 1.4), ew = Math.round(TILE * 1.6);
-      enemies.push({x:x, y:groundRowY - eh, w:ew, h:eh, dir:1, speed:TILE*1.1, alive:true, baseX:x,
-        type:'large', frame:0, frameTimer:0, attacking:false, attackTimer:0, attackCooldown:0,
-        hp:1000, maxHp:1000,
-        baseMaxHp:1000, baseSpeed:TILE*1.1});
     } else if (ch === 'S') {
       startX = x;
       // ★修正: groundRowY（地面タイル上端）を基準にスタート位置を計算
       startY = groundRowY - Math.round(TILE * 1.3) - 1;
     }
+    // ※ 敵（'4'/'6'）はマップに埋め込まず、クエストごとに spawnEnemiesForStage() で動的生成する
   }
 }
 
-// ゴール（松明）
+// 地面タイルが置かれている行（複数行に跨る場合もあるので集合で保持）
+const groundTileRows = [];
+for (let r = 0; r < ROWS; r++) if (mapRows[r].includes('1')) groundTileRows.push(r);
+
+// ゴール（松明）。位置は spawnEnemiesForStage 内でコース左端付近に再設定される。
 {
   const margin = TILE * 6;
-  // ★修正: groundRowY を基準に松明の高さを計算
   goal = {x:margin, y:(groundRowY - TILE*3), w:TILE*0.6, h:TILE*4};
 }
 
-// クイーンスライム（5番目のコース専用ボス）
-// 出現はステージ限定。常時データとしては生成しておき、resetGame()内で
-// currentStageId !== 'stage5' の場合は alive=false にして無効化する（bossOnly/requireStageで判定）。
-{
-  // groundRowYは「地上より上の使える縦空間」の高さ。画面で視認できる高さからちょっと低いくらい、
-  // という指定に合わせて、その9割強の全長にする（頭が画面上端ぎりぎりで見切れない程度の巨大さ）。
-  const bossH = Math.round(groundRowY * 0.92);
-  const bossW = Math.round(bossH * 0.50);
-  const bossX = goal.x + TILE * 5; // ゴール手前（プレイヤーが最後に対峙する位置）に配置
-  enemies.push({
-    x:bossX, y:groundRowY - bossH, w:bossW, h:bossH, dir:1, speed:TILE*0.5, alive:false, baseX:bossX,
-    type:'queenSlime', frame:0, frameTimer:0, attacking:false, attackTimer:0, attackCooldown:0,
-    hp:5000, maxHp:5000,
-    baseMaxHp:5000, baseSpeed:TILE*0.5,
-    bossOnly:true, requireStage:'stage5', // resetGame()でこのステージの時だけalive=trueにする
-  });
+// ======================================================
+// ===== クエスト別 敵の動的生成 =====
+// ======================================================
+// resetGame() から呼ばれ、currentStageId のクエスト定義に従って
+//  ・敵（雑魚→中ボス→ボス）を生成
+//  ・敵数に比例してコース長(WORLD_W)を伸ばし、地面(solids)を敷き直す
+//  ・ゴール（松明）をコース左端に配置
+// する。配置間隔はランダム。雑魚はプレイヤーへゆっくり追尾（移動ロジックは05側）。
+
+// 1タイル系の基準値（難易度倍率は applyStageDifficulty が後段で掛ける）
+const ZAKO_BASE_HP = 9;    // 雑魚の素HP（Q1：攻撃力2位ヤリーンの通常攻撃3×3発で撃破）
+const MID_BASE_HP  = 60;   // 中ボスの素HP（Q1：ヤリーン通常攻撃3×20発で撃破）
+const BOSS_BASE_HP = 1500; // ボスの素HP（ボス個別設計で今後調整）
+const ZAKO_BASE_SPEED = TILE * 0.345; // 追尾速度＝プレイヤー(TILE*6.9)の1/20
+const MID_BASE_SPEED  = TILE * 0.345;
+const ENEMY_SLOT_TILES = 6; // 敵1体あたりの平均配置間隔（タイル）
+
+// 地面(solids)を指定ワールド幅いっぱいに敷き直す
+function rebuildGround(worldWidthPx) {
+  // 既存の地面('1'/'2')を一旦すべて除去し、地面行に沿って敷き直す
+  solids = solids.filter(s => s.type !== '1' && s.type !== '2');
+  const cols = Math.ceil(worldWidthPx / TILE) + 2;
+  for (const r of groundTileRows) {
+    for (let c = 0; c < cols; c++) {
+      solids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, type: '1' });
+    }
+  }
 }
+
+// クエスト定義に基づき敵を生成（enemies配列を作り直す）
+function spawnEnemiesForStage(stageId) {
+  enemies = [];
+  const st = (typeof getStageDef === 'function') ? getStageDef(stageId) : null;
+
+  // ステージ番号をシードにした疑似乱数（mulberry32）。
+  // マルチプレイでもホスト・ゲストで敵配置が一致するよう、Math.randomではなくこれを使う。
+  const seed = (st && st.order ? st.order : 1) * 2654435761 >>> 0;
+  let _s = seed;
+  const rnd = () => {
+    _s |= 0; _s = (_s + 0x6D2B79F5) | 0;
+    let tt = Math.imul(_s ^ (_s >>> 15), 1 | _s);
+    tt = (tt + Math.imul(tt ^ (tt >>> 7), 61 | tt)) ^ tt;
+    return ((tt ^ (tt >>> 14)) >>> 0) / 4294967296;
+  };
+
+  // フォールバック（定義が無い場合は従来の最小構成）
+  const comp = st && st.composition ? st.composition : { zako: [{ gen: 1, count: 3 }], mid: 1, boss: 0 };
+  const gen = (z) => z.gen || 1;
+
+  // --- コース長を敵数に比例して決定 ---
+  const zakoTotal = comp.zako.reduce((s, z) => s + z.count, 0);
+  const enemyTotal = zakoTotal + (comp.mid || 0) + (comp.boss || 0);
+  const startMargin = TILE * 10;  // スタート地点の助走
+  const goalMargin  = TILE * 8;   // ゴール（左端）側の余白
+  const fieldLen = Math.max(COLS * TILE, (enemyTotal * ENEMY_SLOT_TILES) * TILE + startMargin + goalMargin);
+  WORLD_W = Math.round(fieldLen);
+  WORLD_H = ROWS * TILE;
+  rebuildGround(WORLD_W);
+
+  // ゴール（松明）はコース左端付近、プレイヤーは右端付近からスタート（左へ進む既存仕様）
+  goal = { x: goalMargin, y: groundRowY - TILE * 3, w: TILE * 0.6, h: TILE * 4 };
+  startX = WORLD_W - startMargin;
+  startY = groundRowY - Math.round(TILE * 1.3) - 1;
+
+  // --- 配置順：雑魚 → 中ボス → ボス（プレイヤーは右→左へ進むので、右側=先に出会う方に雑魚）---
+  // 出会う順に並べたい配列を作り、x座標は「右(大きいx)から順に」割り当てる。
+  const order = []; // {kind:'zako'|'mid'|'boss', gen}
+  for (const z of comp.zako) for (let i = 0; i < z.count; i++) order.push({ kind: 'zako', gen: gen(z) });
+  // 中ボスの世代：そのクエストに登場する雑魚世代の中から選ぶ（＝出てくる敵の上位形態が中ボスになる）。
+  // 難易度が上がるほど新しい世代が候補に入るので、自然に強い中ボスが出る。
+  const midGenPool = (st && st.gens && st.gens.length) ? st.gens : [genOfQuestSafe(st)];
+  for (let i = 0; i < (comp.mid || 0); i++) {
+    // 新しい世代を優先しつつ、シードで多様性を持たせる
+    const pick = midGenPool[Math.floor(rnd() * Math.min(midGenPool.length, 2))]; // 上位2世代から選ぶ
+    order.push({ kind: 'mid', gen: pick || genOfQuestSafe(st) });
+  }
+  for (let i = 0; i < (comp.boss || 0); i++) order.push({ kind: 'boss', gen: genOfQuestSafe(st) });
+
+  // 配置領域（ゴール余白とスタート助走を除いた区間）に、ランダム間隔で散らす
+  const zoneL = goalMargin + TILE * 4;
+  const zoneR = startX - TILE * 4;
+  const n = order.length;
+  const slot = (zoneR - zoneL) / Math.max(1, n);
+  // order[0]（最初に出会う雑魚）を右端側に、最後のボスを左端(ゴール手前)側に置く
+  for (let i = 0; i < n; i++) {
+    const o = order[i];
+    const slotCenter = zoneR - (i + 0.5) * slot;
+    const jitter = (rnd() - 0.5) * slot * 0.6; // ランダム間隔（シード乱数で再現性あり）
+    const ex = Math.max(zoneL, Math.min(zoneR, slotCenter + jitter));
+    enemies.push(makeEnemy(o, ex, st));
+  }
+}
+
+// クエスト定義から「新敵世代」を安全に取り出す（中ボス・ボスの見た目割り当て用）
+function genOfQuestSafe(st) {
+  if (st && st.gens && st.gens.length) return st.gens[0];
+  if (st && typeof genOfQuest === 'function') return genOfQuest(st.order || 1);
+  return 1;
+}
+
+// 種別ごとの敵オブジェクトを生成
+function makeEnemy(o, ex, st) {
+  const bossIdx = st ? (st.bossIndex || 0) : 0;
+  if (o.kind === 'boss') {
+    // ボス：巨大。47種の見た目は bossIndex で描き分け（フェーズ2で個別デザイン化）
+    const bossH = Math.round(groundRowY * 0.92);
+    const bossW = Math.round(bossH * 0.50);
+    return {
+      x: ex, y: groundRowY - bossH, w: bossW, h: bossH, dir: 1, speed: TILE * 0.5, alive: true, baseX: ex,
+      type: 'boss', bossIndex: bossIdx, genId: o.gen,
+      frame: 0, frameTimer: 0, attacking: false, attackTimer: 0, attackCooldown: 0,
+      hp: BOSS_BASE_HP, maxHp: BOSS_BASE_HP, baseMaxHp: BOSS_BASE_HP, baseSpeed: TILE * 0.5,
+      atkMul: 1,
+    };
+  }
+  if (o.kind === 'mid') {
+    // 中ボス：大型の追尾敵（雑魚 TILE*1.5 よりさらに大きく、一回り上の存在感）
+    const eh = Math.round(TILE * 2.1), ew = Math.round(TILE * 2.3);
+    return {
+      x: ex, y: groundRowY - eh, w: ew, h: eh, dir: 1, speed: MID_BASE_SPEED, alive: true, baseX: ex,
+      type: 'mid', genId: o.gen,
+      frame: 0, frameTimer: 0, attacking: false, attackTimer: 0, attackCooldown: 0,
+      hp: MID_BASE_HP, maxHp: MID_BASE_HP, baseMaxHp: MID_BASE_HP, baseSpeed: MID_BASE_SPEED,
+      atkMul: 1,
+    };
+  }
+  // 雑魚：追尾敵。genId で世代別に描き分け。
+  // 高さはプレイヤー身長(TILE*1.3)より大きく(約1.15倍)して存在感を出す。
+  const eh = Math.round(TILE * 1.5), ew = Math.round(TILE * 1.6);
+  return {
+    x: ex, y: groundRowY - eh, w: ew, h: eh, dir: 1, speed: ZAKO_BASE_SPEED, alive: true, baseX: ex,
+    type: 'zako', genId: o.gen,
+    frame: 0, frameTimer: 0, attacking: false, attackTimer: 0, attackCooldown: 0,
+    hp: ZAKO_BASE_HP, maxHp: ZAKO_BASE_HP, baseMaxHp: ZAKO_BASE_HP, baseSpeed: ZAKO_BASE_SPEED,
+    atkMul: 1,
+  };
+}
+window.spawnEnemiesForStage = spawnEnemiesForStage;
+
 
 const keys = {};
 window.addEventListener('keydown', e=>{
@@ -4221,18 +4335,237 @@ function gainExp(amount) {
 // order: 出現順。unlock.requireStageOrder で「このorderのステージをクリア済みか」を判定する。
 // enemyHpMul / enemySpeedMul: 敵の素のステータス(baseMaxHp/baseSpeed)への倍率。
 // expMul: クリア時EXP(QUEST_CLEAR_EXP)への倍率。
-const STAGE_DEFS = [
-  { id:'stage1', order:1, name:'草原の道',   icon:'🌿', desc:'スライムを倒して松明を目指せ！',
-    difficultyStars:'★☆☆', enemyHpMul:1.0, enemySpeedMul:1.0, expMul:1.0, unlock:null },
-  { id:'stage2', order:2, name:'遺跡の洞窟', icon:'🏛️', desc:'手強い敵が待ち受ける遺跡を踏破せよ！',
-    difficultyStars:'★★☆', enemyHpMul:1.6, enemySpeedMul:1.15, expMul:1.6, unlock:{ requireStageOrder:1 } },
-  { id:'stage3', order:3, name:'溶岩地帯',   icon:'🌋', desc:'灼熱の溶岩地帯で最強の敵に挑め！',
-    difficultyStars:'★★★', enemyHpMul:2.4, enemySpeedMul:1.3, expMul:2.4, unlock:{ requireStageOrder:2 } },
-  { id:'stage4', order:4, name:'氷結の回廊', icon:'❄️', desc:'凍てつく回廊を抜けてさらなる強敵に備えよ！',
-    difficultyStars:'★★★☆', enemyHpMul:3.0, enemySpeedMul:1.4, expMul:3.2, unlock:{ requireStageOrder:3 } },
-  { id:'stage5', order:5, name:'女王の間',   icon:'👑', desc:'巨大ボス「クイーンスライム」が立ちはだかる！',
-    difficultyStars:'★★★★', enemyHpMul:3.6, enemySpeedMul:1.5, expMul:5.0, unlock:{ requireStageOrder:4 } },
+// ======================================================
+// ===== クエスト100個 自動生成システム =====
+// ======================================================
+// 仕様まとめ：
+//  ・クエストは全100個（将来 QUEST_COUNT を増やすだけで拡張可能）。
+//  ・敵世代：5クエストごとに新種登場。敵① = Q1-5, 敵② = Q6-10 … 敵⑳ = Q96-100。
+//  ・1クエストに出る敵の種類は最大4種類（新敵を含む直近4世代）。
+//  ・ボスは「3の倍数 or 5の倍数」のクエストに出現（全100中47回・全て別モンスター）。
+//  ・敵の並び順：雑魚 → 中ボス → ボス。
+//  ・強さ：Q1=Lv1ソロ討伐可 / Q100=Lv100ソロ討伐可・Lv70デュオ快適。
+//  ・コース長：敵の数に比例。配置間隔はランダム。
+//  ・雑魚移動：プレイヤーへゆっくり追尾（速度＝プレイヤーの1/20）。
+const QUEST_COUNT = 100;
+const ENEMY_GEN_SPAN = 5;            // 何クエストごとに新しい敵世代が登場するか
+const MAX_ENEMY_KINDS_PER_QUEST = 4; // 1クエストの敵種類上限
+
+// クエスト番号 → 敵世代番号(1始まり)
+function genOfQuest(q) { return Math.ceil(q / ENEMY_GEN_SPAN); }
+// このクエストで使う敵世代の配列（新→古、最大4世代）
+function gensForQuest(q) {
+  const newGen = genOfQuest(q);
+  const gens = [];
+  for (let g = newGen; g >= Math.max(1, newGen - (MAX_ENEMY_KINDS_PER_QUEST - 1)); g--) gens.push(g);
+  return gens;
+}
+// ボス出現クエストか（3 or 5 の倍数）
+function questHasBoss(q) { return (q % 3 === 0) || (q % 5 === 0); }
+// このクエストが「何番目のボス戦か」(1始まり)。ボスでなければ0。47種のボスを割り当てるのに使う。
+function bossIndexOfQuest(q) {
+  if (!questHasBoss(q)) return 0;
+  let idx = 0;
+  for (let i = 1; i <= q; i++) if (questHasBoss(i)) idx++;
+  return idx; // 1..47
+}
+
+// ===== 強さカーブ（Q1→Q100）=====
+// HP×1→60 / ATK×1→12 / 追尾速度×1→1.8 / EXP×1→21（検証済み：Lv100ソロ討伐可能）
+function questHpMul(q)    { const t = (q - 1) / (QUEST_COUNT - 1); return +(1 + 59 * Math.pow(t, 1.35)).toFixed(3); }
+function questAtkMul(q)   { const t = (q - 1) / (QUEST_COUNT - 1); return +(1 + 11 * Math.pow(t, 1.20)).toFixed(3); }
+function questSpeedMul(q) { const t = (q - 1) / (QUEST_COUNT - 1); return +(1 + 0.8 * t).toFixed(3); }
+function questExpMul(q)   { const t = (q - 1) / (QUEST_COUNT - 1); return +(1 + 20 * Math.pow(t, 1.30)).toFixed(3); }
+
+// ===== 敵構成（雑魚の世代別体数・中ボス数・ボス数）=====
+// 返り値: { zako:[{gen,count}...], mid:Number, boss:Number }
+// 並びは zako[0] が最も新しい世代。描画/配置側で「雑魚→中ボス→ボス」に並べる。
+function questComposition(q) {
+  const boss = questHasBoss(q) ? 1 : 0;
+
+  // --- Q1〜5：敵①の雑魚3 + 中ボス1 ---
+  if (q <= 5) {
+    return { zako: [{ gen: 1, count: 3 }], mid: 1, boss };
+  }
+  // --- Q6〜10：敵①② 雑魚4〜6 + 中ボス1〜2 ---
+  if (q <= 10) {
+    const total = Math.min(6, Math.max(4, 4 + (q - 6)));      // Q6=4 … Q10=8→6にclamp
+    const newC = Math.max(1, Math.floor(total * 0.4));         // 新敵(②)は少なめ
+    const oldC = total - newC;                                // 旧敵(①)は多め
+    return { zako: [{ gen: 2, count: newC }, { gen: 1, count: oldC }], mid: (q >= 8 ? 2 : 1), boss };
+  }
+  // --- Q11〜：直近4世代。新敵1-2 / 2番目2-3 / 3番目3-4 / 最古4-5（+難易度で増やす）---
+  const gens = gensForQuest(q);
+  // 難易度に応じた体数の上乗せ（後半ほど増える）。Q100で総数が過剰にならないよう緩めに。
+  const extra = Math.floor((q - 11) / 16); // 16クエストごとに各枠+1
+  // 役割別の基準体数 [新, 2番目, 3番目, 最古]
+  const baseByRole = [2, 3, 4, 5];
+  const zako = gens.map((g, i) => {
+    const role = Math.min(i, baseByRole.length - 1);
+    return { gen: g, count: baseByRole[role] + extra };
+  });
+  const mid = Math.min(3, 1 + Math.floor((q - 11) / 30)); // 中ボス 1〜3
+  return { zako, mid, boss };
+}
+
+// ======================================================
+// ===== バイオーム（ステージ背景）システム =====
+// ======================================================
+// ・2〜3クエストごとに大きくバイオームが切り替わる（穏やか→危険の進行コース）。
+// ・同じバイオーム内でも、クエストごとに時間帯・天気・装飾配置を変えて
+//   全く同じ画面が無いようにする（小変化）。
+// ・割り当てはクエスト番号から決定論的（マルチでも全員一致）。
+
+// バイオーム種別の定義（全30種）。背景描画(08-render.js)がこの id を見て描き分ける。
+const BIOME_DEFS = {
+  // ===== 自然・地上（穏やか〜清々しい）=====
+  grassland:      { name:'草原',       category:'open',  ground:'#6e8c3a', groundDeep:'#4a6325' },
+  flower_field:   { name:'花畑',       category:'open',  ground:'#7a9c4a', groundDeep:'#5a7a32' },
+  forest:         { name:'森林',       category:'open',  ground:'#4f7a3a', groundDeep:'#33522a' },
+  bamboo_grove:   { name:'竹林',       category:'open',  ground:'#5a7a4a', groundDeep:'#3a5230' },
+  autumn_forest:  { name:'紅葉の森',   category:'open',  ground:'#9c6a3a', groundDeep:'#6a4422' },
+  rainy_plain:    { name:'雨の平原',   category:'open',  ground:'#5a7a55', groundDeep:'#3a5238' },
+  moonlit_plain:  { name:'月夜の平原', category:'open',  ground:'#46506e', groundDeep:'#2c3350' },
+  beach:          { name:'海岸',       category:'open',  ground:'#d9c890', groundDeep:'#b0a060' },
+  // ===== 寒冷・水場 =====
+  snowfield:      { name:'雪原',       category:'open',  ground:'#dde8f0', groundDeep:'#a8c0d4' },
+  frozen_lake:    { name:'凍結湖',     category:'open',  ground:'#9cc0d4', groundDeep:'#6a96b0' },
+  ice_cave:       { name:'氷の洞窟',   category:'cave',  ground:'#7fb0c8', groundDeep:'#4a7a96' },
+  sunken_city:    { name:'水没都市',   category:'open',  ground:'#3a5a6a', groundDeep:'#22384a' },
+  // ===== 山・乾燥 =====
+  mountains:      { name:'山脈',       category:'open',  ground:'#7a7066', groundDeep:'#52483e' },
+  desert:         { name:'砂漠',       category:'open',  ground:'#d9bd7a', groundDeep:'#b08f4a' },
+  wasteland:      { name:'荒野',       category:'open',  ground:'#7a6a52', groundDeep:'#52483a' },
+  ruins:          { name:'古代遺跡',   category:'open',  ground:'#8a7a5a', groundDeep:'#5a4e38' },
+  // ===== 洞窟・地下 =====
+  cave:           { name:'洞窟',       category:'cave',  ground:'#5a4a3a', groundDeep:'#3a2e22' },
+  deep_cave:      { name:'深層洞窟',   category:'cave',  ground:'#3a3340', groundDeep:'#221e2a' },
+  crystal_cave:   { name:'結晶洞窟',   category:'cave',  ground:'#5a4a7a', groundDeep:'#352a52' },
+  mushroom_cave:  { name:'菌糸洞窟',   category:'cave',  ground:'#4a5a4a', groundDeep:'#2c3a2c' },
+  obsidian_cave:  { name:'黒曜の洞窟', category:'cave',  ground:'#2a2a35', groundDeep:'#16161e' },
+  dungeon:        { name:'ダンジョン', category:'cave',  ground:'#4a4450', groundDeep:'#2a2630' },
+  abandoned_mine: { name:'廃坑',       category:'cave',  ground:'#4a4038', groundDeep:'#2a231d' },
+  // ===== 危険・不穏・終末 =====
+  swamp:          { name:'毒の沼',     category:'open',  ground:'#4a5a3a', groundDeep:'#2e3a22' },
+  graveyard:      { name:'墓地',       category:'open',  ground:'#3a3a44', groundDeep:'#22222c' },
+  thunder_peak:   { name:'雷鳴の尖塔', category:'open',  ground:'#46506a', groundDeep:'#2c3348' },
+  volcano:        { name:'火山地帯',   category:'open',  ground:'#5a3028', groundDeep:'#3a1810' },
+  lava_cave:      { name:'溶岩洞窟',   category:'cave',  ground:'#6e3a2a', groundDeep:'#3a1c14' },
+  blood_moon:     { name:'血月の平原', category:'open',  ground:'#5a2a30', groundDeep:'#3a181c' },
+  abyss:          { name:'奈落',       category:'cave',  ground:'#1a1424', groundDeep:'#0a0610' },
+};
+
+// 進行コース：序盤(清々しい・自然)→中盤(寒冷・水場・乾燥・地下)→終盤(危険・地獄・終末)へ。
+// 1要素＝1ブロック（2〜3クエスト）。全30種が登場するよう構成。
+const BIOME_PROGRESSION = [
+  // 序盤：清々しい・自然
+  'grassland','flower_field','grassland','forest','bamboo_grove','rainy_plain',
+  'flower_field','forest','autumn_forest','moonlit_plain','beach','grassland',
+  // 中盤前半：寒冷・水場
+  'cave','snowfield','frozen_lake','ice_cave','sunken_city','mountains',
+  'crystal_cave','snowfield','cave','ruins',
+  // 中盤後半：乾燥・地下・不穏
+  'desert','wasteland','mushroom_cave','deep_cave','swamp','dungeon',
+  'graveyard','thunder_peak','abandoned_mine','obsidian_cave',
+  // 終盤：危険・地獄・終末
+  'volcano','lava_cave','blood_moon','deep_cave','obsidian_cave','lava_cave',
+  'abyss','abyss',
 ];
+
+// クエスト→バイオームのブロック割り当て（決定論的・キャッシュ）。
+let _biomeBlocksCache = null;
+function getBiomeBlocks() {
+  if (_biomeBlocksCache) return _biomeBlocksCache;
+  const arr = [];
+  let start = 1, block = 0, prevBiome = null;
+  while (start <= QUEST_COUNT) {
+    const h = (block * 2654435761) >>> 0;
+    const span = 2 + (h % 2 === 0 ? 0 : 1); // ブロックごとに2 or 3クエスト
+    let biome = BIOME_PROGRESSION[Math.min(block, BIOME_PROGRESSION.length - 1)];
+    if (biome === prevBiome) biome = BIOME_PROGRESSION[Math.min(block + 1, BIOME_PROGRESSION.length - 1)];
+    arr.push({ start, span, biome });
+    prevBiome = biome;
+    start += span; block++;
+  }
+  _biomeBlocksCache = arr;
+  return arr;
+}
+function biomeOfQuest(q) {
+  for (const b of getBiomeBlocks()) if (q >= b.start && q < b.start + b.span) return b.biome;
+  return 'grassland';
+}
+// 同バイオーム内の小変化（時間帯・天気・装飾パターン）をクエスト番号から決定論的に算出
+function variantOfQuest(q) {
+  return {
+    timeOfDay: ['day', 'dusk', 'night', 'dawn'][(q * 13) % 4],
+    weather:   ['clear', 'clear', 'cloudy', 'rain', 'fog'][(q * 7) % 5], // clear多め
+    decoVariant: (q * 3) % 4,          // 背景オブジェクトの配置パターン4種
+    seed: (q * 2654435761) >>> 0,      // 装飾の細かなランダム配置用シード
+  };
+}
+
+// ===== クエスト1個分の定義オブジェクトを生成 =====
+const QUEST_NAME_POOL = [
+  '草原の道','遺跡の洞窟','溶岩地帯','氷結の回廊','女王の間','黄昏の森','古城の地下','風喰みの谷',
+  '砂塵の遺構','水没都市','雷鳴の尖塔','腐海の沼','灰の荒野','蒼天の回廊','幽鬼の墓所','業火の坑道',
+  '凍てつく深淵','machine の墓場','星屑の祭壇','終焉の門',
+];
+function questName(q) {
+  // バイオーム名をベースに、ボス回は「〜の主」など雰囲気を変える
+  const biome = biomeOfQuest(q);
+  const bd = BIOME_DEFS[biome] || { name: 'クエスト' };
+  if (questHasBoss(q)) return `${bd.name}の主`;
+  return bd.name;
+}
+function questIcon(q) {
+  if (questHasBoss(q)) return '👹';
+  const biome = biomeOfQuest(q);
+  const iconMap = {
+    grassland:'🌿', flower_field:'🌸', forest:'🌲', bamboo_grove:'🎋', autumn_forest:'🍁',
+    rainy_plain:'🌧️', moonlit_plain:'🌙', beach:'🏖️',
+    snowfield:'❄️', frozen_lake:'🧊', ice_cave:'🧊', sunken_city:'🌊',
+    mountains:'⛰️', desert:'🏜️', wasteland:'🏚️', ruins:'🏛️',
+    cave:'🕳️', deep_cave:'🌑', crystal_cave:'💎', mushroom_cave:'🍄', obsidian_cave:'⬛',
+    dungeon:'🏰', abandoned_mine:'⛏️',
+    swamp:'🐸', graveyard:'⚰️', thunder_peak:'⚡', volcano:'🌋', lava_cave:'🔥',
+    blood_moon:'🌕', abyss:'🕸️',
+  };
+  return iconMap[biome] || '🌿';
+}
+function questStars(q) {
+  const hp = questHpMul(q);
+  const n = Math.min(10, Math.max(1, Math.round(hp / 6)));
+  return '★'.repeat(n);
+}
+
+// STAGE_DEFS を100個分まとめて生成（id は従来互換のため 'stage{n}'）
+const STAGE_DEFS = (function buildStageDefs() {
+  const defs = [];
+  for (let q = 1; q <= QUEST_COUNT; q++) {
+    const comp = questComposition(q);
+    defs.push({
+      id: 'stage' + q,
+      order: q,
+      name: questName(q),
+      icon: questIcon(q),
+      desc: questHasBoss(q)
+        ? '強大なボスが待ち受ける！油断するな。'
+        : '敵を倒して松明（ゴール）を目指せ！',
+      difficultyStars: questStars(q),
+      enemyHpMul: questHpMul(q),
+      enemyAtkMul: questAtkMul(q),
+      enemySpeedMul: questSpeedMul(q),
+      expMul: questExpMul(q),
+      composition: comp,                 // {zako, mid, boss}
+      bossIndex: bossIndexOfQuest(q),    // 0 or 1..47（47種ボスの割り当て）
+      gens: gensForQuest(q),             // 使用する敵世代
+      biome: biomeOfQuest(q),            // 背景バイオームid
+      variant: variantOfQuest(q),        // 時間帯・天気・装飾の小変化
+      unlock: q === 1 ? null : { requireStageOrder: q - 1 },
+    });
+  }
+  return defs;
+})();
 function getStageDef(id) { return STAGE_DEFS.find(s => s.id === id) || STAGE_DEFS[0]; }
 
 const QUEST_SAVE_KEY = 'rr_quest';
@@ -4273,7 +4606,9 @@ function applyStageDifficulty(stageId) {
   const st = getStageDef(stageId);
   for (const e of enemies) {
     e.maxHp = Math.round(e.baseMaxHp * st.enemyHpMul);
+    e.hp    = e.maxHp;
     e.speed = e.baseSpeed * st.enemySpeedMul;
+    e.atkMul = st.enemyAtkMul || 1; // 攻撃ダメージ計算で参照（baseDmg × atkMul）
   }
 }
 
@@ -5042,9 +5377,8 @@ function update(dt){
     const playerAhead = (e.dir > 0) ? (player.x > e.x) : (player.x < e.x);
 
     if (e.phase === 'idle' && e.attackCooldown <= 0) {
-      if (e.type === 'queenSlime') {
-        // クイーンスライムは巨大なので、パトロールの向き(dir)に関係なく
-        // 一定距離まで近づいたら必ず攻撃を仕掛ける（体の端からの距離で判定）
+      if (e.type === 'queenSlime' || e.type === 'boss') {
+        // 巨大ボスはパトロールの向き(dir)に関係なく、一定距離まで近づいたら必ず攻撃を仕掛ける
         const gapX = Math.max(0, dist - e.w / 2 - player.w / 2); // ボスとプレイヤー、双方の端と端の距離
         if (gapX < TILE * 7) {
           e.dir = (player.x < e.x + e.w / 2) ? -1 : 1; // プレイヤーの方を向く
@@ -5063,8 +5397,9 @@ function update(dt){
         }
       } else if (dist < TILE * 2.8 && playerAhead) {
         e.phase = 'windup';
-        e.phaseTimer = 0.55;
-        e.windupDuration = 0.55;
+        // 予備動作を長めに（プレイヤーが「!」を見てから避難を始めても間に合う長さ）
+        e.phaseTimer = 1.2;
+        e.windupDuration = 1.2;
         e.frame = 0;
       }
     }
@@ -5072,7 +5407,7 @@ function update(dt){
       e.phaseTimer -= dt;
       if (e.phaseTimer <= 0) {
         e.phase = 'attack';
-        if (e.type === 'queenSlime') {
+        if (e.type === 'queenSlime' || e.type === 'boss') {
           e.phaseTimer = (e.attackType === 'wave') ? 0.5 : (e.attackType === 'shockwave' ? 0.35 : 0.3);
         } else {
           e.phaseTimer = 0.25;
@@ -5086,7 +5421,7 @@ function update(dt){
       e.phaseTimer -= dt;
       if (e.phaseTimer <= 0) {
         e.phase = 'recover';
-        e.phaseTimer = (e.type === 'queenSlime') ? 0.6 : 0.4;
+        e.phaseTimer = (e.type === 'queenSlime' || e.type === 'boss') ? 0.6 : 0.4;
         e.recoverDuration = e.phaseTimer;
         e.frame = 0;
       }
@@ -5095,13 +5430,13 @@ function update(dt){
       e.phaseTimer -= dt;
       if (e.phaseTimer <= 0) {
         e.phase = 'idle';
-        if (e.type === 'queenSlime') {
+        if (e.type === 'queenSlime' || e.type === 'boss') {
           // 攻撃と攻撃の間は通常1.4〜2.4秒だが、たまに(約30%)最大3秒までの小休止を挟み、
           // その間はボスは攻撃せず移動のみ行うようにする
           const isBreather = Math.random() < 0.3;
           e.attackCooldown = isBreather ? (1.5 + Math.random() * 1.5) : (1.4 + Math.random() * 1.0);
         } else {
-          e.attackCooldown = e.type === 'large' ? 2.2 : 2.8;
+          e.attackCooldown = (e.type === 'large' || e.type === 'mid') ? 2.2 : 2.8;
         }
         e.frame = 0;
       }
@@ -5119,8 +5454,8 @@ function update(dt){
     // ※ windup/attack/recover中はe.phaseが'idle'以外になるため、
     //   下記の移動ロジック(if phase==='idle')は実行されず、攻撃モーション中はその場で停止する
     if (e.phase === 'idle') {
-      if (e.type === 'queenSlime') {
-        // ===== クイーンスライムの移動ロジック（持ち場＋プレイヤー追跡） =====
+      if (e.type === 'queenSlime' || e.type === 'boss') {
+        // ===== 巨大ボスの移動ロジック（持ち場＋プレイヤー追跡） =====
         // 持ち場（担当エリア）の右端・左端。出現位置(e.baseX)からの距離で指定。
         // 移動範囲は出現位置から右方向のみ、ボス2体分の幅(e.w*2)とする。
         const QS_RIGHT_LIMIT = e.baseX + e.w * 2.0;   // 右側の移動限界（出現位置からボス2体分右）
@@ -5181,9 +5516,16 @@ function update(dt){
           }
         }
       } else {
-        e.x += e.dir * e.speed * dt;
-        const range = e.type === 'large' ? TILE * 2.8 : TILE * 1.9;
-        if (e.x > e.baseX + range || e.x < e.baseX - range) e.dir *= -1;
+        // ===== 雑魚・中ボスの移動：プレイヤーへゆっくり追尾 =====
+        // 速度は ZAKO_BASE_SPEED(＝プレイヤーの1/20)にステージ速度倍率を掛けた e.speed。
+        // プレイヤーが左右どちらにいても、その方向へまっすぐ寄っていく。
+        const pcx = player.x + player.w / 2;
+        const ecx = e.x + e.w / 2;
+        const gap = pcx - ecx;
+        if (Math.abs(gap) > 2) {
+          e.dir = gap < 0 ? -1 : 1;
+          e.x += e.dir * e.speed * dt;
+        }
       }
     }
 
@@ -5191,7 +5533,8 @@ function update(dt){
     if (e.phase === 'attack' && player.invTimer <= 0) {
       let hitNow = false;
       let dmg = 2;
-      if (e.type === 'queenSlime') {
+      const atkMul = e.atkMul || 1; // ステージ難易度の攻撃力倍率
+      if (e.type === 'queenSlime' || e.type === 'boss') {
         if (e.attackType === 'shockwave') {
           // ① 全方位衝撃波：エフェクトの円とプレイヤーの矩形(当たり判定)を正しく円×矩形で判定する。
           // 円の中心からプレイヤー矩形上で最も近い点までの距離で見ることで、
@@ -5235,14 +5578,17 @@ function update(dt){
         const dy = Math.abs((player.y + player.h/2) - (e.y + e.h/2));
         if (dx < attackReach && dy < e.h * 1.0) {
           hitNow = true;
-          dmg = e.type === 'large' ? 10 : 2;
+          // Q1基準：雑魚=3（HP2位ヤリーンの最大HP12を4発で削りきる・やや難しめ）、中ボス=6（雑魚の2倍）
+          dmg = (e.type === 'large' || e.type === 'mid') ? 6 : 3;
         }
       }
+      // ステージ難易度の攻撃力倍率を反映（ボスの各攻撃にも一律適用）
+      dmg = Math.max(1, Math.round(dmg * atkMul));
       if (hitNow) {
         // シールド軽減（バスティオンのオーバーガードは軽減率が高いが、
         // クイーンスライムの全方位攻撃「衝撃波」だけは例外で軽減率半分しか効かない）
         if (bastionGuardActive) {
-          const isOmniException = (e.type === 'queenSlime' && e.attackType === 'shockwave');
+          const isOmniException = ((e.type === 'queenSlime' || e.type === 'boss') && e.attackType === 'shockwave');
           const reduction = isOmniException ? bastionGuardReduction * 0.5 : bastionGuardReduction;
           dmg = Math.max(1, Math.floor(dmg * (1 - reduction)));
           shieldFlash = 0.6;
@@ -5340,7 +5686,13 @@ function update(dt){
 }
 
 function resetGame(){
-  applyStageDifficulty(currentStageId); // 現在挑戦中のステージ難易度を敵のmaxHp/speedに反映
+  // ★クエストごとに敵を動的生成（コース長・地面・ゴールもここで再構築される）
+  if (typeof spawnEnemiesForStage === 'function') spawnEnemiesForStage(currentStageId);
+  applyStageDifficulty(currentStageId); // 現在挑戦中のステージ難易度を敵のmaxHp/speed/atkに反映
+  // コース長が変わったのでカメラ範囲を再計算
+  if (typeof WORLD_W !== 'undefined') {
+    camX = Math.max(0, Math.min((typeof camX !== 'undefined' ? camX : 0), WORLD_W - canvas.width));
+  }
   player.x = startX; player.y = startY;
   player.vx = 0; player.vy = 0;
   player.hp = player.maxHp; player.dmgFlash = 0; player.invTimer = 0;
@@ -5357,7 +5709,7 @@ function resetGame(){
   window.explosions = [];
   for (const c of coins) c.got = false;
   for (const e of enemies) {
-    e.alive = e.bossOnly ? (currentStageId === e.requireStage) : true;
+    e.alive = true; // 動的生成済みなので全敵を有効化
     e.x = e.baseX; e.dir = 1;
     e.bossState = 'patrol'; e.edgeTimer = 0; e.patrolDir = 1;
     e.frame = 0; e.frameTimer = 0;
@@ -5443,6 +5795,1138 @@ window.onRevived = onRevived;
 // ==================== 06-enemy-draw.js ====================
 // ======================================================
 // ===== 06-enemy-draw.js =====
+
+// ===== 敵世代別カラーパレット（フェーズ1の仮デザイン用）=====
+// genId(1..20)ごとに体色・明色・輪郭色を返す。HSLで色相を回して20世代を区別する。
+// フェーズ2で各世代を個別デザインに差し替える際は、このパレットを基準色として活用できる。
+function enemyPalette(genId) {
+  const g = ((genId || 1) - 1) % 20;
+  const hue = (g * 37) % 360;               // 世代ごとに色相を回す
+  const base    = `hsl(${hue}, 70%, 48%)`;
+  const light   = `hsl(${hue}, 80%, 66%)`;
+  const outline = `hsl(${hue}, 75%, 20%)`;
+  return { base, light, outline };
+}
+
+// ======================================================
+// ===== 雑魚 個別デザイン ディスパッチャ =====
+// ======================================================
+// e.genId(1..20) に応じて専用の描画関数へ振り分ける。
+// 未実装の世代は従来の drawSlime（色違い）にフォールバックするので、
+// 何体ずつ実装しても他が壊れない。
+const ENEMY_DRAWERS = {}; // { genId: function(e, t) }
+function registerEnemyDrawer(genId, fn) { ENEMY_DRAWERS[genId] = fn; }
+function drawEnemyByGen(e, t) {
+  // 中ボス(type:'mid')は、同じ世代の雑魚デザインをベースに「強化形態」の装飾を重ねる。
+  // これにより雑魚20種に対応した中ボス20種が自動で揃う。
+  if (e.type === 'mid') { drawMidBoss(e, t); return; }
+  const fn = ENEMY_DRAWERS[e.genId];
+  if (fn) { fn(e, t); return; }
+  drawSlime(e, t); // 未実装世代は色違いスライム
+}
+
+// ===== 中ボス：雑魚の上位形態（オーラ＋禍々しい装飾を重ねる）=====
+function drawMidBoss(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h;
+  // 世代カラー（オーラ・装飾の色味に使う）
+  const hue = (((e.genId || 1) - 1) * 37) % 360;
+
+  // --- 1) 背後の禍々しいオーラ（脈動） ---
+  const pulse = 0.5 + Math.sin(t * 4 + (e.baseX || 0)) * 0.3;
+  ctx.save();
+  const aura = ctx.createRadialGradient(cx, baseY - h * 0.45, w * 0.1, cx, baseY - h * 0.45, w * 0.8);
+  aura.addColorStop(0, `hsla(${hue}, 85%, 55%, ${0.22 * pulse})`);
+  aura.addColorStop(1, `hsla(${hue}, 85%, 45%, 0)`);
+  ctx.fillStyle = aura;
+  ctx.beginPath(); ctx.arc(cx, baseY - h * 0.45, w * 0.8, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // --- 2) ベースの雑魚デザインを描画（サイズは既に中ボス用に大きい） ---
+  const fn = ENEMY_DRAWERS[e.genId];
+  if (fn) fn(e, t); else drawSlime(e, t);
+
+  // --- 3) 上から強化装飾を重ねる ---
+  ctx.save();
+  // 仰け反りに追従させるため、wobの傾きをかけ直す
+  const wob = _enemyWob(e, t);
+  ctx.translate(cx + (wob.leanShiftX || 0) + (wob.shakeX || 0), baseY + (wob.crouch || 0));
+  ctx.rotate(wob.lean || 0);
+  ctx.translate(-cx, -baseY);
+
+  const topY = baseY - h * (0.9 * (wob.wobY || 1)); // 頭頂のおおよその位置
+
+  // 禍々しい角（2本、頭の左右から生える）
+  ctx.fillStyle = `hsl(${hue}, 30%, 12%)`;
+  ctx.strokeStyle = `hsl(${hue}, 50%, 35%)`; ctx.lineWidth = Math.max(1, w * 0.02);
+  for (const s of [-1, 1]) {
+    const hx = cx + s * w * 0.26;
+    ctx.beginPath();
+    ctx.moveTo(hx, topY + h * 0.06);
+    ctx.quadraticCurveTo(hx + s * w * 0.14, topY - h * 0.12, hx + s * w * 0.05, topY - h * 0.28);
+    ctx.quadraticCurveTo(hx + s * w * 0.02, topY - h * 0.12, hx - s * w * 0.06, topY + h * 0.04);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+
+  // 王冠状の発光トゲ（頭頂に小さく3本）
+  ctx.fillStyle = `hsl(${hue}, 90%, 60%)`;
+  for (const o of [-0.1, 0, 0.1]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + w * o - w * 0.03, topY);
+    ctx.lineTo(cx + w * o, topY - h * 0.14);
+    ctx.lineTo(cx + w * o + w * 0.03, topY);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // 体の縁に沿うエネルギーの粒子（オーラの残滓）
+  ctx.fillStyle = `hsla(${hue}, 90%, 70%, ${0.6 * pulse})`;
+  for (let i = 0; i < 5; i++) {
+    const a = t * 2 + i * (Math.PI * 2 / 5);
+    const px = cx + Math.cos(a) * w * 0.5;
+    const py = baseY - h * 0.45 + Math.sin(a) * h * 0.4;
+    ctx.beginPath(); ctx.arc(px, py, w * 0.03, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // --- 4) 「中ボス」表示の小さな王冠アイコン（HPバー上に）---
+  ctx.fillStyle = '#ffd040';
+  ctx.font = `${Math.round(w * 0.18)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('👑', cx, e.y - h * 0.18);
+  ctx.textAlign = 'left';
+}
+
+// ===== 共通ヘルパー =====
+// 体の鼓動・攻撃モーションに応じた伸縮係数と仰け反り角を返す
+// lean: 仰け反り角（ラジアン。windupで攻撃方向と逆へ大きく傾く→ためを表現）
+// leanShiftX: 仰け反りに伴う重心の水平移動量
+function _enemyWob(e, t) {
+  const phase = e.phase || 'idle';
+  const dir = e.dir || 1;
+  let wobX = 1, wobY = 1, shakeX = 0, lean = 0, leanShiftX = 0, crouch = 0;
+  if (phase === 'windup') {
+    const dur = e.windupDuration || 0.55;
+    const p = 1 - (e.phaseTimer / dur);     // 0→1で進行
+    // 体を縦に縮め、攻撃方向と逆へ大きく仰け反る（ためのモーション）
+    const ease = p * p * (3 - 2 * p);        // smoothstep
+    wobX = 1 + ease * 0.22;
+    wobY = 1 - ease * 0.18;
+    crouch = ease * e.h * 0.12;              // 少し沈み込む
+    lean = -dir * ease * 0.55;               // 攻撃の逆方向へ最大約31度仰け反る
+    leanShiftX = -dir * ease * e.w * 0.28;   // 重心も後ろへ
+    shakeX = Math.sin(t * 38) * (2 + ease * 3); // 震えも強める
+  } else if (phase === 'attack') {
+    // ためを解放して前方へ大きく踏み込む
+    wobX = 1.28; wobY = 0.78;
+    lean = dir * 0.4;                        // 前へ突っ込む
+    leanShiftX = dir * e.w * 0.18;
+  } else if (phase === 'recover') {
+    const dur = e.recoverDuration || 0.4;
+    const p = 1 - (e.phaseTimer / dur);
+    wobX = 1 + (1 - p) * 0.1; wobY = 1 - (1 - p) * 0.12;
+    lean = dir * (1 - p) * 0.15;
+  } else {
+    // idle：通常の鼓動に加え、攻撃クールダウン中は「プレイヤーを探す」首振りを行う。
+    // （雑魚・中ボスのみ。ボスは別ロジックなのでここは通らない）
+    const wobble = Math.sin(t * 5 + (e.baseX || 0)) * 0.05;
+    wobX = 1 + wobble; wobY = 1 - wobble * 0.7;
+    // 探索：攻撃後クールダウンの最初の方(残り時間が多いとき)にキョロキョロ見渡す。
+    // headTurn を返し、各描画関数が目・頭の向きに反映する。
+    const cd = e.attackCooldown || 0;
+    if (cd > 1.0) {
+      // 左右にゆっくり首を振る（往復）。0.8秒で1往復程度。
+      e._searching = true;
+      e._headTurn = Math.sin(t * 3.5 + (e.baseX || 0)) * 1.0; // -1..1（描画側で向きに使う）
+    } else {
+      e._searching = false;
+      e._headTurn = 0;
+    }
+  }
+  return { wobX, wobY, shakeX, lean, leanShiftX, crouch, headTurn: e._headTurn || 0, searching: e._searching || false };
+}
+
+// 仰け反り変換を適用してコールバック内で描画するヘルパー。
+// 体の底（baseY）を軸に lean だけ回転し、leanShiftX/crouch を反映する。
+// 探索中(searching)は、headTurn に応じて体を軽く左右に傾け「キョロキョロ」を表現する。
+function _withLean(e, wob, drawFn) {
+  const cx = e.x + e.w / 2, baseY = e.y + h_of(e);
+  const searchTilt = (wob.searching ? (wob.headTurn || 0) * 0.12 : 0); // 探索の首振り傾き
+  const searchShift = (wob.searching ? (wob.headTurn || 0) * e.w * 0.06 : 0);
+  ctx.save();
+  ctx.translate(cx + (wob.leanShiftX || 0) + (wob.shakeX || 0) + searchShift, baseY + (wob.crouch || 0));
+  ctx.rotate((wob.lean || 0) + searchTilt);
+  ctx.translate(-cx, -baseY);
+  drawFn();
+  ctx.restore();
+}
+function h_of(e) { return e.h; }
+// 影
+function _enemyShadow(e) {
+  const cx = e.x + e.w / 2, baseY = e.y + e.h;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.ellipse(cx, baseY, e.w * 0.5, Math.max(3, e.w * 0.12), 0, 0, Math.PI * 2); ctx.fill();
+}
+// ダメージフラッシュ（赤）
+function _enemyDmgFlash(e) {
+  if (e.dmgFlash && e.dmgFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.55, (e.dmgFlash / 0.18) * 0.55);
+    ctx.fillStyle = '#ff2200';
+    ctx.fillRect(e.x - e.w * 0.1, e.y - e.h * 0.1, e.w * 1.2, e.h * 1.2);
+    ctx.restore();
+  }
+}
+// 予備動作の警告（！マーク）
+function _enemyWarn(e, t) {
+  // 探索中：プレイヤーを探す「？」を点滅表示（雑魚・中ボスのみ）
+  if (e._searching && e.phase === 'idle') {
+    const cx2 = e.x + e.w / 2;
+    if (Math.sin(t * 6) > -0.3) {
+      ctx.fillStyle = 'rgba(150,200,255,0.9)';
+      ctx.font = `bold ${Math.round(e.w * 0.4)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('?', cx2 + e.w * 0.3, e.y - e.h * 0.05);
+      ctx.textAlign = 'left';
+    }
+  }
+  if (e.phase !== 'windup') return;
+  const cx = e.x + e.w / 2;
+  const blink = (Math.sin(t * 20) > 0);
+  if (!blink) return;
+  ctx.fillStyle = '#ff3030';
+  ctx.font = `bold ${Math.round(e.w * 0.6)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('!', cx, e.y - e.h * 0.15);
+  ctx.textAlign = 'left';
+}
+// HPバー（全雑魚共通）
+function _enemyHpBar(e) {
+  const cx = e.x + e.w / 2, w = e.w;
+  const barW = w * 1.1, barH = Math.max(5, w * 0.09);
+  const barX = cx - barW / 2, barY = e.y - barH - Math.max(4, w * 0.08);
+  const ratio = Math.max(0, e.hp / e.maxHp);
+  if (ratio >= 1 && (e.type === 'zako')) { /* 満タンでも出す（視認性のため） */ }
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath(); ctx.roundRect(barX - 1, barY - 1, barW + 2, barH + 2, 3); ctx.fill();
+  const hpColor = ratio > 0.5 ? '#2ecc71' : ratio > 0.25 ? '#f39c12' : '#e74c3c';
+  ctx.fillStyle = hpColor;
+  ctx.beginPath(); ctx.roundRect(barX, barY, barW * ratio, barH, 2); ctx.fill();
+}
+
+// ======================================================
+// ===== 敵① スライム（緑のゼリー体）=====
+// ======================================================
+registerEnemyDrawer(1, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  const { wobX, wobY } = wob;
+  _enemyShadow(e);
+  _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const bw = w * wobX, bh = h * wobY;
+  const bx = cx - bw / 2, by = baseY - bh;
+
+  // 体（半透明の緑ゼリー）
+  const grad = ctx.createLinearGradient(bx, by, bx, by + bh);
+  grad.addColorStop(0, '#8fe06a'); grad.addColorStop(1, '#4a9c32');
+  ctx.fillStyle = grad;
+  ctx.strokeStyle = '#2e6b1e'; ctx.lineWidth = Math.max(1.5, w * 0.05);
+  ctx.beginPath();
+  ctx.moveTo(bx, by + bh);
+  ctx.bezierCurveTo(bx - bw * 0.02, by + bh * 0.4, bx + bw * 0.2, by, bx + bw * 0.5, by);
+  ctx.bezierCurveTo(bx + bw * 0.8, by, bx + bw * 1.02, by + bh * 0.4, bx + bw, by + bh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // ハイライト
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath(); ctx.ellipse(bx + bw * 0.35, by + bh * 0.35, bw * 0.16, bh * 0.12, -0.4, 0, Math.PI * 2); ctx.fill();
+  // 目
+  ctx.fillStyle = '#0d2a0d';
+  const eo = dir * bw * 0.08;
+  ctx.beginPath(); ctx.arc(bx + bw * 0.38 + eo, by + bh * 0.5, bw * 0.06, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(bx + bw * 0.62 + eo, by + bh * 0.5, bw * 0.06, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵② キノコ虫（きのこ傘＋脚＋胞子）=====
+// ======================================================
+registerEnemyDrawer(2, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bob = Math.sin(t * 4 + e.baseX) * h * 0.03;
+  // 脚（2本）
+  ctx.strokeStyle = '#caa37a'; ctx.lineWidth = Math.max(2, w * 0.08);
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(cxp + s * w * 0.18, baseY - h * 0.3);
+    ctx.lineTo(cxp + s * w * 0.22, baseY); ctx.stroke();
+  }
+  // 軸（白い柄）
+  ctx.fillStyle = '#f0e6d2';
+  ctx.beginPath(); ctx.roundRect(cxp - w * 0.16, baseY - h * 0.55 + bob, w * 0.32, h * 0.4, w * 0.05); ctx.fill();
+  // 傘（赤いきのこ＋白い斑点）
+  const capY = baseY - h * (0.5 * wob.wobY) - h * 0.18 + bob;
+  ctx.fillStyle = '#d0392f';
+  ctx.beginPath(); ctx.ellipse(cxp, capY, w * 0.42, h * 0.28, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#f5e9d0';
+  ctx.beginPath(); ctx.arc(cxp - w * 0.18, capY - h * 0.05, w * 0.05, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.1, capY - h * 0.1, w * 0.045, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.22, capY + h * 0.02, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  // 目
+  ctx.fillStyle = '#3a2a1a';
+  const eo = dir * w * 0.05;
+  ctx.beginPath(); ctx.arc(cxp - w * 0.08 + eo, baseY - h * 0.28, w * 0.045, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.08 + eo, baseY - h * 0.28, w * 0.045, 0, Math.PI * 2); ctx.fill();
+  // 胞子（attack/windup時に舞う）
+  if (e.phase === 'windup' || e.phase === 'attack') {
+    ctx.fillStyle = 'rgba(180,140,90,0.5)';
+    for (let i = 0; i < 5; i++) {
+      const a = t * 2 + i; const sx = cxp + Math.cos(a) * w * 0.4; const sy = capY + Math.sin(a) * h * 0.2 - (t * 20 % 10);
+      ctx.beginPath(); ctx.arc(sx, sy, w * 0.04, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵③ 甲虫ビートル（硬い甲殻＋角）=====
+// ======================================================
+registerEnemyDrawer(3, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bw = w * 1.1 * wob.wobX, bh = h * 0.7;
+  const by = baseY - bh;
+  // 脚（3対）
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = Math.max(1.5, w * 0.05);
+  for (let i = -1; i <= 1; i++) {
+    for (const s of [-1, 1]) {
+      const legX = cxp + i * w * 0.28;
+      const wig = Math.sin(t * 8 + i) * w * 0.04;
+      ctx.beginPath(); ctx.moveTo(legX, baseY - bh * 0.4); ctx.lineTo(legX + s * w * 0.14 + wig, baseY); ctx.stroke();
+    }
+  }
+  // 甲殻（光沢のあるドーム）
+  const grad = ctx.createLinearGradient(cxp, by, cxp, baseY);
+  grad.addColorStop(0, '#5a4a8a'); grad.addColorStop(1, '#2a2050');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#15102a'; ctx.lineWidth = Math.max(1.5, w * 0.05);
+  ctx.beginPath(); ctx.ellipse(cxp, by + bh * 0.5, bw * 0.5, bh * 0.55, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // 甲殻の継ぎ目
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath(); ctx.moveTo(cxp, by + bh * 0.05); ctx.lineTo(cxp, baseY - bh * 0.1); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cxp, by + bh * 0.5, bw * 0.32, bh * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+  // ハイライト
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.ellipse(cxp - bw * 0.2, by + bh * 0.28, bw * 0.12, bh * 0.1, -0.4, 0, Math.PI * 2); ctx.fill();
+  // 角（前方）
+  ctx.fillStyle = '#0d0a1a';
+  const hornX = cxp + dir * bw * 0.45;
+  ctx.beginPath(); ctx.moveTo(hornX, by + bh * 0.35); ctx.lineTo(hornX + dir * w * 0.28, by + bh * 0.1); ctx.lineTo(hornX + dir * w * 0.12, by + bh * 0.45); ctx.closePath(); ctx.fill();
+  // 目
+  ctx.fillStyle = '#ff5050';
+  ctx.beginPath(); ctx.arc(cxp + dir * bw * 0.28, by + bh * 0.4, w * 0.05, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵④ 鳥ハーピー（羽根と嘴・浮遊）=====
+// ======================================================
+registerEnemyDrawer(4, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const fly = Math.sin(t * 6 + e.baseX) * h * 0.06;     // 上下に浮遊
+  const cyB = baseY - h * 0.5 + fly;
+  const flap = Math.sin(t * 12) * 0.5 + 0.5;             // 羽ばたき
+  // 翼（左右）
+  ctx.fillStyle = '#6a78b0';
+  for (const s of [-1, 1]) {
+    ctx.save(); ctx.translate(cxp, cyB); ctx.rotate(s * (0.3 + flap * 0.5));
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(s * w * 0.5, -h * 0.1, s * w * 0.7, h * 0.15); ctx.quadraticCurveTo(s * w * 0.4, h * 0.1, 0, h * 0.05); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  // 体（楕円）
+  const grad = ctx.createLinearGradient(cxp, cyB - h * 0.3, cxp, cyB + h * 0.3);
+  grad.addColorStop(0, '#aab4dc'); grad.addColorStop(1, '#6a78b0');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#3a4470'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath(); ctx.ellipse(cxp, cyB, w * 0.26, h * 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // 頭
+  ctx.fillStyle = '#c0c8e8';
+  ctx.beginPath(); ctx.arc(cxp + dir * w * 0.12, cyB - h * 0.28, w * 0.16, 0, Math.PI * 2); ctx.fill();
+  // 嘴
+  ctx.fillStyle = '#f0a030';
+  ctx.beginPath(); ctx.moveTo(cxp + dir * w * 0.26, cyB - h * 0.3); ctx.lineTo(cxp + dir * w * 0.42, cyB - h * 0.26); ctx.lineTo(cxp + dir * w * 0.26, cyB - h * 0.22); ctx.closePath(); ctx.fill();
+  // 目
+  ctx.fillStyle = '#1a1a2a';
+  ctx.beginPath(); ctx.arc(cxp + dir * w * 0.14, cyB - h * 0.3, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑤ 食人花（口を開く花＋蔓）=====
+// ======================================================
+registerEnemyDrawer(5, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const sway = Math.sin(t * 3 + e.baseX) * w * 0.06;
+  // 茎（蔓）
+  ctx.strokeStyle = '#3a7a32'; ctx.lineWidth = Math.max(3, w * 0.12);
+  ctx.beginPath(); ctx.moveTo(cxp, baseY);
+  ctx.quadraticCurveTo(cxp + sway * 1.5, baseY - h * 0.4, cxp + sway, baseY - h * 0.6); ctx.stroke();
+  // 葉
+  ctx.fillStyle = '#4a9c3a';
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.ellipse(cxp + s * w * 0.16, baseY - h * 0.3, w * 0.14, h * 0.07, s * 0.5, 0, Math.PI * 2); ctx.fill();
+  }
+  // 口の開き（attack/windupで大きく開く）
+  const open = (e.phase === 'windup' || e.phase === 'attack') ? 0.9 : (0.4 + Math.sin(t * 4) * 0.1);
+  const headX = cxp + sway, headY = baseY - h * 0.62;
+  // 花びら（背後）
+  ctx.fillStyle = '#c0392b';
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    ctx.beginPath(); ctx.ellipse(headX + Math.cos(a) * w * 0.22, headY + Math.sin(a) * w * 0.22, w * 0.12, h * 0.06, a, 0, Math.PI * 2); ctx.fill();
+  }
+  // 口（上下に開く）
+  ctx.fillStyle = '#7a1818';
+  ctx.beginPath(); ctx.arc(headX, headY, w * 0.24, -open, open); ctx.lineTo(headX, headY); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(headX, headY, w * 0.24, Math.PI - open, Math.PI + open); ctx.lineTo(headX, headY); ctx.closePath(); ctx.fill();
+  // 牙
+  ctx.fillStyle = '#f0f0e0';
+  for (let i = 0; i < 4; i++) {
+    const fx = headX - w * 0.16 + i * w * 0.11;
+    ctx.beginPath(); ctx.moveTo(fx, headY - w * 0.1 * open); ctx.lineTo(fx + w * 0.03, headY - w * 0.02); ctx.lineTo(fx + w * 0.06, headY - w * 0.1 * open); ctx.closePath(); ctx.fill();
+  }
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑥ 氷の精霊（半透明の結晶体＋尖った氷）=====
+// ======================================================
+registerEnemyDrawer(6, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const float = Math.sin(t * 3 + e.baseX) * h * 0.05;
+  const cyB = baseY - h * 0.5 + float;
+  // オーラ（淡い水色）
+  ctx.fillStyle = 'rgba(150,220,255,0.18)';
+  ctx.beginPath(); ctx.arc(cxp, cyB, w * 0.6, 0, Math.PI * 2); ctx.fill();
+  // 本体：六角結晶
+  const R = w * 0.42 * wob.wobX, Rh = h * 0.5 * wob.wobY;
+  const grad = ctx.createLinearGradient(cxp, cyB - Rh, cxp, cyB + Rh);
+  grad.addColorStop(0, 'rgba(220,245,255,0.95)'); grad.addColorStop(1, 'rgba(120,190,235,0.85)');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#4a90c0'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) { const a = -Math.PI/2 + i * Math.PI/3; const px = cxp + Math.cos(a) * R, py = cyB + Math.sin(a) * Rh; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // 内部の輝き
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.beginPath(); ctx.moveTo(cxp, cyB - Rh * 0.5); ctx.lineTo(cxp - R * 0.3, cyB); ctx.lineTo(cxp, cyB + Rh * 0.3); ctx.lineTo(cxp + R * 0.2, cyB); ctx.closePath(); ctx.fill();
+  // 周囲に尖った氷の破片
+  ctx.fillStyle = 'rgba(200,235,255,0.8)';
+  for (let i = 0; i < 4; i++) {
+    const a = t * 1.5 + i * Math.PI / 2; const ix = cxp + Math.cos(a) * w * 0.5, iy = cyB + Math.sin(a) * h * 0.42;
+    ctx.beginPath(); ctx.moveTo(ix, iy - h * 0.08); ctx.lineTo(ix - w * 0.04, iy + h * 0.04); ctx.lineTo(ix + w * 0.04, iy + h * 0.04); ctx.closePath(); ctx.fill();
+  }
+  // 目
+  ctx.fillStyle = '#1a3a5a';
+  const eo = dir * w * 0.05;
+  ctx.beginPath(); ctx.arc(cxp - w * 0.1 + eo, cyB, w * 0.05, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.1 + eo, cyB, w * 0.05, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑦ 岩ゴーレム（ごつごつした岩塊・重量感）=====
+// ======================================================
+registerEnemyDrawer(7, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bw = w * 1.05 * wob.wobX, bh = h * wob.wobY;
+  // 脚（太い岩の塊）
+  ctx.fillStyle = '#5a5048';
+  ctx.fillRect(cxp - bw * 0.35, baseY - bh * 0.3, bw * 0.28, bh * 0.3);
+  ctx.fillRect(cxp + bw * 0.07, baseY - bh * 0.3, bw * 0.28, bh * 0.3);
+  // 胴体（ごつごつした多角形の岩）
+  const grad = ctx.createLinearGradient(cxp, baseY - bh, cxp, baseY);
+  grad.addColorStop(0, '#8a7e70'); grad.addColorStop(1, '#5a5048');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#3a322a'; ctx.lineWidth = Math.max(1.5, w * 0.05);
+  ctx.beginPath();
+  ctx.moveTo(cxp - bw * 0.42, baseY - bh * 0.28);
+  ctx.lineTo(cxp - bw * 0.46, baseY - bh * 0.72);
+  ctx.lineTo(cxp - bw * 0.18, baseY - bh * 0.98);
+  ctx.lineTo(cxp + bw * 0.22, baseY - bh * 0.94);
+  ctx.lineTo(cxp + bw * 0.47, baseY - bh * 0.6);
+  ctx.lineTo(cxp + bw * 0.4, baseY - bh * 0.28);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // 岩のヒビ
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = Math.max(1, w * 0.03);
+  ctx.beginPath(); ctx.moveTo(cxp - bw * 0.1, baseY - bh * 0.9); ctx.lineTo(cxp, baseY - bh * 0.5); ctx.lineTo(cxp - bw * 0.15, baseY - bh * 0.35); ctx.stroke();
+  // 苔
+  ctx.fillStyle = 'rgba(90,140,60,0.6)';
+  ctx.beginPath(); ctx.ellipse(cxp + bw * 0.2, baseY - bh * 0.8, bw * 0.12, bh * 0.06, 0.3, 0, Math.PI * 2); ctx.fill();
+  // 目（光る）
+  ctx.fillStyle = '#ffd040';
+  const eo = dir * w * 0.06;
+  ctx.beginPath(); ctx.arc(cxp - w * 0.12 + eo, baseY - bh * 0.62, w * 0.06, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.12 + eo, baseY - bh * 0.62, w * 0.06, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑧ コウモリ（翼を広げた飛行体・牙）=====
+// ======================================================
+registerEnemyDrawer(8, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const fly = Math.sin(t * 5 + e.baseX) * h * 0.07;
+  const cyB = baseY - h * 0.5 + fly;
+  const flap = Math.sin(t * 14) * 0.5 + 0.5;
+  // 翼（左右・羽ばたき）一回り大きく
+  ctx.fillStyle = '#3a2a42';
+  for (const s of [-1, 1]) {
+    ctx.save(); ctx.translate(cxp, cyB); ctx.rotate(s * (0.2 + flap * 0.6));
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.lineTo(s * w * 0.74, -h * 0.18);
+    ctx.lineTo(s * w * 0.64, h * 0.02);
+    ctx.lineTo(s * w * 0.76, h * 0.15);
+    ctx.lineTo(s * w * 0.54, h * 0.12);
+    ctx.lineTo(s * w * 0.62, h * 0.27);
+    ctx.lineTo(s * w * 0.34, h * 0.15);
+    ctx.lineTo(0, h * 0.1);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  // 体（丸い毛玉）
+  ctx.fillStyle = '#4a3a52';
+  ctx.beginPath(); ctx.arc(cxp, cyB, w * 0.28, 0, Math.PI * 2); ctx.fill();
+  // 耳
+  ctx.fillStyle = '#3a2a42';
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cxp + s * w * 0.13, cyB - h * 0.22); ctx.lineTo(cxp + s * w * 0.2, cyB - h * 0.42); ctx.lineTo(cxp + s * w * 0.03, cyB - h * 0.24); ctx.closePath(); ctx.fill(); }
+  // 目（赤く光る）
+  ctx.fillStyle = '#ff4040';
+  const eo = dir * w * 0.04;
+  ctx.beginPath(); ctx.arc(cxp - w * 0.1 + eo, cyB - h * 0.02, w * 0.055, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.1 + eo, cyB - h * 0.02, w * 0.055, 0, Math.PI * 2); ctx.fill();
+  // 牙
+  ctx.fillStyle = '#f0f0e0';
+  ctx.beginPath(); ctx.moveTo(cxp - w * 0.06, cyB + h * 0.13); ctx.lineTo(cxp - w * 0.025, cyB + h * 0.26); ctx.lineTo(cxp + w * 0.015, cyB + h * 0.13); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cxp + w * 0.06, cyB + h * 0.13); ctx.lineTo(cxp + w * 0.025, cyB + h * 0.26); ctx.lineTo(cxp - w * 0.015, cyB + h * 0.13); ctx.closePath(); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑨ スケルトン（骨の戦士・あばら骨）=====
+// ======================================================
+registerEnemyDrawer(9, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * wob.wobY;
+  const bone = '#e8e4d4', boneShade = '#b8b09a';
+  // 脚（2本）
+  ctx.strokeStyle = bone; ctx.lineWidth = Math.max(2.5, w * 0.08);
+  for (const s of [-1, 1]) {
+    const sw = Math.sin(t * 4 + (s > 0 ? 0 : Math.PI)) * w * 0.04;
+    ctx.beginPath(); ctx.moveTo(cxp + s * w * 0.1, baseY - bh * 0.4); ctx.lineTo(cxp + s * w * 0.12 + sw, baseY); ctx.stroke();
+  }
+  // 背骨
+  ctx.strokeStyle = bone; ctx.lineWidth = Math.max(2.5, w * 0.07);
+  ctx.beginPath(); ctx.moveTo(cxp, baseY - bh * 0.4); ctx.lineTo(cxp, baseY - bh * 0.72); ctx.stroke();
+  // あばら骨
+  ctx.lineWidth = Math.max(1.5, w * 0.04);
+  for (let i = 0; i < 3; i++) {
+    const ry = baseY - bh * (0.48 + i * 0.08);
+    ctx.beginPath(); ctx.arc(cxp, ry, w * 0.13 - i * w * 0.01, 0.2, Math.PI - 0.2); ctx.stroke();
+  }
+  // 腕（武器を持つ風）
+  ctx.strokeStyle = boneShade; ctx.lineWidth = Math.max(2, w * 0.06);
+  ctx.beginPath(); ctx.moveTo(cxp, baseY - bh * 0.68); ctx.lineTo(cxp + dir * w * 0.22, baseY - bh * 0.5); ctx.stroke();
+  // 錆びた剣
+  ctx.strokeStyle = '#8a7a5a'; ctx.lineWidth = Math.max(2, w * 0.05);
+  ctx.beginPath(); ctx.moveTo(cxp + dir * w * 0.22, baseY - bh * 0.5); ctx.lineTo(cxp + dir * w * 0.3, baseY - bh * 0.95); ctx.stroke();
+  // 頭蓋骨
+  ctx.fillStyle = bone; ctx.strokeStyle = boneShade; ctx.lineWidth = Math.max(1, w * 0.03);
+  ctx.beginPath(); ctx.arc(cxp, baseY - bh * 0.82, w * 0.16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillRect(cxp - w * 0.08, baseY - bh * 0.72, w * 0.16, h * 0.06);
+  // 眼窩（暗い穴＋赤い光）
+  ctx.fillStyle = '#1a1a1a';
+  const eo = dir * w * 0.03;
+  ctx.beginPath(); ctx.arc(cxp - w * 0.06 + eo, baseY - bh * 0.84, w * 0.045, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.06 + eo, baseY - bh * 0.84, w * 0.045, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff5030';
+  ctx.beginPath(); ctx.arc(cxp - w * 0.06 + eo, baseY - bh * 0.84, w * 0.02, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.06 + eo, baseY - bh * 0.84, w * 0.02, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑩ スライム王子（王冠つき上位スライム）=====
+// ======================================================
+registerEnemyDrawer(10, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const bw = w * 1.05 * wob.wobX, bh = h * wob.wobY;
+  const bx = cx - bw / 2, by = baseY - bh;
+  // 体（紫の高貴なゼリー）
+  const grad = ctx.createLinearGradient(bx, by, bx, by + bh);
+  grad.addColorStop(0, '#c89af0'); grad.addColorStop(1, '#7a3ac0');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#4a1a7a'; ctx.lineWidth = Math.max(1.5, w * 0.05);
+  ctx.beginPath();
+  ctx.moveTo(bx, by + bh);
+  ctx.bezierCurveTo(bx - bw * 0.02, by + bh * 0.4, bx + bw * 0.2, by, bx + bw * 0.5, by);
+  ctx.bezierCurveTo(bx + bw * 0.8, by, bx + bw * 1.02, by + bh * 0.4, bx + bw, by + bh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // ハイライト
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath(); ctx.ellipse(bx + bw * 0.34, by + bh * 0.34, bw * 0.15, bh * 0.11, -0.4, 0, Math.PI * 2); ctx.fill();
+  // 王冠
+  const crownY = by - h * 0.02;
+  ctx.fillStyle = '#ffd040'; ctx.strokeStyle = '#b8860b'; ctx.lineWidth = Math.max(1, w * 0.03);
+  ctx.beginPath();
+  ctx.moveTo(cx - bw * 0.22, crownY);
+  ctx.lineTo(cx - bw * 0.22, crownY - h * 0.14);
+  ctx.lineTo(cx - bw * 0.1, crownY - h * 0.04);
+  ctx.lineTo(cx, crownY - h * 0.18);
+  ctx.lineTo(cx + bw * 0.1, crownY - h * 0.04);
+  ctx.lineTo(cx + bw * 0.22, crownY - h * 0.14);
+  ctx.lineTo(cx + bw * 0.22, crownY);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // 王冠の宝石
+  ctx.fillStyle = '#ff3060';
+  ctx.beginPath(); ctx.arc(cx, crownY - h * 0.06, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  // 目（凛々しい）
+  ctx.fillStyle = '#2a0a4a';
+  const eo = dir * bw * 0.07;
+  ctx.beginPath(); ctx.arc(cx - bw * 0.12 + eo, by + bh * 0.5, bw * 0.06, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + bw * 0.12 + eo, by + bh * 0.5, bw * 0.06, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑪ サソリ（鋏と毒針の尾）=====
+// ======================================================
+registerEnemyDrawer(11, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * 0.55 * wob.wobY;
+  const bodyY = baseY - bh * 0.7;
+  // 脚（4対）
+  ctx.strokeStyle = '#7a3a1a'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  for (let i = -2; i <= 1; i++) {
+    for (const s of [-1, 1]) {
+      const lx = cxp + i * w * 0.14 + w * 0.07;
+      const wig = Math.sin(t * 7 + i) * w * 0.03;
+      ctx.beginPath(); ctx.moveTo(lx, bodyY); ctx.lineTo(lx + s * w * 0.13 + wig, baseY); ctx.stroke();
+    }
+  }
+  // 尾（後方から持ち上がり、毒針）
+  ctx.strokeStyle = '#9a4a22'; ctx.lineWidth = Math.max(3, w * 0.1);
+  const tailBaseX = cxp - dir * w * 0.4;
+  const curl = (e.phase === 'windup' || e.phase === 'attack') ? 1.2 : 0.8;
+  ctx.beginPath();
+  ctx.moveTo(tailBaseX, bodyY);
+  ctx.quadraticCurveTo(tailBaseX - dir * w * 0.2, bodyY - h * 0.4 * curl, tailBaseX + dir * w * 0.1, bodyY - h * 0.55 * curl);
+  ctx.stroke();
+  // 毒針
+  ctx.fillStyle = '#c0392b';
+  const stingX = tailBaseX + dir * w * 0.1, stingY = bodyY - h * 0.55 * curl;
+  ctx.beginPath(); ctx.moveTo(stingX, stingY); ctx.lineTo(stingX + dir * w * 0.08, stingY - h * 0.1); ctx.lineTo(stingX + dir * w * 0.02, stingY + h * 0.02); ctx.closePath(); ctx.fill();
+  // 胴体（甲殻）
+  const grad = ctx.createLinearGradient(cxp, bodyY - bh, cxp, bodyY + bh);
+  grad.addColorStop(0, '#b0641e'); grad.addColorStop(1, '#7a3a14');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#4a2010'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath(); ctx.ellipse(cxp, bodyY, w * 0.32 * wob.wobX, bh * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // 鋏（前方2本）
+  ctx.fillStyle = '#9a4a22';
+  for (const s of [-0.5, 0.5]) {
+    const clawX = cxp + dir * w * 0.36, clawY = bodyY + s * h * 0.12;
+    ctx.beginPath(); ctx.ellipse(clawX, clawY, w * 0.12, h * 0.07, dir * 0.3, 0, Math.PI * 2); ctx.fill();
+    // 鋏の開き
+    ctx.strokeStyle = '#9a4a22'; ctx.lineWidth = Math.max(2, w * 0.05);
+    ctx.beginPath(); ctx.moveTo(clawX + dir * w * 0.08, clawY); ctx.lineTo(clawX + dir * w * 0.18, clawY - h * 0.05); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(clawX + dir * w * 0.08, clawY); ctx.lineTo(clawX + dir * w * 0.18, clawY + h * 0.05); ctx.stroke();
+  }
+  // 目
+  ctx.fillStyle = '#ffd040';
+  ctx.beginPath(); ctx.arc(cxp + dir * w * 0.12, bodyY - bh * 0.3, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑫ ミイラ（包帯を巻いた人型）=====
+// ======================================================
+registerEnemyDrawer(12, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * wob.wobY;
+  const wrap = '#d8cba8', wrapShade = '#a89878';
+  // 脚
+  ctx.strokeStyle = wrap; ctx.lineWidth = Math.max(3, w * 0.11);
+  for (const s of [-1, 1]) {
+    const sw = Math.sin(t * 3 + (s > 0 ? 0 : Math.PI)) * w * 0.02;
+    ctx.beginPath(); ctx.moveTo(cxp + s * w * 0.08, baseY - bh * 0.4); ctx.lineTo(cxp + s * w * 0.1 + sw, baseY); ctx.stroke();
+  }
+  // 胴体（包帯ぐるぐる）
+  ctx.fillStyle = wrap; ctx.strokeStyle = wrapShade; ctx.lineWidth = Math.max(1, w * 0.03);
+  ctx.beginPath(); ctx.roundRect(cxp - w * 0.18, baseY - bh * 0.78, w * 0.36, bh * 0.42, w * 0.08); ctx.fill();
+  // 包帯の横線
+  for (let i = 0; i < 4; i++) { const ly = baseY - bh * (0.42 + i * 0.09); ctx.beginPath(); ctx.moveTo(cxp - w * 0.18, ly); ctx.lineTo(cxp + w * 0.18, ly + w * 0.02); ctx.stroke(); }
+  // 腕（前に伸ばす・ゾンビ風）
+  ctx.strokeStyle = wrap; ctx.lineWidth = Math.max(3, w * 0.1);
+  const armReach = (e.phase === 'attack') ? 0.4 : 0.28;
+  ctx.beginPath(); ctx.moveTo(cxp, baseY - bh * 0.72); ctx.lineTo(cxp + dir * w * armReach, baseY - bh * 0.55); ctx.stroke();
+  // 頭
+  ctx.fillStyle = wrap; ctx.strokeStyle = wrapShade;
+  ctx.beginPath(); ctx.arc(cxp, baseY - bh * 0.86, w * 0.15, 0, Math.PI * 2); ctx.fill();
+  // 包帯の隙間（暗い目）
+  ctx.fillStyle = '#2a1a0a';
+  ctx.fillRect(cxp - w * 0.1, baseY - bh * 0.88, w * 0.2, h * 0.03);
+  ctx.fillStyle = '#7ad0ff'; // 青白く光る目
+  const eo = dir * w * 0.03;
+  ctx.beginPath(); ctx.arc(cxp + eo, baseY - bh * 0.87, w * 0.03, 0, Math.PI * 2); ctx.fill();
+  // ほつれた包帯
+  ctx.strokeStyle = wrapShade; ctx.lineWidth = Math.max(1, w * 0.02);
+  const flutter = Math.sin(t * 4) * w * 0.04;
+  ctx.beginPath(); ctx.moveTo(cxp - dir * w * 0.15, baseY - bh * 0.5); ctx.lineTo(cxp - dir * w * 0.28, baseY - bh * 0.4 + flutter); ctx.stroke();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑬ 幽霊ゴースト（半透明に漂う・虚ろな目）=====
+// ======================================================
+registerEnemyDrawer(13, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const float = Math.sin(t * 2.5 + e.baseX) * h * 0.06;
+  const topY = baseY - h * 0.95 + float;
+  const botY = baseY - h * 0.12 + float;
+  ctx.globalAlpha = 0.78;
+  // 体（裾が波打つお化け型）
+  const grad = ctx.createLinearGradient(cxp, topY, cxp, botY);
+  grad.addColorStop(0, 'rgba(220,235,255,0.95)'); grad.addColorStop(1, 'rgba(150,180,220,0.4)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(cxp - w * 0.32, botY);
+  ctx.lineTo(cxp - w * 0.34, topY + h * 0.3);
+  ctx.quadraticCurveTo(cxp - w * 0.34, topY, cxp, topY);
+  ctx.quadraticCurveTo(cxp + w * 0.34, topY, cxp + w * 0.34, topY + h * 0.3);
+  ctx.lineTo(cxp + w * 0.32, botY);
+  // 裾の波
+  for (let i = 3; i >= 0; i--) {
+    const wx = cxp - w * 0.32 + (i / 3) * w * 0.64;
+    const wy = botY + ((i % 2 === 0) ? -h * 0.06 : h * 0.04) + Math.sin(t * 4 + i) * h * 0.02;
+    ctx.lineTo(wx, wy);
+  }
+  ctx.closePath(); ctx.fill();
+  // 虚ろな目
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#1a2a4a';
+  const eo = dir * w * 0.05;
+  ctx.beginPath(); ctx.ellipse(cxp - w * 0.1 + eo, topY + h * 0.35, w * 0.05, h * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cxp + w * 0.1 + eo, topY + h * 0.35, w * 0.05, h * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+  // 口（attack時に大きく開く）
+  const mouthH = (e.phase === 'windup' || e.phase === 'attack') ? h * 0.14 : h * 0.05;
+  ctx.beginPath(); ctx.ellipse(cxp + eo, topY + h * 0.56, w * 0.06, mouthH, 0, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑭ きのこ巨人（巨大菌類・胞子雲）=====
+// ======================================================
+registerEnemyDrawer(14, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  // 胞子雲（attack/windup・体の上に漂う。leanの外で描く）
+  if (e.phase === 'windup' || e.phase === 'attack') {
+    ctx.fillStyle = 'rgba(140,200,120,0.35)';
+    for (let i = 0; i < 8; i++) {
+      const a = t * 1.5 + i; const sx = cx + Math.cos(a) * w * 0.5; const sy = baseY - h * 0.9 - (t * 15 % 14) + Math.sin(a) * h * 0.1;
+      ctx.beginPath(); ctx.arc(sx, sy, w * 0.06, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * wob.wobY;
+  // 太い柄
+  const grad = ctx.createLinearGradient(cxp, baseY - bh, cxp, baseY);
+  grad.addColorStop(0, '#e8e0c8'); grad.addColorStop(1, '#b8a888');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#8a7a5a'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath();
+  ctx.moveTo(cxp - w * 0.22, baseY);
+  ctx.quadraticCurveTo(cxp - w * 0.16, baseY - bh * 0.5, cxp - w * 0.2, baseY - bh * 0.62);
+  ctx.lineTo(cxp + w * 0.2, baseY - bh * 0.62);
+  ctx.quadraticCurveTo(cxp + w * 0.16, baseY - bh * 0.5, cxp + w * 0.22, baseY);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // 柄の斑点
+  ctx.fillStyle = 'rgba(120,100,70,0.5)';
+  ctx.beginPath(); ctx.arc(cxp - w * 0.05, baseY - bh * 0.3, w * 0.03, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.08, baseY - bh * 0.45, w * 0.025, 0, Math.PI * 2); ctx.fill();
+  // 巨大な傘（紫〜緑の毒々しい菌傘）
+  const capY = baseY - bh * (0.62 + 0.1 * wob.wobY);
+  const cg = ctx.createLinearGradient(cxp, capY - h * 0.3, cxp, capY + h * 0.1);
+  cg.addColorStop(0, '#8a5ac0'); cg.addColorStop(1, '#5a3a8a');
+  ctx.fillStyle = cg; ctx.strokeStyle = '#3a2060'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath(); ctx.ellipse(cxp, capY, w * 0.5 * wob.wobX, h * 0.32, 0, Math.PI, 0); ctx.fill(); ctx.stroke();
+  // 傘の発光斑点
+  ctx.fillStyle = 'rgba(160,240,160,0.85)';
+  for (const [dx, dy, r] of [[-0.22, -0.08, 0.05], [0.1, -0.14, 0.045], [0.28, -0.02, 0.04], [-0.02, -0.16, 0.04]]) {
+    ctx.beginPath(); ctx.arc(cxp + w * dx, capY + h * dy, w * r, 0, Math.PI * 2); ctx.fill();
+  }
+  // 目
+  ctx.fillStyle = '#2a1a3a';
+  const eo = dir * w * 0.04;
+  ctx.beginPath(); ctx.arc(cxp - w * 0.07 + eo, baseY - bh * 0.45, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.07 + eo, baseY - bh * 0.45, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑮ 溶岩スライム（マグマ状・ひび割れから発光）=====
+// ======================================================
+registerEnemyDrawer(15, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  // 熱のゆらぎオーラ
+  const glow = 0.5 + Math.sin(t * 5) * 0.2;
+  ctx.fillStyle = `rgba(255,120,30,${0.15 * glow})`;
+  ctx.beginPath(); ctx.arc(cx, baseY - h * 0.4, w * 0.7, 0, Math.PI * 2); ctx.fill();
+  _withLean(e, wob, () => {
+  const bw = w * 1.05 * wob.wobX, bh = h * wob.wobY;
+  const bx = cx - bw / 2, by = baseY - bh;
+  // 体（黒い岩肌のゼリー）
+  const grad = ctx.createLinearGradient(bx, by, bx, by + bh);
+  grad.addColorStop(0, '#5a2a1a'); grad.addColorStop(1, '#2a1208');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#1a0a04'; ctx.lineWidth = Math.max(1.5, w * 0.05);
+  ctx.beginPath();
+  ctx.moveTo(bx, by + bh);
+  ctx.bezierCurveTo(bx - bw * 0.02, by + bh * 0.4, bx + bw * 0.2, by, bx + bw * 0.5, by);
+  ctx.bezierCurveTo(bx + bw * 0.8, by, bx + bw * 1.02, by + bh * 0.4, bx + bw, by + bh);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // 溶岩のひび割れ（発光）
+  ctx.strokeStyle = `rgba(255,${Math.round(120 + glow * 80)},20,${0.7 + glow * 0.3})`;
+  ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath(); ctx.moveTo(bx + bw * 0.3, by + bh * 0.2); ctx.lineTo(bx + bw * 0.4, by + bh * 0.5); ctx.lineTo(bx + bw * 0.28, by + bh * 0.7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx + bw * 0.6, by + bh * 0.3); ctx.lineTo(bx + bw * 0.55, by + bh * 0.6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx + bw * 0.45, by + bh * 0.45); ctx.lineTo(bx + bw * 0.7, by + bh * 0.55); ctx.stroke();
+  // 頭頂から噴き出すマグマ滴
+  ctx.fillStyle = `rgba(255,${Math.round(140 + glow * 60)},30,0.9)`;
+  ctx.beginPath(); ctx.arc(bx + bw * 0.5, by + bh * 0.05, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  // 目（白熱）
+  ctx.fillStyle = '#fff0b0';
+  const eo = dir * bw * 0.07;
+  ctx.beginPath(); ctx.arc(bx + bw * 0.38 + eo, by + bh * 0.5, bw * 0.06, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(bx + bw * 0.62 + eo, by + bh * 0.5, bw * 0.06, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑯ 悪魔インプ（角と翼・三叉槍）=====
+// ======================================================
+registerEnemyDrawer(16, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * wob.wobY;
+  const float = Math.sin(t * 4 + e.baseX) * h * 0.03;
+  const skin = '#a8324a', skinDark = '#6a1a30';
+  // コウモリ翼
+  const flap = Math.sin(t * 10) * 0.4 + 0.4;
+  ctx.fillStyle = skinDark;
+  for (const s of [-1, 1]) {
+    ctx.save(); ctx.translate(cxp, baseY - bh * 0.62 + float); ctx.rotate(s * (0.3 + flap * 0.5));
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.lineTo(s * w * 0.4, -h * 0.2); ctx.lineTo(s * w * 0.32, -h * 0.02);
+    ctx.lineTo(s * w * 0.42, h * 0.06); ctx.lineTo(s * w * 0.26, h * 0.02);
+    ctx.lineTo(s * w * 0.3, h * 0.16); ctx.lineTo(0, h * 0.04);
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  // 脚
+  ctx.strokeStyle = skin; ctx.lineWidth = Math.max(2.5, w * 0.08);
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cxp + s * w * 0.08, baseY - bh * 0.35 + float); ctx.lineTo(cxp + s * w * 0.1, baseY); ctx.stroke(); }
+  // 胴体
+  const grad = ctx.createLinearGradient(cxp, baseY - bh * 0.7, cxp, baseY);
+  grad.addColorStop(0, skin); grad.addColorStop(1, skinDark);
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.ellipse(cxp, baseY - bh * 0.42 + float, w * 0.2 * wob.wobX, bh * 0.32, 0, 0, Math.PI * 2); ctx.fill();
+  // 三叉槍
+  ctx.strokeStyle = '#6a5a4a'; ctx.lineWidth = Math.max(2, w * 0.05);
+  const spearX = cxp + dir * w * 0.26;
+  ctx.beginPath(); ctx.moveTo(spearX, baseY - bh * 0.9 + float); ctx.lineTo(spearX, baseY - bh * 0.1 + float); ctx.stroke();
+  ctx.fillStyle = '#c0c0c0';
+  for (const o of [-0.06, 0, 0.06]) {
+    ctx.beginPath(); ctx.moveTo(spearX + w * o, baseY - bh * 0.9 + float); ctx.lineTo(spearX + w * o, baseY - bh * 1.04 + float); ctx.lineTo(spearX + w * (o + 0.02), baseY - bh * 0.92 + float); ctx.closePath(); ctx.fill();
+  }
+  // 頭
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(cxp, baseY - bh * 0.72 + float, w * 0.15, 0, Math.PI * 2); ctx.fill();
+  // 角
+  ctx.fillStyle = '#2a1014';
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(cxp + s * w * 0.1, baseY - bh * 0.82 + float); ctx.lineTo(cxp + s * w * 0.18, baseY - bh * 1.0 + float); ctx.lineTo(cxp + s * w * 0.06, baseY - bh * 0.8 + float); ctx.closePath(); ctx.fill();
+  }
+  // 目（黄色く光る）
+  ctx.fillStyle = '#ffd040';
+  const eo = dir * w * 0.03;
+  ctx.beginPath(); ctx.arc(cxp - w * 0.06 + eo, baseY - bh * 0.72 + float, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.06 + eo, baseY - bh * 0.72 + float, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑰ 骸骨竜の幼体（トカゲ＋骨・爬虫）=====
+// ======================================================
+registerEnemyDrawer(17, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * 0.6 * wob.wobY;
+  const bodyY = baseY - bh * 0.7;
+  const bone = '#d8d0bc', boneDark = '#a89a80';
+  // 尻尾（骨の節）
+  ctx.strokeStyle = boneDark; ctx.lineWidth = Math.max(2, w * 0.06);
+  const tailWag = Math.sin(t * 5) * h * 0.08;
+  ctx.beginPath(); ctx.moveTo(cxp - dir * w * 0.25, bodyY);
+  ctx.quadraticCurveTo(cxp - dir * w * 0.45, bodyY + tailWag, cxp - dir * w * 0.5, bodyY - h * 0.1 + tailWag); ctx.stroke();
+  // 脚（2対）
+  ctx.strokeStyle = bone; ctx.lineWidth = Math.max(2, w * 0.06);
+  for (let i = 0; i < 2; i++) for (const s of [1]) {
+    const lx = cxp + (i ? -w * 0.15 : w * 0.12);
+    const wig = Math.sin(t * 6 + i * 2) * w * 0.03;
+    ctx.beginPath(); ctx.moveTo(lx, bodyY + bh * 0.2); ctx.lineTo(lx + wig, baseY); ctx.stroke();
+  }
+  // 胴体（骨と皮膜）
+  const grad = ctx.createLinearGradient(cxp, bodyY - bh * 0.5, cxp, bodyY + bh * 0.5);
+  grad.addColorStop(0, '#7a8a6a'); grad.addColorStop(1, '#4a5a3a');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#2a3a1a'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath(); ctx.ellipse(cxp, bodyY, w * 0.3 * wob.wobX, bh * 0.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // 背骨の突起
+  ctx.fillStyle = bone;
+  for (let i = 0; i < 4; i++) {
+    const sx = cxp - w * 0.2 + i * w * 0.13;
+    ctx.beginPath(); ctx.moveTo(sx, bodyY - bh * 0.45); ctx.lineTo(sx + w * 0.04, bodyY - bh * 0.7); ctx.lineTo(sx + w * 0.08, bodyY - bh * 0.45); ctx.closePath(); ctx.fill();
+  }
+  // 頭（竜の頭蓋）
+  const headX = cxp + dir * w * 0.28;
+  ctx.fillStyle = bone; ctx.strokeStyle = boneDark; ctx.lineWidth = Math.max(1, w * 0.03);
+  ctx.beginPath(); ctx.ellipse(headX, bodyY - bh * 0.1, w * 0.16, bh * 0.32, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // 顎（attack時に開く）
+  const jaw = (e.phase === 'windup' || e.phase === 'attack') ? h * 0.1 : h * 0.03;
+  ctx.beginPath(); ctx.moveTo(headX + dir * w * 0.08, bodyY - bh * 0.05); ctx.lineTo(headX + dir * w * 0.22, bodyY + jaw); ctx.lineTo(headX + dir * w * 0.08, bodyY + bh * 0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // 目（赤）
+  ctx.fillStyle = '#ff3020';
+  ctx.beginPath(); ctx.arc(headX, bodyY - bh * 0.12, w * 0.04, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑱ 影の魔物（黒い靄・赤い目だけ光る）=====
+// ======================================================
+registerEnemyDrawer(18, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * wob.wobY;
+  // 揺らめく黒い靄（多層）
+  for (let layer = 0; layer < 3; layer++) {
+    ctx.fillStyle = `rgba(${10 + layer * 8},${5 + layer * 5},${20 + layer * 10},${0.85 - layer * 0.2})`;
+    ctx.beginPath();
+    const wob2 = w * (0.32 - layer * 0.04);
+    ctx.moveTo(cxp - wob2, baseY);
+    for (let i = 0; i <= 8; i++) {
+      const a = Math.PI + (i / 8) * Math.PI;
+      const wave = Math.sin(t * 4 + i + layer) * w * 0.05;
+      const rx = cxp + Math.cos(a) * (wob2 + wave);
+      const ry = (baseY - bh * 0.5) + Math.sin(a) * bh * 0.55;
+      ctx.lineTo(rx, ry);
+    }
+    // 下部の揺らめく裾
+    for (let i = 0; i < 5; i++) {
+      const fx = cxp - wob2 + (i / 4) * wob2 * 2;
+      const fy = baseY + Math.sin(t * 5 + i + layer) * h * 0.06;
+      ctx.lineTo(fx, fy);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  // 赤い目（2つ、ゆらぐ）
+  const glow = 0.6 + Math.sin(t * 6) * 0.3;
+  ctx.fillStyle = `rgba(255,40,40,${glow})`;
+  const eo = dir * w * 0.05;
+  ctx.shadowColor = '#ff2020'; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.ellipse(cxp - w * 0.09 + eo, baseY - bh * 0.62, w * 0.045, h * 0.06, 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cxp + w * 0.09 + eo, baseY - bh * 0.62, w * 0.045, h * 0.06, -0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑲ 結晶獣（鋭い結晶の体・紫に発光）=====
+// ======================================================
+registerEnemyDrawer(19, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * wob.wobY;
+  const glow = 0.5 + Math.sin(t * 4) * 0.25;
+  // 発光オーラ
+  ctx.fillStyle = `rgba(180,80,255,${0.12 * glow})`;
+  ctx.beginPath(); ctx.arc(cxp, baseY - bh * 0.45, w * 0.6, 0, Math.PI * 2); ctx.fill();
+  // 脚（結晶柱）
+  ctx.fillStyle = '#5a3a8a';
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(cxp + s * w * 0.1, baseY - bh * 0.3); ctx.lineTo(cxp + s * w * 0.18, baseY); ctx.lineTo(cxp + s * w * 0.04, baseY); ctx.closePath(); ctx.fill();
+  }
+  // 胴体（多面結晶）
+  const grad = ctx.createLinearGradient(cxp, baseY - bh, cxp, baseY);
+  grad.addColorStop(0, '#c89aff'); grad.addColorStop(1, '#6a3ab0');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#3a1a6a'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath();
+  ctx.moveTo(cxp, baseY - bh * 0.95);
+  ctx.lineTo(cxp + w * 0.3 * wob.wobX, baseY - bh * 0.55);
+  ctx.lineTo(cxp + w * 0.22, baseY - bh * 0.2);
+  ctx.lineTo(cxp - w * 0.22, baseY - bh * 0.2);
+  ctx.lineTo(cxp - w * 0.3 * wob.wobX, baseY - bh * 0.55);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // 結晶の面の線
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = Math.max(1, w * 0.02);
+  ctx.beginPath(); ctx.moveTo(cxp, baseY - bh * 0.95); ctx.lineTo(cxp, baseY - bh * 0.2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cxp - w * 0.22, baseY - bh * 0.4); ctx.lineTo(cxp + w * 0.22, baseY - bh * 0.4); ctx.stroke();
+  // 背中から生える鋭い結晶
+  ctx.fillStyle = `rgba(200,140,255,${0.7 + glow * 0.3})`;
+  for (const [ox, oy, len] of [[-0.18, -0.6, 0.2], [0.12, -0.7, 0.25], [0.24, -0.5, 0.18]]) {
+    const sx = cxp + w * ox, sy = baseY - bh * (0.5 - oy * 0);
+    ctx.beginPath(); ctx.moveTo(sx, baseY - bh * 0.6); ctx.lineTo(sx + w * 0.04, baseY - bh * (0.6 + len)); ctx.lineTo(sx + w * 0.08, baseY - bh * 0.6); ctx.closePath(); ctx.fill();
+  }
+  // 目（白く発光）
+  ctx.fillStyle = '#ffffff';
+  const eo = dir * w * 0.04;
+  ctx.beginPath(); ctx.arc(cxp - w * 0.08 + eo, baseY - bh * 0.5, w * 0.045, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp + w * 0.08 + eo, baseY - bh * 0.5, w * 0.045, 0, Math.PI * 2); ctx.fill();
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
+// ======================================================
+// ===== 敵⑳ 深淵の眷属（触手と複数の目・最終形態）=====
+// ======================================================
+registerEnemyDrawer(20, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const wob = _enemyWob(e, t);
+  _enemyShadow(e); _enemyDmgFlash(e);
+  // 不穏なオーラ
+  const pulse = 0.5 + Math.sin(t * 3) * 0.3;
+  ctx.fillStyle = `rgba(80,20,120,${0.15 * pulse})`;
+  ctx.beginPath(); ctx.arc(cx, baseY - h * 0.45, w * 0.75, 0, Math.PI * 2); ctx.fill();
+  _withLean(e, wob, () => {
+  const cxp = cx;
+  const bh = h * wob.wobY;
+  const cyB = baseY - bh * 0.5;
+  // 触手（うねうね・複数）
+  ctx.strokeStyle = '#3a1a52'; ctx.lineWidth = Math.max(2.5, w * 0.07);
+  const nTent = 6;
+  const wiggle = (e.phase === 'windup' || e.phase === 'attack') ? 1.6 : 1.0;
+  for (let i = 0; i < nTent; i++) {
+    const baseAng = Math.PI + (i / (nTent - 1)) * Math.PI;
+    const bx2 = cxp + Math.cos(baseAng) * w * 0.22;
+    const tipWave = Math.sin(t * 4 + i * 1.3) * w * 0.18 * wiggle;
+    const tipY = baseY + Math.abs(Math.sin(t * 3 + i)) * h * 0.05;
+    ctx.beginPath(); ctx.moveTo(bx2, cyB);
+    ctx.quadraticCurveTo(bx2 + tipWave * 0.5, baseY - bh * 0.1, bx2 + tipWave, tipY); ctx.stroke();
+  }
+  // 本体（球状の肉塊）
+  const grad = ctx.createRadialGradient(cxp, cyB, w * 0.05, cxp, cyB, w * 0.38);
+  grad.addColorStop(0, '#6a2a8a'); grad.addColorStop(1, '#2a0a3a');
+  ctx.fillStyle = grad; ctx.strokeStyle = '#1a0426'; ctx.lineWidth = Math.max(1.5, w * 0.04);
+  ctx.beginPath(); ctx.ellipse(cxp, cyB, w * 0.34 * wob.wobX, bh * 0.42, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // 複数の目（ランダム配置・ぎょろり）
+  const eyePos = [[-0.12, -0.1], [0.1, -0.14], [0.18, 0.06], [-0.05, 0.1], [-0.2, 0.02], [0.04, -0.02]];
+  for (let i = 0; i < eyePos.length; i++) {
+    const [ox, oy] = eyePos[i];
+    const ex = cxp + w * ox, ey = cyB + bh * oy;
+    // 白目
+    ctx.fillStyle = '#e0d0f0';
+    ctx.beginPath(); ctx.arc(ex, ey, w * 0.05, 0, Math.PI * 2); ctx.fill();
+    // 瞳（プレイヤー方向を見る＝dir寄り＋ゆらぎ）
+    ctx.fillStyle = '#1a0a2a';
+    const look = dir * w * 0.018 + Math.sin(t * 2 + i) * w * 0.008;
+    ctx.beginPath(); ctx.arc(ex + look, ey, w * 0.025, 0, Math.PI * 2); ctx.fill();
+    // 赤いハイライト
+    ctx.fillStyle = '#ff3060';
+    ctx.beginPath(); ctx.arc(ex + look, ey, w * 0.01, 0, Math.PI * 2); ctx.fill();
+  }
+  // 中央の大きな口（attack時に開く）
+  if (e.phase === 'windup' || e.phase === 'attack') {
+    ctx.fillStyle = '#1a0414';
+    ctx.beginPath(); ctx.ellipse(cxp, cyB + bh * 0.18, w * 0.12, bh * 0.16, 0, 0, Math.PI * 2); ctx.fill();
+    // 牙
+    ctx.fillStyle = '#e0d0f0';
+    for (let i = 0; i < 5; i++) {
+      const fx = cxp - w * 0.1 + i * w * 0.05;
+      ctx.beginPath(); ctx.moveTo(fx, cyB + bh * 0.04); ctx.lineTo(fx + w * 0.015, cyB + bh * 0.16); ctx.lineTo(fx + w * 0.03, cyB + bh * 0.04); ctx.closePath(); ctx.fill();
+    }
+  }
+  });
+  _enemyWarn(e, t); _enemyHpBar(e);
+});
+
 function drawSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
   const cx = x + w/2;
@@ -5450,6 +6934,8 @@ function drawSlime(e, t) {
   const dir = e.dir;
   const phase = e.phase || 'idle';
   const isShoot = (phase === 'attack');
+  // 世代別の色（genId未設定なら従来の青系）
+  const _pal = (typeof e.genId !== 'undefined') ? enemyPalette(e.genId) : { base:'#1f6fe0', light:'#5aa0ff', outline:'#08205c' };
 
   let wobX = 1.0, wobY = 1.0, shakeX = 0;
   if (phase === 'windup') {
@@ -5516,9 +7002,9 @@ function drawSlime(e, t) {
   ctx.ellipse(cx + shakeX, baseY - 1, bodyW * 0.42, bodyH * 0.10, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const blue = '#1f6fe0';
-  const blueLight = '#5aa0ff';
-  const outline = '#08205c';
+  const blue = _pal.base;
+  const blueLight = _pal.light;
+  const outline = _pal.outline;
 
   ctx.lineWidth = Math.max(1.5, w * 0.05);
   ctx.strokeStyle = outline;
@@ -5911,9 +7397,17 @@ function drawQueenSlime(e, t) {
   const skirtW = w * 0.94 * wobX;
   const sx = cx + shakeX - skirtW / 2;
 
-  const slimeDeep = '#7a1fa8';
-  const slimeMid  = '#9b3fd1';
-  const slimeEdge = '#3a0a5c';
+  // ===== ボス個体ごとの色（フェーズ1の仮デザイン：bossIndex 1..47 で色相を回す）=====
+  // bossIndex未設定（従来のクイーンスライム）なら元の紫系を維持。
+  let slimeDeep = '#7a1fa8';
+  let slimeMid  = '#9b3fd1';
+  let slimeEdge = '#3a0a5c';
+  if (typeof e.bossIndex !== 'undefined' && e.bossIndex > 0) {
+    const bh = ((e.bossIndex - 1) * 53) % 360; // 47種を色相で散らす
+    slimeDeep = `hsl(${bh}, 65%, 38%)`;
+    slimeMid  = `hsl(${bh}, 70%, 52%)`;
+    slimeEdge = `hsl(${bh}, 70%, 18%)`;
+  }
 
   ctx.lineWidth = Math.max(1.5, w * 0.025);
   ctx.strokeStyle = slimeEdge;
@@ -8092,37 +9586,359 @@ function drawTorch(g){
 // ==================== 08-render.js ====================
 // ======================================================
 // ===== 08-render.js =====
+
+// ======================================================
+// ===== バイオーム背景描画システム =====
+// ======================================================
+// 現在挑戦中クエスト(currentStageId)の biome / variant を見て、
+// 空・遠景・地形装飾・天気を描き分ける。時間帯と天気で同バイオームでも表情が変わる。
+
+// 現在のステージ定義・バイオーム定義・variantを取得（無ければ草原のデフォルト）
+function getCurrentStageDef() {
+  return (typeof getStageDef === 'function' && typeof currentStageId !== 'undefined')
+    ? getStageDef(currentStageId) : null;
+}
+function getCurrentBiomeDef() {
+  const st = getCurrentStageDef();
+  const id = (st && st.biome) ? st.biome : 'grassland';
+  return (typeof BIOME_DEFS !== 'undefined' && BIOME_DEFS[id]) ? BIOME_DEFS[id]
+    : { name:'草原', category:'open', ground:'#6e8c3a', groundDeep:'#4a6325' };
+}
+function getCurrentVariant() {
+  const st = getCurrentStageDef();
+  return (st && st.variant) ? st.variant : { timeOfDay:'day', weather:'clear', decoVariant:0, seed:1 };
+}
+
+// シード付き疑似乱数（装飾配置の再現性確保）
+function _biomeRng(seed) {
+  let s = seed >>> 0;
+  return () => { s |= 0; s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+// 時間帯ごとの空グラデーション色 [上, 下]
+function _skyColors(timeOfDay, category) {
+  if (category === 'cave') {
+    // 洞窟・地下系は時間帯に関係なく暗い。バイオーム側でさらに上書きする場合あり。
+    return ['#1a1620', '#0d0a12'];
+  }
+  switch (timeOfDay) {
+    case 'dusk':  return ['#3a2c5a', '#e8755a']; // 夕焼け
+    case 'night': return ['#0d1430', '#1a2348']; // 夜
+    case 'dawn':  return ['#4a3a6a', '#f0a878']; // 明け方
+    default:      return ['#5c94fc', '#a8d0f0']; // 昼
+  }
+}
+
+// メイン背景描画（カメラ変換前に呼ぶ。視差は内部で camX を使って表現）
+function drawBiomeBackground() {
+  const bd = getCurrentBiomeDef();
+  const v = getCurrentVariant();
+  const W = canvas.width, H = canvas.height;
+  const isCave = bd.category === 'cave';
+
+  // ===== 空（グラデーション）=====
+  let sky = _skyColors(v.timeOfDay, bd.category);
+  // バイオーム個別の空色補正
+  const _id = (getCurrentStageDef() && getCurrentStageDef().biome) || 'grassland';
+  if (bd === BIOME_DEFS.lava_cave)   sky = ['#2a0e08', '#5a1a0a'];
+  else if (bd === BIOME_DEFS.ice_cave) sky = ['#16323e', '#0e2630'];
+  else if (bd === BIOME_DEFS.snowfield && !isCave) sky = (v.timeOfDay==='night') ? ['#2a3358','#4a5578'] : ['#aac4dc','#dde8f0'];
+  else if (_id === 'crystal_cave')  sky = ['#1e1432', '#0e0a1a'];
+  else if (_id === 'mushroom_cave') sky = ['#16201a', '#0a120e'];
+  else if (_id === 'obsidian_cave') sky = ['#16161e', '#08080c'];
+  else if (_id === 'abyss')         sky = ['#0a0610', '#000004'];
+  else if (_id === 'volcano')       sky = (v.timeOfDay==='night') ? ['#2a0e0a','#1a0604'] : ['#4a2418','#7a3a1a'];
+  else if (_id === 'blood_moon')    sky = ['#2a0a14', '#5a1a22'];
+  else if (_id === 'swamp')         sky = (v.timeOfDay==='night') ? ['#1a2418','#0e160c'] : ['#3a4a2a','#5a6a3a'];
+  else if (_id === 'thunder_peak')  sky = ['#1e2438', '#2c3450'];
+  else if (_id === 'frozen_lake' && !isCave) sky = (v.timeOfDay==='night') ? ['#2a3a52','#46607a'] : ['#9cc0d4','#cfe4ee'];
+  else if (_id === 'beach' && !isCave) sky = (v.timeOfDay==='night') ? ['#1a2c48','#2c4868'] : ['#6ab0e0','#bfe4f5'];
+  else if (_id === 'sunken_city')   sky = ['#1a3a4a', '#0e2430'];
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, sky[0]);
+  g.addColorStop(1, sky[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // ===== 天体（昼=太陽 / 夜=月＋星）=====
+  if (!isCave) {
+    if (v.timeOfDay === 'night' || v.timeOfDay === 'dusk') {
+      // 星（視差ゆっくり）
+      const rng = _biomeRng(v.seed ^ 0x9e3779b9);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      for (let i = 0; i < 40; i++) {
+        const sx = (rng() * W * 2 - camX * 0.05) % W; const sy = rng() * H * 0.6;
+        const r = rng() * 1.4 + 0.3;
+        ctx.beginPath(); ctx.arc((sx + W) % W, sy, r, 0, Math.PI * 2); ctx.fill();
+      }
+      // 月
+      const moonX = W * 0.78 - camX * 0.08;
+      ctx.fillStyle = (bd === BIOME_DEFS.moonlit_plain) ? '#fffae0' : '#e8eef0';
+      ctx.beginPath(); ctx.arc(moonX, H * 0.2, (bd === BIOME_DEFS.moonlit_plain ? 38 : 26), 0, Math.PI * 2); ctx.fill();
+    } else {
+      // 太陽
+      const sunX = W * 0.8 - camX * 0.06;
+      ctx.fillStyle = (v.timeOfDay === 'dusk' || v.timeOfDay === 'dawn') ? 'rgba(255,180,90,0.9)' : 'rgba(255,240,180,0.9)';
+      ctx.beginPath(); ctx.arc(sunX, H * 0.22, 30, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    // 洞窟：天井から垂れる鍾乳石／溶岩の光などの遠景
+    drawCaveCeiling(bd, v, W, H);
+  }
+
+  // ===== 遠景シルエット（バイオーム別）=====
+  drawBiomeFarScenery(bd, v, W, H);
+
+  // ===== 天気エフェクト（雲・雨・霧）=====
+  drawWeather(bd, v, W, H);
+}
+
+// 洞窟の天井（鍾乳石・溶岩のグロー）
+function drawCaveCeiling(bd, v, W, H) {
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.lineTo(W, H * 0.12);
+  // ぎざぎざの天井
+  const rng = _biomeRng(v.seed);
+  for (let x = W; x >= 0; x -= 40) {
+    ctx.lineTo(x, H * 0.12 + rng() * H * 0.06);
+  }
+  ctx.lineTo(0, H * 0.12); ctx.closePath(); ctx.fill();
+  // 溶岩洞窟は下部にグロー
+  if (bd === BIOME_DEFS.lava_cave) {
+    const lg = ctx.createLinearGradient(0, H * 0.7, 0, H);
+    lg.addColorStop(0, 'rgba(255,90,20,0)');
+    lg.addColorStop(1, 'rgba(255,90,20,0.35)');
+    ctx.fillStyle = lg; ctx.fillRect(0, H * 0.7, W, H * 0.3);
+  }
+}
+
+// 遠景シルエット（木々・山・砂丘・建造物など）
+function drawBiomeFarScenery(bd, v, W, H) {
+  const horizon = H * 0.62;
+  const rng = _biomeRng(v.seed ^ (v.decoVariant * 0x1234567));
+  ctx.save();
+  // 視差：遠景はゆっくり動く
+  const par = camX * 0.15;
+
+  const drawHill = (color, amp, baseY) => {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 30) {
+      const y = baseY - Math.sin((x + par) * 0.01 + v.seed % 10) * amp - rng() * 4;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  };
+
+  const id = (getCurrentStageDef() && getCurrentStageDef().biome) || 'grassland';
+
+  // 草地・平原系：なだらかな丘
+  const plainsLike = ['grassland','flower_field','rainy_plain','moonlit_plain','blood_moon','beach','swamp','graveyard'];
+  // 森系：丘＋木立
+  const forestLike = ['forest','autumn_forest','bamboo_grove'];
+  // 雪・氷系：白い丘
+  const snowLike = ['snowfield','frozen_lake','ice_cave'];
+  // 砂・荒地系：砂丘
+  const sandLike = ['desert','wasteland'];
+  // 山系：高い稜線
+  const mountainLike = ['mountains','volcano','thunder_peak'];
+  // 建造物系：柱・梁のシルエット
+  const structLike = ['dungeon','abandoned_mine','ruins','sunken_city'];
+  // 洞窟系：暗い丘
+  const caveLike = ['cave','deep_cave','lava_cave','crystal_cave','mushroom_cave','obsidian_cave','abyss'];
+
+  if (plainsLike.includes(id)) {
+    const c = (id === 'blood_moon') ? ['rgba(70,30,35,0.6)','rgba(50,20,25,0.8)']
+            : (id === 'swamp')     ? ['rgba(45,60,40,0.6)','rgba(30,42,28,0.8)']
+            : (id === 'graveyard') ? ['rgba(40,42,50,0.6)','rgba(28,30,38,0.8)']
+            : (id === 'beach')     ? ['rgba(120,160,180,0.5)','rgba(90,130,150,0.7)']
+            : ['rgba(40,70,40,0.5)','rgba(30,55,30,0.7)'];
+    drawHill(c[0], 30, horizon);
+    drawHill(c[1], 20, horizon + 30);
+    // 墓地は墓石、海岸は波の輝きを少し添える
+    if (id === 'graveyard') {
+      ctx.fillStyle = 'rgba(20,22,28,0.85)';
+      for (let i = 0; i < 8; i++) { const gx = (i*110+30-par)%(W+150); ctx.fillRect(gx, horizon+8, 10, 22); ctx.fillRect(gx-4, horizon+8, 18, 6); }
+    }
+  } else if (forestLike.includes(id)) {
+    const hill = (id === 'autumn_forest') ? 'rgba(80,50,25,0.6)' : 'rgba(25,55,30,0.6)';
+    const tree = (id === 'autumn_forest') ? 'rgba(120,70,30,0.85)' : (id === 'bamboo_grove') ? 'rgba(40,80,45,0.8)' : 'rgba(15,40,22,0.8)';
+    drawHill(hill, 24, horizon);
+    ctx.fillStyle = tree;
+    for (let i = 0; i < 14; i++) {
+      const tx = (i * 80 + 20 - par) % (W + 100);
+      const th = 40 + rng() * 50;
+      if (id === 'bamboo_grove') { ctx.fillRect(tx, horizon+30-th, 4, th); } // 竹は細い縦線
+      else { ctx.beginPath(); ctx.moveTo(tx, horizon+30); ctx.lineTo(tx-14, horizon+30); ctx.lineTo(tx, horizon+30-th); ctx.lineTo(tx+14, horizon+30); ctx.closePath(); ctx.fill(); }
+    }
+  } else if (snowLike.includes(id)) {
+    drawHill('rgba(200,220,235,0.55)', 30, horizon);
+    drawHill('rgba(170,195,215,0.75)', 20, horizon + 30);
+  } else if (sandLike.includes(id)) {
+    const c = (id === 'wasteland') ? ['rgba(120,105,80,0.6)','rgba(90,78,58,0.8)'] : ['rgba(200,170,110,0.6)','rgba(170,140,85,0.8)'];
+    drawHill(c[0], 26, horizon);
+    drawHill(c[1], 18, horizon + 30);
+  } else if (mountainLike.includes(id)) {
+    const c = (id === 'volcano') ? ['rgba(80,45,38,0.7)','rgba(55,28,22,0.85)']
+            : (id === 'thunder_peak') ? ['rgba(60,64,84,0.7)','rgba(40,44,62,0.85)']
+            : ['rgba(70,64,58,0.6)','rgba(50,44,40,0.8)'];
+    drawHill(c[0], 70, horizon - 10);
+    drawHill(c[1], 45, horizon + 30);
+    // 火山は山頂のグロー
+    if (id === 'volcano') { ctx.fillStyle='rgba(255,120,40,0.5)'; ctx.beginPath(); ctx.arc(W*0.5-par, horizon-55, 10, 0, Math.PI*2); ctx.fill(); }
+  } else if (structLike.includes(id)) {
+    ctx.fillStyle = (id === 'sunken_city') ? 'rgba(20,40,55,0.5)' : 'rgba(0,0,0,0.4)';
+    for (let i = 0; i < 6; i++) {
+      const px = (i * 160 + 40 - par) % (W + 200);
+      ctx.fillRect(px, horizon - 40, 18, H - horizon + 40);
+      if (id === 'ruins') ctx.fillRect(px-6, horizon-44, 30, 6); // 遺跡は柱頭
+    }
+  } else if (caveLike.includes(id)) {
+    const c = (id === 'crystal_cave') ? 'rgba(60,40,90,0.5)'
+            : (id === 'mushroom_cave') ? 'rgba(30,45,35,0.5)'
+            : (id === 'abyss') ? 'rgba(0,0,0,0.6)'
+            : 'rgba(0,0,0,0.45)';
+    drawHill(c, 26, horizon + 20);
+  } else {
+    drawHill('rgba(40,70,40,0.5)', 30, horizon);
+  }
+  ctx.restore();
+}
+
+// 天気（雲・雨・霧）
+function drawWeather(bd, v, W, H) {
+  const w = v.weather;
+  // 雲（clear/cloudy、洞窟以外）
+  if (bd.category !== 'cave' && (w === 'clear' || w === 'cloudy')) {
+    const n = (w === 'cloudy') ? 7 : 3;
+    ctx.fillStyle = (v.timeOfDay === 'night') ? 'rgba(180,190,210,0.5)' : 'rgba(255,255,255,0.85)';
+    for (let i = 0; i < n; i++) {
+      const cx = (i * 200 + 40 - camX * 0.2) % (W + 200);
+      const cy = 50 + (i % 3) * 46;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 30, 16, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 24, cy - 5, 22, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // 雨
+  if (w === 'rain') {
+    ctx.strokeStyle = 'rgba(180,200,230,0.5)';
+    ctx.lineWidth = 1.5;
+    const t = (typeof animTime !== 'undefined') ? animTime : 0;
+    const rng = _biomeRng(v.seed);
+    for (let i = 0; i < 70; i++) {
+      const baseX = rng() * W;
+      const fall = (t * 600 + i * 53) % H;
+      const rx = (baseX) % W;
+      ctx.beginPath(); ctx.moveTo(rx, fall); ctx.lineTo(rx - 4, fall + 14); ctx.stroke();
+    }
+  }
+  // 霧
+  if (w === 'fog') {
+    const fg = ctx.createLinearGradient(0, H * 0.4, 0, H);
+    fg.addColorStop(0, 'rgba(200,210,220,0)');
+    fg.addColorStop(1, 'rgba(200,210,220,0.35)');
+    ctx.fillStyle = fg; ctx.fillRect(0, H * 0.4, W, H * 0.6);
+  }
+}
+
+// 地面の上に撒くバイオーム別の小物装飾（カメラ変換後の座標系で呼ぶ）。
+// クエストseedで配置が決まるので、同じ天候・時間帯でもクエストごとに地面の表情が変わる。
+function drawGroundDecor(bd) {
+  if (typeof groundRowY === 'undefined') return;
+  const v = getCurrentVariant();
+  const rng = _biomeRng((v.seed || 1) ^ 0x5a5a5a);
+  const gy = groundRowY;
+  // 画面に映る範囲だけ装飾を撒く（カリング）
+  const left = camX - TILE, right = camX + canvas.width + TILE;
+  const step = TILE * 2.2;
+  const startX = Math.floor(left / step) * step;
+
+  const _id = (getCurrentStageDef() && getCurrentStageDef().biome) || 'grassland';
+  // 装飾タイプのグルーピング
+  const grassDeco = ['grassland','flower_field','rainy_plain','moonlit_plain','bamboo_grove','beach','swamp'];
+  const forestDeco = ['forest','autumn_forest'];
+  const snowDeco = ['snowfield','frozen_lake','ice_cave'];
+  const sandDeco = ['desert','wasteland'];
+  const rockDeco = ['mountains','volcano','thunder_peak','ruins'];
+  const lavaDeco = ['lava_cave'];
+  const crystalDeco = ['crystal_cave'];
+  const fungusDeco = ['mushroom_cave'];
+  const stoneDeco = ['cave','deep_cave','dungeon','abandoned_mine','obsidian_cave','sunken_city','graveyard','blood_moon','abyss'];
+
+  for (let x = startX; x < right; x += step) {
+    const r = _biomeRng((Math.floor(x) * 2654435761) ^ (v.seed || 1));
+    if (r() > 0.7) continue; // 間引いてまばらに
+    const px = x + r() * step * 0.6;
+
+    if (grassDeco.includes(_id)) {
+      // 草の束（花畑は花、毒沼は紫の草）
+      ctx.strokeStyle = (_id === 'moonlit_plain' || _id === 'blood_moon') ? '#3a5a4a' : (_id === 'swamp') ? '#3a5a30' : '#4a7a32';
+      ctx.lineWidth = 2;
+      for (let b = 0; b < 3; b++) {
+        ctx.beginPath(); ctx.moveTo(px + b * 4, gy); ctx.lineTo(px + b * 4 - 3 + r() * 6, gy - 8 - r() * 6); ctx.stroke();
+      }
+      if (_id === 'flower_field' && r() > 0.4) { ctx.fillStyle = ['#ff6b9d','#ffd93d','#a78bfa'][Math.floor(r()*3)]; ctx.beginPath(); ctx.arc(px, gy-9, 2.5, 0, Math.PI*2); ctx.fill(); }
+    } else if (forestDeco.includes(_id)) {
+      ctx.fillStyle = (_id === 'autumn_forest') ? (r()>0.5?'#c0622a':'#8a4420') : (r() > 0.5 ? '#caa' : '#3a6a30');
+      ctx.beginPath(); ctx.arc(px, gy - 4, 4 + r() * 3, Math.PI, 0); ctx.fill();
+    } else if (snowDeco.includes(_id)) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath(); ctx.arc(px, gy - 2, 3 + r() * 4, 0, Math.PI * 2); ctx.fill();
+    } else if (sandDeco.includes(_id)) {
+      ctx.fillStyle = (_id === 'wasteland') ? '#6a5e48' : '#b89a5a';
+      ctx.beginPath(); ctx.arc(px, gy - 2, 2 + r() * 3, 0, Math.PI * 2); ctx.fill();
+    } else if (rockDeco.includes(_id)) {
+      ctx.fillStyle = (_id === 'volcano') ? '#4a2820' : '#5a5048';
+      ctx.beginPath(); ctx.moveTo(px - 6, gy); ctx.lineTo(px, gy - 8 - r() * 5); ctx.lineTo(px + 6, gy); ctx.closePath(); ctx.fill();
+    } else if (lavaDeco.includes(_id)) {
+      ctx.fillStyle = 'rgba(255,90,20,0.7)';
+      ctx.fillRect(px, gy - 2, 8 + r() * 10, 3);
+    } else if (crystalDeco.includes(_id)) {
+      // 結晶
+      ctx.fillStyle = 'rgba(170,130,255,0.8)';
+      ctx.beginPath(); ctx.moveTo(px, gy); ctx.lineTo(px - 4, gy - 6); ctx.lineTo(px, gy - 14 - r()*6); ctx.lineTo(px + 4, gy - 6); ctx.closePath(); ctx.fill();
+    } else if (fungusDeco.includes(_id)) {
+      // 光るキノコ
+      ctx.fillStyle = 'rgba(120,220,180,0.8)';
+      ctx.beginPath(); ctx.arc(px, gy - 6, 3 + r() * 3, Math.PI, 0); ctx.fill();
+      ctx.fillRect(px - 1, gy - 6, 2, 6);
+    } else if (stoneDeco.includes(_id)) {
+      ctx.fillStyle = (_id === 'dungeon') ? '#3a3640' : (_id === 'obsidian_cave' || _id === 'abyss') ? '#1e1e26' : (_id === 'blood_moon') ? '#4a2228' : '#4a4038';
+      ctx.beginPath(); ctx.arc(px, gy - 2, 3 + r() * 3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   // 蘇生ボタンのタップ判定リストをリセット（毎フレーム更新）
   window._reviveBtns = [];
+
+  // ===== バイオーム背景（空・遠景・天気）をカメラ変換前に描画（画面固定＋視差は内部で処理）=====
+  drawBiomeBackground();
+
   ctx.save();
   ctx.translate(-camX, 0);
 
-  ctx.fillStyle = '#fff';
-  const cloudRows = [60, 160, 280, 400, 500];
-  for (let ri = 0; ri < cloudRows.length; ri++){
-    const cy = cloudRows[ri];
-    for (let i = 0; i < 5; i++){
-      const cx = (i*220 + ri*80 + 40 - camX*0.3) % (WORLD_W + 200);
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 28, 16, 0, 0, Math.PI*2);
-      ctx.ellipse(cx+22, cy-4, 20, 13, 0, 0, Math.PI*2);
-      ctx.fill();
-    }
-  }
-
+  // ===== 地面タイル（バイオーム色で描画）=====
+  const _bd = getCurrentBiomeDef();
   for (const s of solids) {
-    if (s.type === '1') ctx.fillStyle = '#8b5a2b';
-    else ctx.fillStyle = '#c97a3d';
+    if (s.x + s.w < camX || s.x > camX + canvas.width) continue; // 画面外カリング
+    if (s.type === '1') ctx.fillStyle = _bd.groundDeep;
+    else ctx.fillStyle = _bd.ground;
     ctx.fillRect(s.x, s.y, s.w, s.h);
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
     ctx.strokeRect(s.x, s.y, s.w, s.h);
     if (s.type === '1') {
-      ctx.fillStyle = '#6e8c3a';
+      ctx.fillStyle = _bd.ground; // 地面表層の明るい帯
       ctx.fillRect(s.x, s.y, s.w, 6);
     }
   }
+
+  // ===== 地面装飾（バイオーム別の小物をseed配置。同じ天候でも見分けがつくようにする）=====
+  drawGroundDecor(_bd);
 
   for (const c of coins) {
     if (c.got) continue;
@@ -8136,8 +9952,10 @@ function draw(){
 
   for (const e of enemies) {
     if (!e.alive) continue;
-    if (e.type === 'queenSlime') drawQueenSlime(e, animTime);
-    else drawSlime(e, animTime);
+    // ===== 画面外カリング：カメラに映らない敵は描画スキップ（同時描画数を抑えてカクつき防止）=====
+    if (e.x + e.w < camX - TILE * 2 || e.x > camX + canvas.width + TILE * 2) continue;
+    if (e.type === 'queenSlime' || e.type === 'boss') drawQueenSlime(e, animTime);
+    else drawEnemyByGen(e, animTime); // 世代別の個別デザインへ振り分け（未実装世代はスライムにフォールバック）
   }
 
   if (goal) drawTorch(goal);
@@ -10733,6 +12551,7 @@ function openFacility(screenId) {
   if (screenId === 'classScreen') { renderClassScreen(); }
   if (screenId === 'questScreen') {
     const isMulti = !!(window.RoomState && RoomState.roomId);
+    window._selectedChapter = null; // 開くたびに挑戦中クエストのある章を初期選択させる
     renderQuestScreen(isMulti);
   }
   showOverlay(screenId);
@@ -11025,58 +12844,185 @@ window.addEventListener('resize', resizeLobbyCanvas);
 // ======================================================
 // ステージ一覧を解放状況に応じて動的に描画する
 // isMultiMode=true のとき：ゲストは「待機中」表示、ホストのみ出発可能
+// 100クエスト対応：10クエストを1章として10章タブで切り替え表示する。
+// 選択中の章の10クエストだけを表示し、デフォルトは現在挑戦中のクエストがある章を開く。
+const QUESTS_PER_CHAPTER = 10;
+// アコーディオンで開いている章の集合（複数同時展開OK）
+window._openChapters = window._openChapters ?? new Set();
+
+function getTotalChapters() { return Math.ceil(STAGE_DEFS.length / QUESTS_PER_CHAPTER); }
+function chapterOfOrder(order) { return Math.ceil(order / QUESTS_PER_CHAPTER); }
+// 章が解放済みか（その章の最初のクエストが解放されていれば開放）
+function isChapterUnlocked(chapter) {
+  const firstOrder = (chapter - 1) * QUESTS_PER_CHAPTER + 1;
+  const st = STAGE_DEFS[firstOrder - 1];
+  return st ? isStageUnlocked(st.id) : false;
+}
+
+// ステージ番号を「章-番号」形式に変換（例：1-1, 2-3）
+function formatStageNo(order) {
+  const ch = chapterOfOrder(order);
+  const no = order - (ch - 1) * QUESTS_PER_CHAPTER;
+  return `${ch}-${no}`;
+}
+
 function renderQuestScreen(isMultiMode) {
+  window._questIsMultiMode = isMultiMode;
   const list = document.getElementById('questCardList');
   const cleared = getClearedStageOrder();
   const isGuest = isMultiMode && window.RoomState && RoomState.roomId && !RoomState.isHost;
+  const nextOrder = Math.min(cleared + 1, STAGE_DEFS.length);
+  const totalCh = getTotalChapters();
 
-  // マルチモード時はゲスト向けの案内バナーを先頭に表示
+  // 親要素の幅制限を強制解除
+  let el = list.parentElement;
+  while (el && el.id !== 'questScreen') {
+    el.style.width = '100%';
+    el.style.maxWidth = '100%';
+    el.style.boxSizing = 'border-box';
+    el = el.parentElement;
+  }
+
+
+
+  // マルチモード時はゲスト向けの案内バナー
   const multiNotice = isGuest
-    ? `<div style="background:rgba(91,231,255,0.12);border:1px solid #5be7ff;border-radius:10px;padding:10px 14px;margin-bottom:10px;color:#5be7ff;font-size:13px;text-align:center;">
+    ? `<div style="background:rgba(91,231,255,0.12);border:1px solid #5be7ff;border-radius:10px;padding:10px 14px;margin-bottom:12px;color:#5be7ff;font-size:13px;text-align:center;">
         🎮 ホストがクエストを選択するのを待っています…
        </div>`
     : '';
 
-  list.innerHTML = multiNotice + STAGE_DEFS.map(st => {
-    const unlocked = isStageUnlocked(st.id);
-    const isCleared = cleared >= st.order;
+  // ===== 章一覧（アコーディオン）=====
+  let chapterList = '';
+  for (let ch = 1; ch <= totalCh; ch++) {
+    const unlockedCh = isChapterUnlocked(ch);
+    const chTo = Math.min(ch * QUESTS_PER_CHAPTER, STAGE_DEFS.length);
+    const chCleared = cleared >= chTo;
+    const hasNext = chapterOfOrder(nextOrder) === ch;
+    const isOpen = window._openChapters.has(ch);
 
-    if (!unlocked) {
-      return `
-      <div class="ov-card" style="opacity:0.5;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:11px;color:#7fa8c8;letter-spacing:1px;margin-bottom:4px;">🔒 QUEST ${st.order}</div>
-            <div style="font-size:17px;font-weight:bold;">？？？</div>
-            <div style="font-size:12px;color:#aac4e8;margin-top:4px;">${getStageUnlockText(st)}</div>
+    const mark = chCleared ? '✅' : (hasNext ? '▶' : (unlockedCh ? '' : '🔒'));
+    const headerBg = isOpen
+      ? 'rgba(255,215,0,0.15)'
+      : (unlockedCh ? 'rgba(91,231,255,0.07)' : 'rgba(120,140,160,0.05)');
+    const headerBorder = isOpen
+      ? '#ffd700'
+      : (unlockedCh ? 'rgba(91,231,255,0.25)' : 'rgba(120,140,160,0.15)');
+    const titleColor = isOpen ? '#ffd700' : (unlockedCh ? '#e0eaf5' : '#4a5a6a');
+    const chevron = isOpen ? '▲' : '▼';
+    const chevronColor = isOpen ? '#ffd700' : (unlockedCh ? '#5be7ff' : '#4a5a6a');
+
+    // クリア数カウント
+    const chFrom = (ch - 1) * QUESTS_PER_CHAPTER + 1;
+    let clearedInCh = 0;
+    for (let o = chFrom; o <= chTo; o++) { if (cleared >= o) clearedInCh++; }
+    const progressText = unlockedCh ? `${clearedInCh}/${chTo - chFrom + 1}クリア` : '未解放';
+
+    chapterList += `
+    <div style="margin-bottom:8px;">
+      <button onclick="${unlockedCh ? `toggleQuestChapter(${ch})` : ''}"
+        style="width:100%;display:flex;align-items:center;justify-content:space-between;
+        padding:10px 16px;border-radius:12px;border:1px solid ${headerBorder};
+        background:${headerBg};cursor:${unlockedCh ? 'pointer' : 'not-allowed'};
+        box-sizing:border-box;text-align:left;outline:none;-webkit-tap-highlight-color:transparent;">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;justify-content:center;">
+          <span style="font-size:20px;">${mark}</span>
+          <div style="text-align:center;">
+            <div style="font-size:22px;font-weight:bold;color:${titleColor};line-height:1.2;">第${ch}章</div>
+            <div style="font-size:11px;color:#7fa8c8;margin-top:2px;">${progressText}</div>
           </div>
-          <div style="font-size:22px;filter:grayscale(1);">${st.icon}</div>
         </div>
-      </div>`;
+        <span style="font-size:13px;color:${chevronColor};flex-shrink:0;">${chevron}</span>
+      </button>`;
+
+    // アコーディオン展開部分
+    if (isOpen && unlockedCh) {
+      chapterList += `<div style="padding:8px 4px 4px;">`;
+      for (let order = chFrom; order <= chTo; order++) {
+        const st = STAGE_DEFS[order - 1];
+        const unlocked = isStageUnlocked(st.id);
+        const isCleared = cleared >= st.order;
+        const isNext = (st.order === nextOrder);
+        const hasBoss = !!(st.composition && st.composition.boss);
+        const anchorId = `quest-card-${st.order}`;
+        const stageNo = formatStageNo(order);
+
+        if (!unlocked) {
+          chapterList += `
+          <div class="ov-card" id="${anchorId}" style="opacity:0.45;padding:10px 13px;margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:13px;color:#7fa8c8;">🔒 ${stageNo}　<span style="font-size:11px;">${getStageUnlockText(st)}</span></div>
+              <div style="font-size:18px;filter:grayscale(1);">${st.icon}</div>
+            </div>
+          </div>`;
+          continue;
+        }
+
+        const btn = isGuest
+          ? `<button class="ov-btn ov-btn-gray" style="margin-top:8px;opacity:0.5;cursor:not-allowed;" disabled>⏳ ホスト待機中</button>`
+          : `<button class="ov-btn ${isNext ? 'ov-btn-green' : 'ov-btn-gray'}" style="margin-top:8px;" onclick="startQuest('${st.id}')">出発する ➡</button>`;
+
+        const borderColor = isNext ? '#ffd700' : (hasBoss ? 'rgba(255,80,80,0.5)' : 'rgba(255,215,0,0.25)');
+        const glow = isNext ? 'box-shadow:0 0 12px rgba(255,215,0,0.35);' : '';
+
+        chapterList += `
+        <div class="ov-card" id="${anchorId}" style="border-color:${borderColor};padding:11px 13px;margin-bottom:6px;${glow}">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="min-width:0;flex:1;">
+              <div style="font-size:11px;color:#f39c12;letter-spacing:1px;margin-bottom:3px;">
+                QUEST ${stageNo}
+                ${hasBoss ? ' <span style="color:#ff6b6b;font-weight:bold;">👹BOSS</span>' : ''}
+                ${isCleared ? ' <span style="color:#2ecc71;">✓クリア</span>' : ''}
+                ${isNext ? ' <span style="color:#ffd700;font-weight:bold;">▶NEXT</span>' : ''}
+              </div>
+              <div style="font-size:15px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${st.name}</div>
+              <div style="font-size:11px;color:#2ecc71;margin-top:3px;">難易度 ${st.difficultyStars}</div>
+            </div>
+            <div style="font-size:20px;margin-left:10px;">${st.icon}</div>
+          </div>
+          ${btn}
+        </div>`;
+      }
+      chapterList += `</div>`;
     }
 
-    // ゲストの場合は「出発する」ボタンをグレーアウト（クリック不可）
-    const btn = isGuest
-      ? `<button class="ov-btn ov-btn-gray" style="margin-top:12px;opacity:0.5;cursor:not-allowed;" disabled>⏳ ホスト待機中</button>`
-      : `<button class="ov-btn ov-btn-green" style="margin-top:12px;" onclick="startQuest('${st.id}')">出発する ➡</button>`;
+    chapterList += `</div>`; // 章ブロック終端
+  }
 
-    return `
-    <div class="ov-card" style="border-color:rgba(255,215,0,0.4);">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-size:11px;color:#f39c12;letter-spacing:1px;margin-bottom:4px;">⭐ QUEST ${st.order}${isCleared ? ' <span style="color:#2ecc71;">クリア済</span>' : ''}</div>
-          <div style="font-size:17px;font-weight:bold;">${st.name}</div>
-          <div style="font-size:12px;color:#aac4e8;margin-top:4px;">${st.desc}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:22px;">${st.icon}</div>
-          <div style="font-size:11px;color:#2ecc71;margin-top:4px;">難易度：${st.difficultyStars}</div>
-        </div>
-      </div>
-      ${btn}
-    </div>`;
-  }).join('');
+  // questCardList自体の幅を強制拡張
+  list.style.width = '100%';
+  list.style.maxWidth = '100%';
+  list.style.boxSizing = 'border-box';
+  list.style.padding = '0';
+
+  list.innerHTML = `<div style="width:100%;box-sizing:border-box;padding:0 10px;">` + multiNotice + chapterList + `</div>`;
+
+  // NEXTクエストが開いている章にあればスクロール
+  requestAnimationFrame(() => {
+    if (window._openChapters.has(chapterOfOrder(nextOrder))) {
+      const target = document.getElementById(`quest-card-${nextOrder}`);
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ block: 'center', behavior: 'auto' });
+      }
+    }
+  });
 }
+
+// 章のアコーディオントグル
+function toggleQuestChapter(chapter) {
+  if (!isChapterUnlocked(chapter)) return;
+  if (window._openChapters.has(chapter)) {
+    window._openChapters.delete(chapter);
+  } else {
+    window._openChapters.add(chapter);
+  }
+  renderQuestScreen(window._questIsMultiMode || false);
+}
+window.toggleQuestChapter = toggleQuestChapter;
+
+// 後方互換のため残す（旧コードから呼ばれる可能性）
+function selectQuestChapter(chapter) { toggleQuestChapter(chapter); }
+window.selectQuestChapter = selectQuestChapter;
 
 // クエスト出発処理（解放済みステージのみ開始可能）
 function startQuest(stageId) {
