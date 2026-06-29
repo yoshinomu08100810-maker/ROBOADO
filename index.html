@@ -572,9 +572,7 @@ html, body {
   .chest-weapon-sub  { font-size:13px; color:#f0c040; margin-top:2px; }
   #chestCloseBtn { display:none; margin-top:20px; }
 
-
 </style>
-</head>
 <body>
 
 <!-- ===== タイトル画面 ===== -->
@@ -1037,8 +1035,8 @@ html, body {
 
 
 <!-- ===== JavaScript ===== -->
+<!-- ===== 01-core-setup.js ===== -->
 <script>
-/* ===== 01-core-setup.js ===== */
 // ==================== 01-core-setup.js ====================
 // === 01-core-setup.js ===
 // ======================================================
@@ -1070,25 +1068,33 @@ const ctx = canvas.getContext('2d');
 const msgEl = document.getElementById('msg');
 
 // ===== 画面サイズに合わせてcanvas解像度を設定 =====
-// ★修正: resizeCanvas()をTILE計算より必ず先に呼ぶ
+// 内部解像度を devicePixelRatio 倍にして、Retina等の高密度ディスプレイでも
+// 輪郭がぼやけず鮮明に描画されるようにする。座標系は論理ピクセルのまま（ctx.scaleで補正）。
+let DPR = Math.min(window.devicePixelRatio || 1, 3); // 上限3（負荷対策）
 function resizeCanvas() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
+  DPR = Math.min(window.devicePixelRatio || 1, 3);
+  const cssW = window.innerWidth, cssH = window.innerHeight;
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  canvas.width  = Math.round(cssW * DPR);
+  canvas.height = Math.round(cssH * DPR);
+  // 以降の描画は論理ピクセル基準。DPR分を一括スケール。
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // ゲームロジックが参照する論理サイズ
+  canvas.logicalW = cssW;
+  canvas.logicalH = cssH;
 }
-resizeCanvas(); // ← TILEを計算する前に呼ぶ（元のコードと同じ順序だが明示）
+resizeCanvas();
 
 const ROWS_COUNT = 20;
-// ★修正: resizeCanvas()後にcanvas.heightを使うので正しいサイズになる
-let TILE = Math.floor(canvas.height / ROWS_COUNT);
+let TILE = Math.floor(canvas.logicalH / ROWS_COUNT);
 
 window.addEventListener('resize', () => {
   resizeCanvas();
-  // 画面回転・リサイズ時にTILEを再計算し、ワールドサイズを更新する
-  // （再計算しないと敵・プレイヤーの表示ズレが起きる）
-  TILE = Math.floor(canvas.height / ROWS_COUNT);
+  TILE = Math.floor(canvas.logicalH / ROWS_COUNT);
   WORLD_W = COLS * TILE;
   WORLD_H = ROWS * TILE;
-  camX = Math.max(0, Math.min(camX, WORLD_W - canvas.width));
+  camX = Math.max(0, Math.min(camX, WORLD_W - canvas.logicalW));
 });
 
 const mapRows = [
@@ -1328,14 +1334,21 @@ function genOfQuestSafe(st) {
 function makeEnemy(o, ex, st) {
   const bossIdx = st ? (st.bossIndex || 0) : 0;
   if (o.kind === 'boss') {
-    // ボス：巨大。47種の見た目は bossIndex で描き分け（フェーズ2で個別デザイン化）
-    const bossH = Math.round(groundRowY * 0.92);
-    const bossW = Math.round(bossH * 0.50);
+    // ボス定義（bossIndexごとの名前・攻撃セット・HP倍率・サイズ）を参照。
+    // 未定義のボスはデフォルト（クイーンスライム相当）になる。
+    const def = (typeof getBossDef === 'function') ? getBossDef(bossIdx) : null;
+    const sizeMul = def && def.sizeMul ? def.sizeMul : 1.0;
+    const bossH = Math.round(groundRowY * 0.92 * sizeMul);
+    const bossW = Math.round(bossH * (def && def.aspect ? def.aspect : 0.50));
+    const hpMul = def && def.hpMul ? def.hpMul : 1.0;
+    const hp = Math.round(BOSS_BASE_HP * hpMul);
     return {
       x: ex, y: groundRowY - bossH, w: bossW, h: bossH, dir: 1, speed: TILE * 0.5, alive: true, baseX: ex,
       type: 'boss', bossIndex: bossIdx, genId: o.gen,
+      bossName: def ? def.name : 'BOSS',
+      attackSet: def ? def.attacks : null, // 攻撃タイプの候補配列
       frame: 0, frameTimer: 0, attacking: false, attackTimer: 0, attackCooldown: 0,
-      hp: BOSS_BASE_HP, maxHp: BOSS_BASE_HP, baseMaxHp: BOSS_BASE_HP, baseSpeed: TILE * 0.5,
+      hp: hp, maxHp: hp, baseMaxHp: hp, baseSpeed: TILE * 0.5,
       atkMul: 1,
     };
   }
@@ -1383,9 +1396,9 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 // ======================================================
 
 
-
-
-/* ===== 02-input-controls.js ===== */
+</script>
+<!-- ===== 02-input-controls.js ===== -->
+<script>
 // ==================== 02-input-controls.js ====================
 // ======================================================
 // ===== 02-input-controls.js =====
@@ -1810,9 +1823,9 @@ function drawSkillGauge() {
 // ======================================================
 
 
-
-
-/* ===== 03-class-def.js ===== */
+</script>
+<!-- ===== 03-class-def.js ===== -->
+<script>
 // ==================== 03-class-defs.js ====================
 // ======================================================
 // ===== 03-class-defs.js =====
@@ -4568,6 +4581,31 @@ const STAGE_DEFS = (function buildStageDefs() {
 })();
 function getStageDef(id) { return STAGE_DEFS.find(s => s.id === id) || STAGE_DEFS[0]; }
 
+// ======================================================
+// ===== ボス定義テーブル（bossIndex 1..47）=====
+// ======================================================
+// 各ボスの名前・攻撃セット・HP倍率・サイズを定義。1体ずつ作り込んでいく。
+// attacks: 攻撃タイプの候補。05-game-loop.js が状況に応じてこの中から選ぶ。
+//   近距離/遠距離/範囲を混ぜることで多彩な戦闘にする。
+// hpMul: BOSS_BASE_HP(1500) への倍率。sizeMul: 標準サイズへの倍率。aspect: 横幅/高さ比。
+const BOSS_DEFS = {
+  1: {
+    name: '巨大スライム王',
+    attacks: ['slam', 'stretch', 'bounce', 'split'], // 近:slam 遠:stretch 範囲:bounce 牽制:split
+    hpMul: 0.15,    // 序盤ボス：中ボス(20発)の約1.5倍＝33発前後で撃破できる量
+    sizeMul: 0.85,  // やや小さめだが雑魚・中ボスより十分大きい
+    aspect: 0.62,   // 横にぷっくり広い体型
+  },
+  2: {
+    name: 'キノコの大王',
+    attacks: ['stomp', 'spore', 'burst', 'sprout'], // 近:stomp 遠:spore 範囲:burst 分裂:sprout
+    hpMul: 0.17,    // Q5なので序盤。ボス1よりわずかに硬い
+    sizeMul: 0.95,  // 背の高いキノコ
+    aspect: 0.66,
+  },
+};
+function getBossDef(idx) { return BOSS_DEFS[idx] || null; }
+
 const QUEST_SAVE_KEY = 'rr_quest';
 function loadQuestData() {
   try { return JSON.parse(localStorage.getItem(QUEST_SAVE_KEY) || '{}'); } catch(e) { return {}; }
@@ -4623,9 +4661,9 @@ function applyStageDifficulty(stageId) {
 // ======================================================
 
 
-
-
-/* ===== 04-robot-config.js ===== */
+</script>
+<!-- ===== 04-robot-config.js ===== -->
+<script>
 // ==================== 04-robot-config.js ====================
 // ======================================================
 // ===== 04-robot-config.js =====
@@ -4695,7 +4733,7 @@ let gameState = 'playing';
 const QUEST_TIME_LIMIT = 180; // クエスト制限時間（秒）= 3分
 let questTimeLeft = QUEST_TIME_LIMIT;
 let isTimeUpLose = false; // タイムアップによるゲームオーバーか
-let camX = Math.max(0, Math.min(startX - canvas.width/2 + ROBOT.w/2, WORLD_W - canvas.width));
+let camX = Math.max(0, Math.min(startX - canvas.logicalW/2 + ROBOT.w/2, WORLD_W - canvas.logicalW));
 
 function rectsOverlap(a,b){
   return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
@@ -4712,9 +4750,9 @@ function rectsOverlap(a,b){
 // ======================================================
 
 
-
-
-/* ===== 05-game-loop.js ===== */
+</script>
+<!-- ===== 05-game-loop.js ===== -->
+<script>
 // ==================== 05-game-loop.js ====================
 // ======================================================
 // ===== 05-game-loop.js =====
@@ -4750,8 +4788,8 @@ function update(dt){
       }
     }
     // カメラ更新だけは行う
-    camX = player.x - canvas.width/2 + player.w/2;
-    camX = Math.max(0, Math.min(camX, WORLD_W - canvas.width));
+    camX = player.x - canvas.logicalW/2 + player.w/2;
+    camX = Math.max(0, Math.min(camX, WORLD_W - canvas.logicalW));
     return;
   }
 
@@ -5382,15 +5420,19 @@ function update(dt){
         const gapX = Math.max(0, dist - e.w / 2 - player.w / 2); // ボスとプレイヤー、双方の端と端の距離
         if (gapX < TILE * 7) {
           e.dir = (player.x < e.x + e.w / 2) ? -1 : 1; // プレイヤーの方を向く
-          // 3パターンの攻撃からランダムで選択。どれも大きな予備動作（予兆）を必ず挟む
-          // ただし「叩きつけ」は実際の判定範囲(hitSlamX = w*0.9 + TILE*2.0、攻撃判定部分と同じ式)が
-          // wave(TILE*9)やshockwave(TILE*6.5)より大幅に狭く、かつボスはwindup〜recover中に移動しないため、
-          // 発生トリガー距離(TILE*7)で選ばれても届かず「不発」に見えていた。
-          // → プレイヤーが実際にslamの間合いに入っている時だけ候補に入れる。
-          const slamReach = e.w * 0.9 + TILE * 2.0; // 06-enemy-draw.jsのhitSlamXと同じ式
-          const candidates = (gapX < slamReach) ? ['slam', 'wave', 'shockwave'] : ['wave', 'shockwave'];
-          e.attackType = candidates[Math.floor(Math.random() * candidates.length)];
-          e.windupDuration = (e.attackType === 'shockwave') ? 1.8 : (e.attackType === 'wave' ? 1.6 : 1.5);
+          // ボス固有の攻撃セットがあればそれを使う。なければ従来の3種。
+          const slamReach = e.w * 1.1 + TILE * 2.0;
+          let pool = e.attackSet ? e.attackSet.slice() : ['slam', 'wave', 'shockwave'];
+          // 近距離攻撃(slam/stomp)は間合いに入っている時だけ候補に残す
+          if (gapX >= slamReach) pool = pool.filter(a => a !== 'slam' && a !== 'stomp');
+          if (pool.length === 0) pool = e.attackSet ? e.attackSet.slice() : ['wave'];
+          e.attackType = pool[Math.floor(Math.random() * pool.length)];
+          // 攻撃ごとの予備動作時間（プレイヤーが見て反応できる長さ）
+          const windupMap = {
+            slam: 1.5, stretch: 1.4, wave: 1.6, bounce: 1.7, shockwave: 1.8, split: 1.3,
+            stomp: 1.5, spore: 1.4, burst: 1.7, sprout: 1.5,
+          };
+          e.windupDuration = windupMap[e.attackType] || 1.5;
           e.phase = 'windup';
           e.phaseTimer = e.windupDuration;
           e.frame = 0;
@@ -5408,7 +5450,12 @@ function update(dt){
       if (e.phaseTimer <= 0) {
         e.phase = 'attack';
         if (e.type === 'queenSlime' || e.type === 'boss') {
-          e.phaseTimer = (e.attackType === 'wave') ? 0.5 : (e.attackType === 'shockwave' ? 0.35 : 0.3);
+          // 攻撃ごとの判定持続時間。bounceは跳躍→着地があるので長め、stretchは伸びる時間。
+          const atkDurMap = {
+            wave: 0.5, shockwave: 0.35, stretch: 0.55, bounce: 0.9, split: 0.6, slam: 0.3,
+            stomp: 0.4, spore: 0.7, burst: 0.8, sprout: 0.9,
+          };
+          e.phaseTimer = atkDurMap[e.attackType] || 0.3;
         } else {
           e.phaseTimer = 0.25;
         }
@@ -5535,22 +5582,23 @@ function update(dt){
       let dmg = 2;
       const atkMul = e.atkMul || 1; // ステージ難易度の攻撃力倍率
       if (e.type === 'queenSlime' || e.type === 'boss') {
-        if (e.attackType === 'shockwave') {
-          // ① 全方位衝撃波：エフェクトの円とプレイヤーの矩形(当たり判定)を正しく円×矩形で判定する。
-          // 円の中心からプレイヤー矩形上で最も近い点までの距離で見ることで、
-          // プレイヤーの体のどこか一部でも円に触れていれば必ず命中し、エフェクトの見た目と完全に一致する。
+        if (e.attackType === 'shockwave' || e.attackType === 'bounce' || e.attackType === 'burst') {
+          // 全方位の範囲攻撃（衝撃波・跳ね着地・胞子雲）：中心からの円判定
           const ccx = e.x + e.w / 2;
           const ccy = e.y + e.h / 2;
           const closestX = Math.max(player.x, Math.min(ccx, player.x + player.w));
           const closestY = Math.max(player.y, Math.min(ccy, player.y + player.h));
           const distC = Math.hypot(ccx - closestX, ccy - closestY);
-          if (distC < TILE * 6.5) { hitNow = true; dmg = 20; }
-        } else if (e.attackType === 'wave') {
-          // ② 波動（薙ぎ払い）：06-enemy-draw.jsの描画矩形(rx, rw, top, waveH)と全く同じ式で矩形を作り、
-          // プレイヤーの矩形(当たり判定)との重なり(AABB)で判定する。これによりエフェクトの帯と完全一致する。
+          let radius = TILE * 6.5, hitDmg = 20;
+          if (e.attackType === 'bounce') { radius = TILE * 5.0; hitDmg = 16; }
+          else if (e.attackType === 'burst') { radius = TILE * 6.0; hitDmg = 14; }
+          const active = (e.attackType !== 'bounce') ||
+            (e.attackDuration && (1 - e.phaseTimer / e.attackDuration) > 0.7);
+          if (distC < radius && active) { hitNow = true; dmg = hitDmg; }
+        } else if (e.attackType === 'wave' || e.attackType === 'stretch') {
           const vReach = e.h * 0.6 + TILE * 1.5;
-          const waveLen = TILE * 9;
-          const backAllow = e.w * 0.5; // 背後にも体格分だけ少し判定を許容
+          const waveLen = (e.attackType === 'stretch') ? TILE * 11 : TILE * 9;
+          const backAllow = e.w * 0.5;
           const top = (e.y + e.h / 2) - vReach;
           const waveH = vReach * 2;
           const rx = (e.dir > 0) ? (e.x + e.w / 2 - backAllow) : (e.x + e.w / 2 - waveLen);
@@ -5558,10 +5606,41 @@ function update(dt){
           const overlapX = player.x < rx + rw && player.x + player.w > rx;
           const overlapY = player.y < top + waveH && player.y + player.h > top;
           if (overlapX && overlapY) { hitNow = true; dmg = 12; }
+        } else if (e.attackType === 'stomp') {
+          // キノコの叩きつけ：前方の楕円（柄をしならせて傘で叩く）
+          const reachX = e.w * 1.1 + TILE * 1.5;
+          const ccx = e.x + e.w / 2 + e.dir * e.w * 0.4;
+          const ccy = e.y + e.h * 0.5;
+          const vReach = e.h * 0.5 + TILE * 1.2;
+          const closestX = Math.max(player.x, Math.min(ccx, player.x + player.w));
+          const closestY = Math.max(player.y, Math.min(ccy, player.y + player.h));
+          const nx = (ccx - closestX) / reachX, ny = (ccy - closestY) / vReach;
+          if (nx * nx + ny * ny < 1) { hitNow = true; dmg = 15; }
+        } else if (e.attackType === 'spore') {
+          // 胞子弾：前方の帯（飛んでくる弾の通り道）
+          const vReach = e.h * 0.5 + TILE * 1.2;
+          const reach = TILE * 10;
+          const top = (e.y + e.h * 0.4) - vReach;
+          const rx = (e.dir > 0) ? (e.x + e.w / 2) : (e.x + e.w / 2 - reach);
+          const overlapX = player.x < rx + reach && player.x + player.w > rx;
+          const overlapY = player.y < top + vReach * 2 && player.y + player.h > top;
+          if (overlapX && overlapY) { hitNow = true; dmg = 11; }
+        } else if (e.attackType === 'sprout') {
+          // 小キノコ分裂：本体の足元〜前方の広めの帯（地面から生える範囲）
+          const reach = e.w * 1.5 + TILE * 4;
+          const cxc = e.x + e.w / 2 + e.dir * TILE * 1.5;
+          const overlapX = Math.abs((player.x + player.w / 2) - cxc) < reach;
+          const overlapY = (player.y + player.h) > (e.y + e.h - TILE * 2); // 地面付近
+          if (overlapX && overlapY) { hitNow = true; dmg = 10; }
+        } else if (e.attackType === 'split') {
+          const ccx = e.x + e.w / 2 + e.dir * TILE * 2;
+          const ccy = e.y + e.h * 0.7;
+          const closestX = Math.max(player.x, Math.min(ccx, player.x + player.w));
+          const closestY = Math.max(player.y, Math.min(ccy, player.y + player.h));
+          const distC = Math.hypot(ccx - closestX, ccy - closestY);
+          if (distC < TILE * 4.5) { hitNow = true; dmg = 10; }
         } else {
-          // ③ 叩きつけ（slam）：エフェクトの楕円(中心cx,cyMid／横半径hitSlamX・縦半径hitVReach)に対し、
-          // プレイヤー矩形上で最も近い点を取り、楕円の方程式で内外判定する。
-          // これによりプレイヤーの体のどこか一部でも楕円に触れていれば命中し、見た目と一致する。
+          // 叩きつけ（slam）
           const vReach = e.h * 0.6 + TILE * 1.5;
           const hitSlamX = e.w * 0.9 + TILE * 2.0;
           const ccx = e.x + e.w / 2;
@@ -5681,8 +5760,8 @@ function update(dt){
   if (!update.saveCounter) update.saveCounter = 0;
   if (++update.saveCounter >= 60) { update.saveCounter = 0; saveGame(); }
 
-  camX = player.x - canvas.width/2 + player.w/2;
-  camX = Math.max(0, Math.min(camX, WORLD_W - canvas.width));
+  camX = player.x - canvas.logicalW/2 + player.w/2;
+  camX = Math.max(0, Math.min(camX, WORLD_W - canvas.logicalW));
 }
 
 function resetGame(){
@@ -5691,7 +5770,7 @@ function resetGame(){
   applyStageDifficulty(currentStageId); // 現在挑戦中のステージ難易度を敵のmaxHp/speed/atkに反映
   // コース長が変わったのでカメラ範囲を再計算
   if (typeof WORLD_W !== 'undefined') {
-    camX = Math.max(0, Math.min((typeof camX !== 'undefined' ? camX : 0), WORLD_W - canvas.width));
+    camX = Math.max(0, Math.min((typeof camX !== 'undefined' ? camX : 0), WORLD_W - canvas.logicalW));
   }
   player.x = startX; player.y = startY;
   player.vx = 0; player.vy = 0;
@@ -5789,9 +5868,9 @@ window.onRevived = onRevived;
 // ======================================================
 
 
-
-
-/* ===== 06-enemy-draw.js ===== */
+</script>
+<!-- ===== 06-enemy-draw.js ===== -->
+<script>
 // ==================== 06-enemy-draw.js ====================
 // ======================================================
 // ===== 06-enemy-draw.js =====
@@ -7171,9 +7250,880 @@ function drawSlime(e, t) {
 } // drawSlime end
 
 // ======================================================
-// ===== クイーンスライム（5番目のコース専用ボス） =====
-// 上半身は人間（女王然とした姿・冠と長い髪）、下半身はスライムの
-// ように溶けて裾が波打つドレス状の塊、という構成で描画する。
+// ===== ボス描画 ディスパッチャ =====
+// ======================================================
+// e.bossIndex(1..47) に応じて専用のボス描画関数へ振り分ける。
+// 未実装のボスは drawQueenSlime にフォールバックする（1体ずつ実装しても他は壊れない）。
+const BOSS_DRAWERS = {}; // { bossIndex: function(e, t) }
+function registerBossDrawer(idx, fn) { BOSS_DRAWERS[idx] = fn; }
+function drawBossByIndex(e, t) {
+  const fn = BOSS_DRAWERS[e.bossIndex];
+  if (fn) { fn(e, t); return; }
+  drawQueenSlime(e, t); // 未実装ボスは従来のクイーンスライム
+}
+
+// ===== スライム物理ヘルパー =====
+// 減衰しながら揺れ戻る値（着地・叩きつけ後のオーバーシュート表現）。
+function _overshoot(p, freq = 3, damp = 5) {
+  if (p <= 0 || p >= 1) return 0;
+  return Math.sin(p * Math.PI * freq) * Math.exp(-p * damp);
+}
+// 粘性のある滑らかな閉曲線（カーディナルスプラインで点を曲線補間）。
+// bottomBulge: 底を太らせる量(下太りのしずく型)。squashBottom:接地の潰れ / flowX:慣性の流れ。
+function _blobPath(cx, cy, rx, ry, t, opts = {}) {
+  const pts = opts.points || 18;
+  const wob = opts.wobble != null ? opts.wobble : 0.05;
+  const speed = opts.speed != null ? opts.speed : 2.2;
+  const seed = opts.seed || 0;
+  const squashBottom = opts.squashBottom || 0;
+  const flowX = opts.flowX || 0;
+  const bottomBulge = opts.bottomBulge != null ? opts.bottomBulge : 0.35; // 下太り
+
+  // 周方向に制御点を生成（角度ごとに半径を波打たせ、下半身を太らせる）
+  const P = [];
+  for (let i = 0; i < pts; i++) {
+    const a = (i / pts) * Math.PI * 2 - Math.PI / 2; // -PI/2=真上から
+    const sinA = Math.sin(a); // 上(-1)〜下(+1)
+    // 表面の波打ち
+    const n = Math.sin(a * 3 + t * speed + seed) * wob
+            + Math.sin(a * 5 - t * speed * 0.7 + seed * 1.3) * wob * 0.5;
+    // 下太り：下半身(sinA>0)ほど横半径を広げ、上半身は少し細める
+    const lower = Math.max(0, sinA); // 0(上)〜1(下)
+    const upper = Math.max(0, -sinA);
+    const rxx = rx * (1 + lower * bottomBulge - upper * bottomBulge * 0.35);
+    const ryy = ry * (1 + upper * 0.05);
+    let px = cx + Math.cos(a) * rxx * (1 + n);
+    let py = cy + sinA * ryy * (1 + n);
+    // 接地：底を平らに押し上げる
+    if (squashBottom > 0 && sinA > 0) py -= sinA * ry * squashBottom * 0.55;
+    // 慣性で上部ほど横に流れる
+    px += flowX * (-sinA) * 0.5;
+    P.push([px, py]);
+  }
+
+  // カーディナルスプラインで滑らかに閉じる
+  const tension = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(P[0][0], P[0][1]);
+  for (let i = 0; i < pts; i++) {
+    const p0 = P[(i - 1 + pts) % pts];
+    const p1 = P[i];
+    const p2 = P[(i + 1) % pts];
+    const p3 = P[(i + 2) % pts];
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6 * tension * 2;
+    const cp1y = p1[1] + (p2[1] - p0[1]) / 6 * tension * 2;
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6 * tension * 2;
+    const cp2y = p2[1] - (p3[1] - p1[1]) / 6 * tension * 2;
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1]);
+  }
+  ctx.closePath();
+}
+
+// 立体的なスライム塊を1体描く（本体・分裂体・小スライムで共用）。
+// cx,cy=中心 / rx,ry=半径 / opts.blob=_blobPath用オプション / opts.eyes=目を描くか / opts.dir=向き
+function _drawSlimeBlob(cx, cy, rx, ry, t, opts = {}) {
+  const blob = Object.assign({
+    points: 18, wobble: 0.04, speed: 2.4, seed: 0, squashBottom: 0, flowX: 0, bottomBulge: 0.4,
+  }, opts.blob || {});
+  const flowX = blob.flowX || 0;
+  const topY = cy - ry;
+  const baseY = cy + ry;
+
+  // 1) ベース縦グラデ
+  const grad = ctx.createLinearGradient(cx, topY, cx, baseY);
+  grad.addColorStop(0, 'rgba(150,205,255,0.95)');
+  grad.addColorStop(0.5, 'rgba(82,130,240,0.95)');
+  grad.addColorStop(1, 'rgba(34,52,165,0.97)');
+  ctx.fillStyle = grad;
+  _blobPath(cx, cy, rx, ry, t, blob);
+  ctx.fill();
+
+  // 内部の陰影（clip）
+  ctx.save();
+  _blobPath(cx, cy, rx, ry, t, blob);
+  ctx.clip();
+  // 2) 球状の立体陰影（左上が明るい）
+  const sg = ctx.createRadialGradient(cx - rx * 0.36, cy - ry * 0.4, rx * 0.1, cx - rx * 0.1, cy, rx * 1.5);
+  sg.addColorStop(0, 'rgba(190,225,255,0.55)');
+  sg.addColorStop(0.45, 'rgba(190,225,255,0)');
+  ctx.fillStyle = sg;
+  ctx.fillRect(cx - rx * 2, cy - ry * 2, rx * 4, ry * 4);
+  // 3) 右下〜底の影
+  const shg = ctx.createRadialGradient(cx + rx * 0.4, cy + ry * 0.64, rx * 0.2, cx + rx * 0.2, cy + ry * 0.8, rx * 1.8);
+  shg.addColorStop(0, 'rgba(15,22,90,0.5)');
+  shg.addColorStop(1, 'rgba(15,22,90,0)');
+  ctx.fillStyle = shg;
+  ctx.fillRect(cx - rx * 2, cy - ry * 2, rx * 4, ry * 4);
+  // 4) 底の沈殿
+  ctx.fillStyle = 'rgba(20,30,120,0.4)';
+  ctx.beginPath(); ctx.ellipse(cx + flowX * 0.2, baseY - ry * 0.24, rx * 0.84, ry * 0.32, 0, 0, Math.PI * 2); ctx.fill();
+  // 5) 気泡（数はサイズに応じて）
+  const nb = opts.bubbles || 6;
+  for (let i = 0; i < nb; i++) {
+    const a = t * (0.6 + (i % 3) * 0.25) + i * 1.9 + (blob.seed || 0);
+    const rr = 0.12 + ((i * 7) % 10) / 10 * 0.18;
+    const bxp = cx - flowX * 0.4 + Math.cos(a) * rx * (0.24 + rr * 0.9);
+    const byp = cy + Math.sin(a * 1.15 + i) * ry * (0.2 + rr * 0.8);
+    const br = rx * (0.04 + rr * 0.1);
+    ctx.fillStyle = 'rgba(180,215,255,0.28)';
+    ctx.beginPath(); ctx.arc(bxp, byp, br, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.arc(bxp - br * 0.3, byp - br * 0.3, br * 0.35, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // 6) 厚い透け縁＋輪郭線
+  _blobPath(cx, cy, rx, ry, t, blob);
+  ctx.strokeStyle = 'rgba(200,230,255,0.45)'; ctx.lineWidth = Math.max(2, rx * 0.08);
+  ctx.stroke();
+  _blobPath(cx, cy, rx, ry, t, blob);
+  ctx.strokeStyle = 'rgba(26,36,120,0.95)'; ctx.lineWidth = Math.max(1, rx * 0.03);
+  ctx.stroke();
+
+  // 7) 光沢ハイライト
+  const hlx = cx - flowX * 0.3 - rx * 0.32, hly = topY + ry * 0.4;
+  const hg = ctx.createRadialGradient(hlx, hly, 1, hlx, hly, rx * 0.44);
+  hg.addColorStop(0, 'rgba(255,255,255,0.85)');
+  hg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hg;
+  ctx.beginPath(); ctx.ellipse(hlx, hly, rx * 0.4, ry * 0.26, -0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.ellipse(cx - rx * 0.48, topY + ry * 0.24, rx * 0.1, ry * 0.06, -0.5, 0, Math.PI * 2); ctx.fill();
+
+  // 目（任意）
+  if (opts.eyes) {
+    const dir = opts.dir || 1;
+    const eyeY = cy - ry * 0.08;
+    const eo = dir * rx * 0.12;
+    ctx.fillStyle = '#0a1a4a';
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.ellipse(cx + s * rx * 0.34 + eo, eyeY, rx * 0.1, ry * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(cx + s * rx * 0.34 + eo + rx * 0.03, eyeY - ry * 0.04, rx * 0.035, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0a1a4a';
+    }
+  }
+}
+
+// ======================================================
+// ===== ボス① 巨大スライム王（bossIndex 1）=====
+// ファンタジー体質：体を伸ばす・分裂・跳ねる変形を多用するが、
+// 「ためと解放」「重さ（潰れ・揺れ）」を必ず伴わせて説得力を持たせる。
+// 攻撃: slam(上に伸びて叩く) / stretch(横に伸びる) / bounce(跳ねて衝撃波) / split(分裂)
+// ======================================================
+registerBossDrawer(1, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const phase = e.phase || 'idle';
+  const atk = e.attackType || 'slam';
+  const windupDur = e.windupDuration || 1.5;
+  const attackDur = e.attackDuration || 0.6;
+
+  let progress = 0;
+  if (phase === 'windup') progress = 1 - (e.phaseTimer / windupDur);
+  else if (phase === 'attack') progress = 1 - (e.phaseTimer / attackDur);
+
+  // ===== 体の変形（スクワッシュ&ストレッチ・オーバーシュート・慣性）=====
+  let stretchY = 1, stretchX = 1, shiftX = 0, shiftY = 0;
+  let flowX = 0;        // 上部が遅れて流れる慣性量
+  let squashBottom = 0; // 接地で底が潰れる量
+  let impact = 0;       // 着地/叩きつけの衝撃強さ
+  let crownLag = 0;     // 王冠の遅延追従オフセット
+  const breath = Math.sin(t * 2.2 + (e.baseX || 0)) * 0.05;
+
+  if (phase === 'idle') {
+    stretchX = 1 + breath; stretchY = 1 - breath * 0.8;
+    squashBottom = 0.12 + breath * 0.4;
+    crownLag = Math.sin(t * 2.2 + (e.baseX || 0) - 0.5) * h * 0.012;
+  } else if (phase === 'recover') {
+    const rp = 1 - (e.phaseTimer / (e.recoverDuration || 0.6));
+    const os = _overshoot(rp, 3.5, 4.5);
+    stretchY = 1 + os * 0.25; stretchX = 1 - os * 0.2;
+    squashBottom = 0.12 + Math.abs(os) * 0.3;
+    crownLag = -os * h * 0.06;
+  } else if (atk === 'slam') {
+    if (phase === 'windup') {
+      const e2 = progress * progress * (3 - 2 * progress);
+      stretchY = 1 + e2 * 0.85; stretchX = 1 - e2 * 0.28;
+      squashBottom = 0.05; crownLag = -e2 * h * 0.08;
+      if (progress > 0.7) shiftX = Math.sin(t * 40) * w * 0.02;
+    } else {
+      const p = progress;
+      const slamCurve = p < 0.25 ? (p / 0.25) : 1;
+      const os = _overshoot(Math.max(0, (p - 0.25) / 0.75), 3, 6);
+      stretchY = (1 - 0.5 * slamCurve) + os * 0.3;
+      stretchX = (1 + 0.55 * slamCurve) - os * 0.25;
+      squashBottom = 0.5 * slamCurve + Math.abs(os) * 0.2;
+      impact = (p > 0.2 && p < 0.4) ? (1 - Math.abs(p - 0.3) / 0.1) : 0;
+      crownLag = slamCurve * h * 0.05 - os * h * 0.04;
+    }
+  } else if (atk === 'stretch' || atk === 'wave') {
+    if (phase === 'windup') {
+      const e2 = progress * progress;
+      stretchX = 1 - e2 * 0.28; stretchY = 1 + e2 * 0.18;
+      shiftX = -dir * e2 * w * 0.12; flowX = -dir * e2 * w * 0.15;
+      squashBottom = 0.1;
+    } else {
+      const p = progress;
+      const ext = Math.sin(Math.min(1, p * 1.3) * Math.PI);
+      stretchX = 1 + ext * 1.4; stretchY = 1 - ext * 0.32;
+      shiftX = dir * ext * w * 0.55; flowX = dir * ext * w * 0.4;
+      squashBottom = 0.15 + ext * 0.1; crownLag = -dir * ext * w * 0.1;
+    }
+  } else if (atk === 'bounce' || atk === 'shockwave') {
+    if (phase === 'windup') {
+      const e2 = progress * progress * (3 - 2 * progress);
+      stretchY = 1 - e2 * 0.4; stretchX = 1 + e2 * 0.35;
+      squashBottom = 0.3 + e2 * 0.3;
+    } else {
+      const p = progress;
+      if (p < 0.5) {
+        const jp = p / 0.5;
+        const jump = Math.sin(jp * Math.PI) * h * 0.7;
+        shiftY = -jump;
+        stretchY = 1 + Math.sin(jp * Math.PI) * 0.25;
+        stretchX = 1 - Math.sin(jp * Math.PI) * 0.15;
+      } else {
+        const lp = (p - 0.5) / 0.5;
+        const os = _overshoot(lp, 3, 5.5);
+        const landImpact = lp < 0.18 ? (lp / 0.18) : 1;
+        stretchY = (1 - 0.55 * landImpact) + os * 0.4;
+        stretchX = (1 + 0.6 * landImpact) - os * 0.3;
+        squashBottom = 0.55 * landImpact + Math.abs(os) * 0.25;
+        impact = lp < 0.2 ? (1 - lp / 0.2) : 0;
+        crownLag = landImpact * h * 0.06 - os * h * 0.05;
+      }
+    }
+  } else if (atk === 'split') {
+    if (phase === 'windup') {
+      // 段階1：分裂の予兆で体全体を細かく震わせる（後半ほど激しく）
+      const e2 = progress * progress;
+      stretchX = 1 + e2 * 0.1; stretchY = 1 + e2 * 0.1;
+      squashBottom = 0.12 + e2 * 0.1;
+      const shiver = e2 * w * 0.03;
+      shiftX = Math.sin(t * 48) * shiver;
+      shiftY = Math.cos(t * 41) * shiver * 0.5;
+    } else {
+      // 射出の反動で本体が一瞬ひしゃげて戻る
+      const p = progress;
+      const recoil = Math.sin(Math.min(1, p * 2) * Math.PI) * 0.14;
+      stretchX = 1 - recoil + Math.sin(t * 30) * 0.02;
+      stretchY = 1 + recoil * 0.5; squashBottom = 0.15;
+    }
+  }
+
+  const bw = w * stretchX, bh = h * stretchY;
+  const cxp = cx + shiftX;
+  const cyB = baseY - bh / 2 + shiftY;
+  const topY = cyB - bh / 2;
+
+  let shakeOX = 0, shakeOY = 0;
+  if (impact > 0) {
+    shakeOX = (Math.random() - 0.5) * impact * w * 0.06;
+    shakeOY = (Math.random() - 0.5) * impact * h * 0.03;
+  }
+  ctx.save();
+  ctx.translate(shakeOX, shakeOY);
+
+  // 影
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(cxp, baseY + 2, bw * (0.5 + squashBottom * 0.3), Math.max(5, w * 0.08), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 着地の砂埃
+  if (impact > 0.3) {
+    ctx.fillStyle = `rgba(200,200,180,${impact * 0.4})`;
+    for (let i = 0; i < 8; i++) {
+      const dustR = (1 - impact) * w * 1.2 + w * 0.3;
+      const dx = cxp + dustR * (i % 2 ? 1 : -1) * (0.4 + i * 0.08);
+      const dy = baseY - Math.random() * h * 0.08 * impact;
+      ctx.beginPath(); ctx.arc(dx, dy, w * 0.06 * impact, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  const flashing = e.dmgFlash && e.dmgFlash > 0;
+
+  // ===== 本体（多層で立体的に描く）=====
+  // 光源は左上と想定。1)ベース塗り 2)内部の球状陰影 3)底の濃い影 4)透けた縁 5)気泡 6)ハイライト
+  const blobOpts = {
+    points: 22, wobble: 0.035 + (phase === 'attack' ? 0.02 : 0), speed: 2.4,
+    seed: (e.baseX || 0), squashBottom: squashBottom, flowX: flowX, bottomBulge: 0.4,
+  };
+
+  // 1) ベース：縦グラデ（上が明るく下が濃い）
+  const grad = ctx.createLinearGradient(cxp, topY, cxp, baseY);
+  grad.addColorStop(0, 'rgba(150,205,255,0.95)');
+  grad.addColorStop(0.5, 'rgba(82,130,240,0.95)');
+  grad.addColorStop(1, 'rgba(34,52,165,0.97)');
+  ctx.fillStyle = flashing ? '#ff5040' : grad;
+  _blobPath(cxp, cyB, bw * 0.5, bh * 0.5, t, blobOpts);
+  ctx.fill();
+
+  if (!flashing) {
+    // 以降の陰影は本体の内側だけに描く（clip）
+    ctx.save();
+    _blobPath(cxp, cyB, bw * 0.5, bh * 0.5, t, blobOpts);
+    ctx.clip();
+
+    // 2) 球状の立体陰影：左上が明るく、右下へ回り込む影（放射グラデ）
+    const sg = ctx.createRadialGradient(
+      cxp - bw * 0.18, cyB - bh * 0.2, bw * 0.05,
+      cxp - bw * 0.05, cyB, bw * 0.75);
+    sg.addColorStop(0, 'rgba(190,225,255,0.55)');
+    sg.addColorStop(0.45, 'rgba(190,225,255,0)');
+    sg.addColorStop(1, 'rgba(20,30,110,0.0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(cxp - bw, cyB - bh, bw * 2, bh * 2);
+
+    // 3) 右下〜底の濃い影（重さ・接地感）
+    const shg = ctx.createRadialGradient(
+      cxp + bw * 0.2, cyB + bh * 0.32, bw * 0.1,
+      cxp + bw * 0.1, cyB + bh * 0.4, bw * 0.9);
+    shg.addColorStop(0, 'rgba(15,22,90,0.55)');
+    shg.addColorStop(1, 'rgba(15,22,90,0)');
+    ctx.fillStyle = shg;
+    ctx.fillRect(cxp - bw, cyB - bh, bw * 2, bh * 2);
+
+    // 4) 底に溜まる沈殿（濃い青がゆっくり揺れる）
+    ctx.fillStyle = 'rgba(20,30,120,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(cxp + flowX * 0.2, baseY - bh * 0.12, bw * 0.42, bh * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5) 内部の気泡（大小・遅れて流れる・各々に小ハイライト）
+    for (let i = 0; i < 9; i++) {
+      const a = t * (0.6 + (i % 3) * 0.25) + i * 1.9;
+      const rr = 0.12 + ((i * 7) % 10) / 10 * 0.18;
+      const bxp = cxp - flowX * 0.4 + Math.cos(a) * bw * (0.12 + rr * 0.9);
+      const byp = cyB + Math.sin(a * 1.15 + i) * bh * (0.1 + rr * 0.8);
+      const br = w * (0.012 + rr * 0.04);
+      ctx.fillStyle = 'rgba(180,215,255,0.28)';
+      ctx.beginPath(); ctx.arc(bxp, byp, br, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.arc(bxp - br * 0.3, byp - br * 0.3, br * 0.35, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+
+    // 6) 厚みのある縁：内側に明るい透け縁＋外側の輪郭線（サブサーフェス感）
+    _blobPath(cxp, cyB, bw * 0.5, bh * 0.5, t, blobOpts);
+    ctx.strokeStyle = 'rgba(200,230,255,0.45)'; ctx.lineWidth = Math.max(3, w * 0.04);
+    ctx.stroke();
+    _blobPath(cxp, cyB, bw * 0.5, bh * 0.5, t, blobOpts);
+    ctx.strokeStyle = 'rgba(26,36,120,0.95)'; ctx.lineWidth = Math.max(1.5, w * 0.016);
+    ctx.stroke();
+
+    // 7) 表面の大きな光沢ハイライト（つやつやのゼリー・動きに遅れて流れる）
+    const hlx = cxp - flowX * 0.3 - bw * 0.16, hly = topY + bh * 0.2;
+    const hg = ctx.createRadialGradient(hlx, hly, 1, hlx, hly, bw * 0.22);
+    hg.addColorStop(0, 'rgba(255,255,255,0.85)');
+    hg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hg;
+    ctx.beginPath(); ctx.ellipse(hlx, hly, bw * 0.2, bh * 0.13, -0.4, 0, Math.PI * 2); ctx.fill();
+    // 小さな鋭いハイライト点
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.ellipse(cxp - bw * 0.24, topY + bh * 0.12, bw * 0.05, bh * 0.03, -0.5, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // ダメージ中は赤いシルエットだけ
+    _blobPath(cxp, cyB, bw * 0.5, bh * 0.5, t, blobOpts);
+    ctx.strokeStyle = 'rgba(120,20,20,0.9)'; ctx.lineWidth = Math.max(1.5, w * 0.016);
+    ctx.stroke();
+  }
+
+  // 衝撃波の波紋
+  if (impact > 0.05 || (atk === 'bounce' && phase === 'attack' && progress > 0.6) || (atk === 'shockwave' && phase === 'attack')) {
+    const rp = (atk === 'bounce') ? Math.max(0, (progress - 0.5) / 0.5) : progress;
+    ctx.strokeStyle = `rgba(160,210,255,${0.7 * (1 - rp)})`;
+    ctx.lineWidth = Math.max(2, w * 0.03);
+    for (const mult of [1, 0.6]) {
+      const r = rp * w * 1.6 * mult;
+      ctx.beginPath(); ctx.ellipse(cxp, baseY, r, r * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // 王冠（慣性で一拍遅れて揺れる）
+  const crownCx = cxp + flowX * 0.3;
+  const crownBaseY = topY + crownLag + bh * 0.02;
+  const crownW = w * 0.46;
+  const crownTilt = (flowX / w) * 0.5 + crownLag / h * 1.5;
+  ctx.save();
+  ctx.translate(crownCx, crownBaseY);
+  ctx.rotate(crownTilt);
+  ctx.fillStyle = '#ffd040'; ctx.strokeStyle = '#b8860b'; ctx.lineWidth = Math.max(1.5, w * 0.02);
+  ctx.beginPath();
+  ctx.moveTo(-crownW / 2, 0);
+  ctx.lineTo(-crownW / 2, -h * 0.15);
+  ctx.lineTo(-crownW * 0.22, -h * 0.045);
+  ctx.lineTo(0, -h * 0.21);
+  ctx.lineTo(crownW * 0.22, -h * 0.045);
+  ctx.lineTo(crownW / 2, -h * 0.15);
+  ctx.lineTo(crownW / 2, 0);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ff3060';
+  ctx.beginPath(); ctx.arc(0, -h * 0.075, w * 0.032, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // 目
+  if (!flashing) {
+    const eyeY = cyB - bh * 0.04;
+    const eo = dir * bw * 0.06;
+    const blink = (Math.sin(t * 0.8 + (e.baseX || 0)) > 0.96) ? 0.15 : 1;
+    ctx.fillStyle = '#0a1a4a';
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(crownCx + s * bw * 0.17 + eo, eyeY, bw * 0.052, bh * 0.07 * blink, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (blink > 0.5) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(crownCx + s * bw * 0.17 + eo + bw * 0.015, eyeY - bh * 0.02, bw * 0.018, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#0a1a4a';
+      }
+    }
+    if (phase === 'windup' || phase === 'attack') {
+      ctx.strokeStyle = '#0a1a4a'; ctx.lineWidth = Math.max(2, w * 0.018);
+      for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(crownCx + s * bw * 0.1, eyeY - bh * 0.1);
+        ctx.lineTo(crownCx + s * bw * 0.24, eyeY - bh * 0.04); ctx.stroke();
+      }
+    }
+  }
+
+  // 分裂：①事前の震え ②射出 ③ちぎれ(糸が伸びて細くなり切れる) ④着地後に小スライム化
+  if (atk === 'split') {
+    const splitN = 3;
+    // 各塊の射出方向（斜め上に散らす）
+    const launchAngs = [];
+    for (let i = 0; i < splitN; i++) launchAngs.push(-Math.PI * 0.72 + (i / (splitN - 1)) * Math.PI * 0.44);
+
+    if (phase === 'attack') {
+      const p = progress; // 0→1
+      for (let i = 0; i < splitN; i++) {
+        const ang = launchAngs[i];
+        // 射出元（本体表面）
+        const startX = cxp + Math.cos(ang) * bw * 0.42;
+        const startY = cyB + Math.sin(ang) * bh * 0.42;
+        // 塊の飛距離：放物線で斜め上→落下
+        const speed0 = w * (1.5 + i * 0.2);
+        const flightT = p;
+        const blobX = startX + Math.cos(ang) * speed0 * flightT;
+        const groundLevel = baseY - w * 0.16;
+        let blobY = startY + Math.sin(ang) * speed0 * flightT + (flightT * flightT) * h * 0.9;
+        const landed = blobY >= groundLevel;
+        if (landed) blobY = groundLevel;
+        const blobR = w * 0.15;
+
+        // === ③ ちぎれ：射出直後(p<0.32)、本体と塊が糸を引いて伸び→細く→切れる ===
+        const tearEnd = 0.32;
+        if (p < tearEnd) {
+          const tp = p / tearEnd; // 0→1
+          // 中央が一番細くなるプロファイル（表面張力でくびれる）
+          // 糸を複数セグメントで描き、中央ほど細く、tpが進むほど全体が細る
+          const segs = 8;
+          const neckThin = 1 - tp; // 進むほど糸全体が細る
+          ctx.strokeStyle = 'rgba(95,150,245,0.95)';
+          ctx.lineCap = 'round';
+          // 切れる瞬間(tp>0.8)は中央を分離
+          const broken = tp > 0.78;
+          ctx.beginPath();
+          for (let s = 0; s <= segs; s++) {
+            const u = s / segs;
+            // 糸の経路（本体→塊を緩くカーブ）
+            const mx = startX + (blobX - startX) * u;
+            const my = startY + (blobY - startY) * u - Math.sin(u * Math.PI) * h * 0.04;
+            if (broken && Math.abs(u - 0.5) < 0.12) continue; // 中央が切れて空く
+            if (s === 0) ctx.moveTo(mx, my); else {
+              // 太さは中央(u=0.5)で最小
+              const thick = (w * 0.09) * neckThin * (0.35 + 0.65 * Math.abs(u - 0.5) * 2);
+              ctx.lineWidth = Math.max(0.5, thick);
+              ctx.lineTo(mx, my);
+              ctx.stroke();
+              ctx.beginPath(); ctx.moveTo(mx, my);
+            }
+          }
+          ctx.stroke();
+          // 本体側のへこみ跡（ちぎれた付け根が凹む→戻る）
+          const dent = (1 - tp) * w * 0.1;
+          ctx.fillStyle = 'rgba(30,45,140,0.45)';
+          ctx.beginPath(); ctx.arc(startX, startY, dent, 0, Math.PI * 2); ctx.fill();
+          // 切れた直後、両側が縮んで丸まる名残のしずく
+          if (tp > 0.6) {
+            ctx.fillStyle = 'rgba(95,150,245,0.9)';
+            const midx = (startX + blobX) / 2, midy = (startY + blobY) / 2;
+            ctx.beginPath(); ctx.arc(midx, midy, w * 0.03 * (1 - tp), 0, Math.PI * 2); ctx.fill();
+          }
+        }
+
+        // === ② 射出中の塊：顔なしの立体スライム塊（飛ぶ間は進行方向に伸びる）===
+        if (!landed) {
+          const vx = Math.cos(ang), vy = Math.sin(ang) + flightT * 1.5;
+          const ang2 = Math.atan2(vy, vx);
+          const stretch = 1 + Math.min(0.55, speed0 * 0.0006 + flightT * 0.3);
+          ctx.save();
+          ctx.translate(blobX, blobY);
+          ctx.rotate(ang2);
+          // 進行方向に伸びた立体スライム（目なし）
+          _drawSlimeBlob(0, 0, blobR * stretch, blobR / Math.sqrt(stretch), t + i, {
+            blob: { points: 14, wobble: 0.05, speed: 3.0, seed: i * 2.1, bottomBulge: 0.15 },
+            bubbles: 3, eyes: false,
+          });
+          // 後方に引く粘液の尾
+          ctx.fillStyle = 'rgba(110,160,250,0.45)';
+          ctx.beginPath();
+          ctx.moveTo(-blobR * stretch * 0.9, -blobR * 0.16);
+          ctx.quadraticCurveTo(-blobR * stretch * 1.9, 0, -blobR * stretch * 0.9, blobR * 0.16);
+          ctx.closePath(); ctx.fill();
+          ctx.restore();
+        } else {
+          // === ④ 着地後：立体スライム（雑魚スライムと同じ質感・目あり・着地バウンド）===
+          const landP = Math.min(1, (p - 0.5) * 3);
+          const bob = _overshoot(landP, 2.5, 6);
+          const sr = w * 0.16;
+          // 着地の潰れ→戻り（オーバーシュート）
+          const sx = 1 + bob * 0.3, sy = 1 - bob * 0.3;
+          _drawSlimeBlob(blobX, blobY - sr * sy * 0.6, sr * sx, sr * sy, t + i, {
+            blob: { points: 16, wobble: 0.04, speed: 2.6, seed: i * 3.3, squashBottom: 0.2, bottomBulge: 0.45 },
+            bubbles: 4, eyes: landP > 0.3, dir: Math.cos(ang) > 0 ? 1 : -1,
+          });
+        }
+      }
+    }
+  }
+
+  // 予備動作の警告
+  if (phase === 'windup') {
+    if (Math.sin(t * 18) > 0) {
+      ctx.fillStyle = '#ff3030';
+      ctx.font = `bold ${Math.round(w * 0.32)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('!', cxp, topY - h * 0.06);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  ctx.restore();
+  drawBossHpBar(e);
+});
+
+// ======================================================
+// ===== ボス② キノコの大王（bossIndex 2）=====
+// 菌類のファンタジー体質：柄をしならせて叩く・胞子を撃つ・傘を開いて胞子雲・小キノコを生やす。
+// 植物的な「曲げ（しなり）」はOK、重さとためを必ず伴わせる。
+// 攻撃: stomp(柄を曲げ傘で叩く) / spore(胞子弾) / burst(胞子雲・範囲) / sprout(小キノコ分裂)
+// ======================================================
+registerBossDrawer(2, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const phase = e.phase || 'idle';
+  const atk = e.attackType || 'stomp';
+  const windupDur = e.windupDuration || 1.5;
+  const attackDur = e.attackDuration || 0.6;
+  let progress = 0;
+  if (phase === 'windup') progress = 1 - (e.phaseTimer / windupDur);
+  else if (phase === 'attack') progress = 1 - (e.phaseTimer / attackDur);
+
+  // ===== モーション変数 =====
+  let bend = 0;        // 柄のしなり角（傘が前に倒れる）
+  let capOpen = 1;     // 傘の開き具合（1=通常, >1で大きく開く, <1で閉じる）
+  let bob = 0;         // 上下の沈み込み
+  let capLift = 0;     // 傘が持ち上がる
+  let impact = 0;
+  let shiver = 0;      // 震え（sprout前兆）
+  const breath = Math.sin(t * 2 + (e.baseX || 0)) * 1;
+
+  if (phase === 'idle') {
+    bend = Math.sin(t * 1.5 + (e.baseX || 0)) * 0.04; // ゆらゆら
+    bob = breath * h * 0.01;
+    capOpen = 1 + breath * 0.02;
+  } else if (phase === 'recover') {
+    const rp = 1 - (e.phaseTimer / (e.recoverDuration || 0.6));
+    const os = _overshoot(rp, 3, 4.5);
+    bend = dir * os * 0.12;
+    capOpen = 1 + os * 0.06;
+  } else if (atk === 'stomp') {
+    if (phase === 'windup') {
+      // 傘を後ろに反らせて溜める（柄が逆へしなる）
+      const e2 = progress * progress * (3 - 2 * progress);
+      bend = -dir * e2 * 0.5;
+      capLift = e2 * h * 0.06;
+      if (progress > 0.7) shiver = Math.sin(t * 40) * w * 0.012;
+    } else {
+      // 前方へ叩きつけ（柄が大きくしなって傘が振り下ろされる）
+      const p = progress;
+      const swing = p < 0.3 ? (p / 0.3) : 1;
+      const os = _overshoot(Math.max(0, (p - 0.3) / 0.7), 2.5, 6);
+      bend = dir * (swing * 1.1 - os * 0.3);
+      impact = (p > 0.25 && p < 0.45) ? (1 - Math.abs(p - 0.35) / 0.1) : 0;
+    }
+  } else if (atk === 'spore') {
+    if (phase === 'windup') {
+      const e2 = progress * progress;
+      capOpen = 1 - e2 * 0.25; // 傘をすぼめてためる
+      capLift = e2 * h * 0.03;
+      bend = -dir * e2 * 0.15;
+    } else {
+      // 傘をパッと反らせて胞子弾を撃つ
+      const p = progress;
+      capOpen = 1 + Math.sin(Math.min(1, p * 2) * Math.PI) * 0.3;
+      bend = dir * Math.sin(Math.min(1, p * 2) * Math.PI) * 0.2;
+    }
+  } else if (atk === 'burst') {
+    if (phase === 'windup') {
+      // 傘を閉じてしゃがみ、内圧を溜める
+      const e2 = progress * progress * (3 - 2 * progress);
+      capOpen = 1 - e2 * 0.35;
+      bob = e2 * h * 0.08;
+    } else {
+      // 傘を大きく開いて胞子雲を放出
+      const p = progress;
+      capOpen = 1 + Math.sin(Math.min(1, p * 1.5) * Math.PI) * 0.55;
+      bob = -Math.sin(Math.min(1, p * 1.5) * Math.PI) * h * 0.04;
+      impact = p < 0.2 ? (1 - p / 0.2) * 0.6 : 0;
+    }
+  } else if (atk === 'sprout') {
+    if (phase === 'windup') {
+      // 全身を震わせて胞子を地面に送る予兆
+      const e2 = progress * progress;
+      shiver = Math.sin(t * 46) * e2 * w * 0.02;
+      bob = e2 * h * 0.05;
+      capOpen = 1 - e2 * 0.1;
+    } else {
+      const p = progress;
+      bob = Math.sin(p * Math.PI) * h * 0.03;
+    }
+  }
+
+  // ===== レイアウト =====
+  const stemW = w * 0.32;              // 柄の太さ
+  const stemLen = h * 0.6;             // 柄の長さ（一定に保つ＝伸びない）
+  const stemRootY = baseY + bob;       // 柄の根元（地面付近・固定）
+  // 柄は根元を支点に bend だけ傾く円弧運動。長さは stemLen で一定。
+  const capCx = cx + shiver + Math.sin(bend) * stemLen;
+  const stemTopY = stemRootY - Math.cos(bend) * stemLen - capLift;
+  const capCy = stemTopY - h * 0.05;
+  const capRx = w * 0.55 * capOpen;
+  const capRy = h * 0.26 * (2 - capOpen * 0.6); // 開くと平たく
+
+  let shakeOX = 0, shakeOY = 0;
+  if (impact > 0) { shakeOX = (Math.random() - 0.5) * impact * w * 0.05; shakeOY = (Math.random() - 0.5) * impact * h * 0.025; }
+  ctx.save();
+  ctx.translate(shakeOX, shakeOY);
+
+  const flashing = e.dmgFlash && e.dmgFlash > 0;
+
+  // ===== 影 =====
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.beginPath(); ctx.ellipse(cx + shiver, baseY + 2, w * 0.4, Math.max(4, w * 0.07), 0, 0, Math.PI * 2); ctx.fill();
+
+  // ===== 着地の砂埃 =====
+  if (impact > 0.3) {
+    ctx.fillStyle = `rgba(200,195,170,${impact * 0.35})`;
+    for (let i = 0; i < 6; i++) {
+      const dx = cx + (i % 2 ? 1 : -1) * (0.4 + i * 0.1) * w * (1 - impact + 0.3);
+      ctx.beginPath(); ctx.arc(dx, baseY, w * 0.05 * impact, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ===== 柄（茎）：しなる円柱。立体陰影つき =====
+  // 柄を、根元(cx,baseY)から傘の付け根(capBaseX,capBaseY)へ曲げて描く
+  const capBaseX = capCx, capBaseY = capCy + capRy * 0.3;
+  const midX = cx + (capBaseX - cx) * 0.5;
+  const midY = (stemRootY + capBaseY) / 2;
+  if (flashing) ctx.fillStyle = '#ff5040';
+  else {
+    const sg = ctx.createLinearGradient(cx - stemW/2, 0, cx + stemW/2, 0);
+    sg.addColorStop(0, '#d8cdb0'); sg.addColorStop(0.5, '#f2ead2'); sg.addColorStop(1, '#c8bb98');
+    ctx.fillStyle = sg;
+  }
+  ctx.strokeStyle = 'rgba(120,105,75,0.9)'; ctx.lineWidth = Math.max(1.5, w * 0.012);
+  ctx.beginPath();
+  // 左側の輪郭（根元→傘）
+  ctx.moveTo(cx - stemW * 0.6, stemRootY);
+  ctx.quadraticCurveTo(midX - stemW * 0.5, midY, capBaseX - stemW * 0.4, capBaseY);
+  // 上端（傘付け根）
+  ctx.lineTo(capBaseX + stemW * 0.4, capBaseY);
+  // 右側の輪郭（傘→根元）
+  ctx.quadraticCurveTo(midX + stemW * 0.5, midY, cx + stemW * 0.6, stemRootY);
+  ctx.closePath(); ctx.fill(); if (!flashing) ctx.stroke();
+  // 柄の縦シェーディング（丸み）
+  if (!flashing) {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath();
+    ctx.moveTo(cx - stemW * 0.25, stemRootY);
+    ctx.quadraticCurveTo(midX - stemW * 0.2, midY, capBaseX - stemW * 0.15, capBaseY);
+    ctx.lineTo(capBaseX, capBaseY); ctx.quadraticCurveTo(midX, midY, cx, stemRootY);
+    ctx.closePath(); ctx.fill();
+    // ツボ（根元のふくらみ）
+    ctx.fillStyle = '#e8dcc0';
+    ctx.beginPath(); ctx.ellipse(cx, stemRootY - h * 0.04, stemW * 0.8, h * 0.05, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ===== 胞子雲（burst範囲攻撃）=====
+  if (atk === 'burst' && phase === 'attack') {
+    const p = progress;
+    const cloudR = p * w * 1.7;
+    ctx.fillStyle = `rgba(150,200,120,${0.4 * (1 - p)})`;
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      const rr = cloudR * (0.7 + (i % 3) * 0.15);
+      const sx = capCx + Math.cos(a) * rr;
+      const sy = capCy + Math.sin(a) * rr * 0.5;
+      ctx.beginPath(); ctx.arc(sx, sy, w * 0.08 * (1 - p * 0.5), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ===== 傘（立体的なキノコ傘）=====
+  ctx.save();
+  ctx.translate(capCx, capCy);
+  ctx.rotate(Math.sin(bend) * 0.3);
+  // 傘の裏（ひだ）
+  if (!flashing) {
+    ctx.fillStyle = '#b89878';
+    ctx.beginPath(); ctx.ellipse(0, capRy * 0.2, capRx * 0.92, capRy * 0.5, 0, 0, Math.PI); ctx.fill();
+    // ひだの放射線
+    ctx.strokeStyle = 'rgba(120,95,70,0.5)'; ctx.lineWidth = Math.max(0.5, w * 0.006);
+    for (let i = -4; i <= 4; i++) {
+      ctx.beginPath(); ctx.moveTo(0, capRy * 0.15); ctx.lineTo(i / 4 * capRx * 0.85, capRy * 0.6); ctx.stroke();
+    }
+  }
+  // 傘の本体（半球＋立体陰影）
+  if (flashing) ctx.fillStyle = '#ff5040';
+  else {
+    const cg = ctx.createRadialGradient(-capRx * 0.3, -capRy * 0.5, capRx * 0.1, 0, 0, capRx);
+    cg.addColorStop(0, '#e85a4a'); cg.addColorStop(0.6, '#c0392b'); cg.addColorStop(1, '#8a2418');
+    ctx.fillStyle = cg;
+  }
+  ctx.strokeStyle = 'rgba(90,30,20,0.9)'; ctx.lineWidth = Math.max(1.5, w * 0.015);
+  ctx.beginPath(); ctx.ellipse(0, 0, capRx, capRy, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); if (!flashing) ctx.stroke();
+  // 傘のフチ
+  ctx.beginPath(); ctx.moveTo(-capRx, 0); ctx.quadraticCurveTo(0, capRy * 0.4, capRx, 0); ctx.stroke();
+  // 白い斑点（キノコらしさ・立体）
+  if (!flashing) {
+    const spots = [[-0.45, -0.35, 0.1], [-0.05, -0.55, 0.12], [0.35, -0.4, 0.09], [0.15, -0.2, 0.07], [-0.25, -0.12, 0.06], [0.55, -0.12, 0.06]];
+    for (const [sx, sy, sr] of spots) {
+      ctx.fillStyle = '#f5ead0';
+      ctx.beginPath(); ctx.ellipse(sx * capRx, sy * capRy * 1.6, sr * capRx, sr * capRx * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.ellipse(sx * capRx - sr*capRx*0.3, sy * capRy * 1.6 - sr*capRx*0.3, sr * capRx * 0.4, sr*capRx*0.3, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // 傘の光沢
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath(); ctx.ellipse(-capRx * 0.35, -capRy * 0.55, capRx * 0.25, capRy * 0.3, -0.3, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // ===== 目（傘の付け根のすぐ下に固定・しなりと完全に一致）=====
+  if (!flashing) {
+    // 柄の上端＝傘の付け根(capBaseX,capBaseY)のすぐ下に目を置く。
+    // 柄の傾き（根元→付け根の方向）を接線として、目もその傾きで回転させる。
+    const tangentAngle = Math.atan2(capBaseY - midY, capBaseX - midX); // 柄上部の傾き
+    // 付け根から柄に沿って少し下がった位置を目の中心に
+    const downAlong = h * 0.16;
+    const eyeBaseX = capBaseX - Math.cos(tangentAngle) * downAlong;
+    const eyeBaseY = capBaseY - Math.sin(tangentAngle) * downAlong;
+    // 目の回転は柄の傾き（鉛直からのずれ）に合わせる
+    const tilt = tangentAngle + Math.PI / 2;
+    ctx.save();
+    ctx.translate(eyeBaseX, eyeBaseY);
+    ctx.rotate(tilt);
+    const eo = dir * w * 0.04;
+    ctx.fillStyle = '#2a1a0a';
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.ellipse(s * w * 0.1 + eo, 0, w * 0.045, h * 0.035, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s * w * 0.1 + eo + w * 0.012, -h * 0.01, w * 0.015, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2a1a0a';
+    }
+    if (phase === 'windup' || phase === 'attack') {
+      ctx.strokeStyle = '#2a1a0a'; ctx.lineWidth = Math.max(1.5, w * 0.015);
+      for (const s of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(s * w * 0.05, -h * 0.07); ctx.lineTo(s * w * 0.16, -h * 0.04); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // ===== 胞子弾（spore遠距離）=====
+  if (atk === 'spore' && phase === 'attack') {
+    const p = progress;
+    ctx.fillStyle = 'rgba(150,200,120,0.9)';
+    ctx.strokeStyle = 'rgba(90,130,70,0.9)'; ctx.lineWidth = Math.max(1, w*0.01);
+    for (let i = 0; i < 3; i++) {
+      const sp = p - i * 0.15;
+      if (sp <= 0) continue;
+      const sx = capCx + dir * sp * w * 2.0;
+      const sy = capCy - Math.sin(sp * Math.PI) * h * 0.15 + sp * sp * h * 0.2;
+      ctx.beginPath(); ctx.arc(sx, sy, w * 0.07, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // 胞子の尾
+      ctx.fillStyle = 'rgba(150,200,120,0.3)';
+      ctx.beginPath(); ctx.arc(sx - dir * w * 0.1, sy - h*0.02, w * 0.04, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(150,200,120,0.9)';
+    }
+  }
+
+  // ===== 小キノコの分裂（sprout：地面から生える）=====
+  if (atk === 'sprout' && phase === 'attack') {
+    const p = progress;
+    const n = 3;
+    for (let i = 0; i < n; i++) {
+      const gx = cx + (i - 1) * w * 0.7 + dir * w * 0.3;
+      const grow = Math.max(0, Math.min(1, (p - i * 0.12) * 2)); // 順番に生える
+      if (grow <= 0) continue;
+      const sh = grow * h * 0.22;
+      const sStemW = w * 0.06;
+      // 土が盛り上がる
+      ctx.fillStyle = 'rgba(90,70,50,0.6)';
+      ctx.beginPath(); ctx.ellipse(gx, baseY, w * 0.12 * grow, h * 0.02, 0, 0, Math.PI * 2); ctx.fill();
+      // 小さい柄
+      ctx.fillStyle = '#e8dcc0';
+      ctx.fillRect(gx - sStemW / 2, baseY - sh, sStemW, sh);
+      // 小さい傘
+      const scr = w * 0.1 * grow;
+      ctx.fillStyle = '#c0392b';
+      ctx.beginPath(); ctx.ellipse(gx, baseY - sh, scr, scr * 0.7, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f5ead0';
+      ctx.beginPath(); ctx.arc(gx - scr*0.3, baseY - sh - scr*0.2, scr*0.15, 0, Math.PI*2); ctx.fill();
+      // 目（生えきったら）
+      if (grow > 0.8) {
+        ctx.fillStyle = '#2a1a0a';
+        ctx.beginPath(); ctx.arc(gx - scr*0.3, baseY - sh*0.5, w*0.012, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(gx + scr*0.3, baseY - sh*0.5, w*0.012, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  // ===== 予備動作の警告 =====
+  if (phase === 'windup') {
+    if (Math.sin(t * 18) > 0) {
+      ctx.fillStyle = '#ff3030';
+      ctx.font = `bold ${Math.round(w * 0.3)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('!', capCx, capCy - capRy - h * 0.06);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  ctx.restore();
+  drawBossHpBar(e);
+});
+
+// ボス共通HPバー（画面上部に大きく表示）
+function drawBossHpBar(e) {
+  const ratio = Math.max(0, e.hp / e.maxHp);
+  const barW = canvas.logicalW * 0.7, barH = 16;
+  const barX = (canvas.logicalW - barW) / 2 + camX; // camX補正（このctxはtranslate済み）
+  const barY = 24;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.beginPath(); ctx.roundRect(barX - 3, barY - 3, barW + 6, barH + 6, 5); ctx.fill();
+  ctx.fillStyle = '#3a1a2a';
+  ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 4); ctx.fill();
+  const col = ratio > 0.5 ? '#e0405a' : ratio > 0.25 ? '#e07a3a' : '#e0c040';
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.roundRect(barX, barY, barW * ratio, barH, 4); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('👑 ' + (e.bossName || 'BOSS'), barX + barW / 2, barY + barH - 3);
+  ctx.textAlign = 'left';
+}
+
+// ======================================================
+// ===== クイーンスライム（旧ボス・未実装ボスのフォールバック） =====
 // ======================================================
 function drawQueenSlime(e, t) {
   const x = e.x, y = e.y, w = e.w, h = e.h;
@@ -7897,9 +8847,9 @@ function drawBird(p, cfg){
 // ======================================================
 
 
-
-
-/* ===== 07-course-draw.js ===== */
+</script>
+<!-- ===== 07-course-draw.js ===== -->
+<script>
 // ==================== 07-course-draw.js ====================
 // ======================================================
 // ===== 07-course-draw.js =====
@@ -9580,9 +10530,9 @@ function drawTorch(g){
 // ======================================================
 
 
-
-
-/* ===== 08-render.js ===== */
+</script>
+<!-- ===== 08-render.js ===== -->
+<script>
 // ==================== 08-render.js ====================
 // ======================================================
 // ===== 08-render.js =====
@@ -9633,7 +10583,7 @@ function _skyColors(timeOfDay, category) {
 function drawBiomeBackground() {
   const bd = getCurrentBiomeDef();
   const v = getCurrentVariant();
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.logicalW, H = canvas.logicalH;
   const isCave = bd.category === 'cave';
 
   // ===== 空（グラデーション）=====
@@ -9851,7 +10801,7 @@ function drawGroundDecor(bd) {
   const rng = _biomeRng((v.seed || 1) ^ 0x5a5a5a);
   const gy = groundRowY;
   // 画面に映る範囲だけ装飾を撒く（カリング）
-  const left = camX - TILE, right = camX + canvas.width + TILE;
+  const left = camX - TILE, right = camX + canvas.logicalW + TILE;
   const step = TILE * 2.2;
   const startX = Math.floor(left / step) * step;
 
@@ -9912,7 +10862,7 @@ function drawGroundDecor(bd) {
 }
 
 function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,canvas.logicalW,canvas.logicalH);
   // 蘇生ボタンのタップ判定リストをリセット（毎フレーム更新）
   window._reviveBtns = [];
 
@@ -9925,7 +10875,7 @@ function draw(){
   // ===== 地面タイル（バイオーム色で描画）=====
   const _bd = getCurrentBiomeDef();
   for (const s of solids) {
-    if (s.x + s.w < camX || s.x > camX + canvas.width) continue; // 画面外カリング
+    if (s.x + s.w < camX || s.x > camX + canvas.logicalW) continue; // 画面外カリング
     if (s.type === '1') ctx.fillStyle = _bd.groundDeep;
     else ctx.fillStyle = _bd.ground;
     ctx.fillRect(s.x, s.y, s.w, s.h);
@@ -9953,8 +10903,8 @@ function draw(){
   for (const e of enemies) {
     if (!e.alive) continue;
     // ===== 画面外カリング：カメラに映らない敵は描画スキップ（同時描画数を抑えてカクつき防止）=====
-    if (e.x + e.w < camX - TILE * 2 || e.x > camX + canvas.width + TILE * 2) continue;
-    if (e.type === 'queenSlime' || e.type === 'boss') drawQueenSlime(e, animTime);
+    if (e.x + e.w < camX - TILE * 2 || e.x > camX + canvas.logicalW + TILE * 2) continue;
+    if (e.type === 'queenSlime' || e.type === 'boss') drawBossByIndex(e, animTime);
     else drawEnemyByGen(e, animTime); // 世代別の個別デザインへ振り分け（未実装世代はスライムにフォールバック）
   }
 
@@ -10742,7 +11692,7 @@ function draw(){
     if (isUrgent && Math.floor(questTimeLeft * 2) % 2 === 0) {
       ctx.fillStyle = '#ffaaaa'; // 点滅効果
     }
-    ctx.fillText('⏱ ' + timeStr, canvas.width - 10, 26);
+    ctx.fillText('⏱ ' + timeStr, canvas.logicalW - 10, 26);
     ctx.textAlign = 'left';
     ctx.restore();
   }
@@ -10751,20 +11701,20 @@ function draw(){
   if (gameState === 'lose') {
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.logicalW, canvas.logicalH);
     // タイトル
     ctx.fillStyle = '#e74c3c';
-    ctx.font = `bold ${Math.round(canvas.width * 0.09)}px sans-serif`;
+    ctx.font = `bold ${Math.round(canvas.logicalW * 0.09)}px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', canvas.width/2, canvas.height * 0.42);
+    ctx.fillText('GAME OVER', canvas.logicalW/2, canvas.logicalH * 0.42);
     // サブテキスト
     ctx.fillStyle = '#fff';
-    ctx.font = `${Math.round(canvas.width * 0.04)}px sans-serif`;
-    ctx.fillText(isTimeUpLose ? '制限時間切れ' : 'クエスト失敗', canvas.width/2, canvas.height * 0.54);
+    ctx.font = `${Math.round(canvas.logicalW * 0.04)}px sans-serif`;
+    ctx.fillText(isTimeUpLose ? '制限時間切れ' : 'クエスト失敗', canvas.logicalW/2, canvas.logicalH * 0.54);
     // 操作案内
     ctx.fillStyle = '#aac4e8';
-    ctx.font = `${Math.round(canvas.width * 0.033)}px sans-serif`;
-    ctx.fillText('画面タップ / Enter でロビーへ戻る', canvas.width/2, canvas.height * 0.66);
+    ctx.font = `${Math.round(canvas.logicalW * 0.033)}px sans-serif`;
+    ctx.fillText('画面タップ / Enter でロビーへ戻る', canvas.logicalW/2, canvas.logicalH * 0.66);
     ctx.restore();
   }
 
@@ -10811,8 +11761,8 @@ if (typeof canvas !== 'undefined') {
     if (!window._reviveBtns || window._reviveBtns.length === 0) return;
     const touch = e.touches[0];
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const scaleX = canvas.logicalW / rect.width;
+    const scaleY = canvas.logicalH / rect.height;
     const tx = (touch.clientX - rect.left) * scaleX;
     const ty = (touch.clientY - rect.top) * scaleY;
     for (const btn of window._reviveBtns) {
@@ -10838,9 +11788,9 @@ if (typeof canvas !== 'undefined') {
 // ======================================================
 
 
-
-
-/* ===== 09-profile-id.js ===== */
+</script>
+<!-- ===== 09-profile-id.js ===== -->
+<script>
 // ==================== 09-profile-id.js ====================
 // ======================================================
 // ===== 09-profile-id.js =====
@@ -10982,7 +11932,7 @@ function startGameFromLobby() {
   document.getElementById('ui').style.display = 'block';
   menuBtn.style.display = 'flex';
   document.getElementById('gameButtons').style.display = 'flex';
-  camX = Math.max(0, Math.min(player.x - canvas.width/2 + player.w/2, WORLD_W - canvas.width));
+  camX = Math.max(0, Math.min(player.x - canvas.logicalW/2 + player.w/2, WORLD_W - canvas.logicalW));
   if (!loopRunning) {
     loopRunning = true;
     lastTime = performance.now();
@@ -11163,9 +12113,9 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 // ======================================================
 
 
-
-
-/* ===== 10-lobby-world.js ===== */
+</script>
+<!-- ===== 10-lobby-world.js ===== -->
+<script>
 // ==================== 10-lobby-world.js ====================
 // ======================================================
 // ===== 10-lobby-world.js =====
@@ -12833,9 +13783,9 @@ window.addEventListener('resize', resizeLobbyCanvas);
 // ======================================================
 
 
-
-
-/* ===== 11-quest-screen.js ===== */
+</script>
+<!-- ===== 11-quest-screen.js ===== -->
+<script>
 // ==================== 11-quest-screen.js ====================
 // ======================================================
 // ===== 11-quest-screen.js =====
@@ -13688,9 +14638,9 @@ if (!myProfile.name) {
 
 
 
-
-
-/* ===== 13-webrtc-room.js ===== */
+</script>
+<!-- ===== 13-webrtc-room.js ===== -->
+<script>
 // ==================== 13-webrtc-room.js ====================
 // ===== 13-webrtc-room.js =====
 // ======================================================
@@ -14553,9 +15503,9 @@ function showRoomScreen() {
 window.showRoomScreen = showRoomScreen;
 
 
-
-
-/* ===== 12-cloud-sync.js ===== */
+</script>
+<!-- ===== 12-cloud-sync.js ===== -->
+<script>
 /* ===== 12-cloud-sync.js (REST API版) =====
    Firebase SDK不要。Firestore REST APIを直接呼び出す。
    GitHub Pagesなどtype="module"やCDNが使えない環境向け。
@@ -15062,12 +16012,7 @@ console.log('[CloudSync] REST API版 初期化完了');
 setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 
-
 </script>
-
-
-
-
 
 <div id="roomInvitePopup" style="
   display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -15094,5 +16039,3 @@ setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 </body>
 </html>
-
-<!-- ===== ルーム招待ポップアップ ===== -->
