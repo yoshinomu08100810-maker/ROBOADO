@@ -572,7 +572,9 @@ html, body {
   .chest-weapon-sub  { font-size:13px; color:#f0c040; margin-top:2px; }
   #chestCloseBtn { display:none; margin-top:20px; }
 
+
 </style>
+</head>
 <body>
 
 <!-- ===== タイトル画面 ===== -->
@@ -1035,6 +1037,7 @@ html, body {
 
 
 <!-- ===== JavaScript ===== -->
+
 <!-- ===== 01-core-setup.js ===== -->
 <script>
 // ==================== 01-core-setup.js ====================
@@ -1347,6 +1350,7 @@ function makeEnemy(o, ex, st) {
       type: 'boss', bossIndex: bossIdx, genId: o.gen,
       bossName: def ? def.name : 'BOSS',
       attackSet: def ? def.attacks : null, // 攻撃タイプの候補配列
+      dmgMul: def && def.dmgMul ? def.dmgMul : 1, // ボス個別の攻撃力倍率（applyStageDifficultyでatkMulに反映）
       frame: 0, frameTimer: 0, attacking: false, attackTimer: 0, attackCooldown: 0,
       hp: hp, maxHp: hp, baseMaxHp: hp, baseSpeed: TILE * 0.5,
       atkMul: 1,
@@ -1396,7 +1400,9 @@ window.addEventListener('keyup', e=> keys[e.code]=false);
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 02-input-controls.js ===== -->
 <script>
 // ==================== 02-input-controls.js ====================
@@ -1823,7 +1829,9 @@ function drawSkillGauge() {
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 03-class-def.js ===== -->
 <script>
 // ==================== 03-class-defs.js ====================
@@ -4603,6 +4611,32 @@ const BOSS_DEFS = {
     sizeMul: 0.95,  // 背の高いキノコ
     aspect: 0.66,
   },
+  3: {
+    name: '森の番人ゴリアス',
+    attacks: ['slam', 'root', 'hurl', 'shockwave'], // 近:slam 範囲:root 遠:hurl 全方位:shockwave
+    hpMul: 0.19,    // Q6：ボス2(0.17)よりわずかに硬い。雑魚3体+中ボス1体撃破後に挑む難度
+    sizeMul: 0.90,  // 縦に長い樹木体型
+    aspect: 0.52,   // 幹のようにスリムな横幅
+  },
+  4: {
+    name: '暗黒巨人ドガン',
+    // 知能が低く、攻撃は2種だけ：近づけば棍棒を叩きつけ(slam)、離れれば岩を投げる(hurl)。
+    // どちらも予備動作(タメ)が非常に長く分かりやすい代わりに、一撃が極めて重い。
+    attacks: ['slam', 'hurl'], // 近:slam(棍棒叩きつけ) 遠:hurl(岩投げ)
+    hpMul: 0.26,    // Q9：体力が「とても高い」設定。ボス3(0.19)より明確にタフ
+    dmgMul: 1.6,    // 攻撃力も「とても高い」。slam/hurlの基礎ダメージにこの倍率を上乗せ
+    sizeMul: 1.05,  // 筋骨隆々の巨体。歴代ボスで最大級
+    aspect: 0.70,   // 肩幅が体の2倍＝横に広いガッシリ体型
+  },
+  5: {
+    name: '常世の神鹿',
+    // 四足の神鹿。近:gore(角薙ぎ突進) 範囲:leap(天翔る踏みつけ)
+    //             遠:roar(蝕みの咆哮) 地面:roots(茨の根)
+    attacks: ['gore', 'leap', 'roar', 'roots'],
+    hpMul: 0.24,    // ボス3(0.19)より明確に硬く、タンク型のボス4(0.26)よりはやや低い俊敏型
+    sizeMul: 1.00,  // 大きく荘厳だが、鹿ゆえドガンほどの巨体ではない
+    aspect: 0.85,   // 四足獣：胴が長く、樹木体型(0.52)よりずっと横に広い
+  },
 };
 function getBossDef(idx) { return BOSS_DEFS[idx] || null; }
 
@@ -4646,7 +4680,7 @@ function applyStageDifficulty(stageId) {
     e.maxHp = Math.round(e.baseMaxHp * st.enemyHpMul);
     e.hp    = e.maxHp;
     e.speed = e.baseSpeed * st.enemySpeedMul;
-    e.atkMul = st.enemyAtkMul || 1; // 攻撃ダメージ計算で参照（baseDmg × atkMul）
+    e.atkMul = (st.enemyAtkMul || 1) * (e.dmgMul || 1); // 攻撃ダメージ計算で参照（baseDmg × atkMul）。ボス個別のdmgMulも上乗せ
   }
 }
 
@@ -4661,7 +4695,9 @@ function applyStageDifficulty(stageId) {
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 04-robot-config.js ===== -->
 <script>
 // ==================== 04-robot-config.js ====================
@@ -4750,7 +4786,9 @@ function rectsOverlap(a,b){
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 05-game-loop.js ===== -->
 <script>
 // ==================== 05-game-loop.js ====================
@@ -5424,13 +5462,15 @@ function update(dt){
           const slamReach = e.w * 1.1 + TILE * 2.0;
           let pool = e.attackSet ? e.attackSet.slice() : ['slam', 'wave', 'shockwave'];
           // 近距離攻撃(slam/stomp)は間合いに入っている時だけ候補に残す
-          if (gapX >= slamReach) pool = pool.filter(a => a !== 'slam' && a !== 'stomp');
+          if (gapX >= slamReach) pool = pool.filter(a => a !== 'slam' && a !== 'stomp' && a !== 'gore');
           if (pool.length === 0) pool = e.attackSet ? e.attackSet.slice() : ['wave'];
           e.attackType = pool[Math.floor(Math.random() * pool.length)];
           // 攻撃ごとの予備動作時間（プレイヤーが見て反応できる長さ）
           const windupMap = {
             slam: 1.5, stretch: 1.4, wave: 1.6, bounce: 1.7, shockwave: 1.8, split: 1.3,
             stomp: 1.5, spore: 1.4, burst: 1.7, sprout: 1.5,
+            root: 1.6, hurl: 1.5,
+            gore: 1.5, leap: 1.3, roar: 1.6, roots: 1.6,
           };
           e.windupDuration = windupMap[e.attackType] || 1.5;
           e.phase = 'windup';
@@ -5454,6 +5494,8 @@ function update(dt){
           const atkDurMap = {
             wave: 0.5, shockwave: 0.35, stretch: 0.55, bounce: 0.9, split: 0.6, slam: 0.3,
             stomp: 0.4, spore: 0.7, burst: 0.8, sprout: 0.9,
+            root: 0.8, hurl: 0.6,
+            gore: 0.6, leap: 1.0, roar: 0.9, roots: 1.0,
           };
           e.phaseTimer = atkDurMap[e.attackType] || 0.3;
         } else {
@@ -5582,8 +5624,8 @@ function update(dt){
       let dmg = 2;
       const atkMul = e.atkMul || 1; // ステージ難易度の攻撃力倍率
       if (e.type === 'queenSlime' || e.type === 'boss') {
-        if (e.attackType === 'shockwave' || e.attackType === 'bounce' || e.attackType === 'burst') {
-          // 全方位の範囲攻撃（衝撃波・跳ね着地・胞子雲）：中心からの円判定
+        if (e.attackType === 'shockwave' || e.attackType === 'bounce' || e.attackType === 'burst' || e.attackType === 'leap') {
+          // 全方位の範囲攻撃（衝撃波・跳ね着地・胞子雲・神鹿の踏みつけ）：中心からの円判定
           const ccx = e.x + e.w / 2;
           const ccy = e.y + e.h / 2;
           const closestX = Math.max(player.x, Math.min(ccx, player.x + player.w));
@@ -5592,7 +5634,10 @@ function update(dt){
           let radius = TILE * 6.5, hitDmg = 20;
           if (e.attackType === 'bounce') { radius = TILE * 5.0; hitDmg = 16; }
           else if (e.attackType === 'burst') { radius = TILE * 6.0; hitDmg = 14; }
-          const active = (e.attackType !== 'bounce') ||
+          else if (e.attackType === 'leap') { radius = TILE * 5.5; hitDmg = 18; }
+          // 跳躍系(bounce/leap)は着地の瞬間＝終盤30%だけ判定が出る
+          const landing = (e.attackType === 'bounce' || e.attackType === 'leap');
+          const active = !landing ||
             (e.attackDuration && (1 - e.phaseTimer / e.attackDuration) > 0.7);
           if (distC < radius && active) { hitNow = true; dmg = hitDmg; }
         } else if (e.attackType === 'wave' || e.attackType === 'stretch') {
@@ -5632,6 +5677,22 @@ function update(dt){
           const overlapX = Math.abs((player.x + player.w / 2) - cxc) < reach;
           const overlapY = (player.y + player.h) > (e.y + e.h - TILE * 2); // 地面付近
           if (overlapX && overlapY) { hitNow = true; dmg = 10; }
+        } else if (e.attackType === 'root') {
+          // ゴリアス：根が地面を這う（足元の広い帯・地面付近のみ）
+          const reach = e.w * 1.2 + TILE * 5;
+          const cxc = e.x + e.w / 2 + e.dir * TILE * 2;
+          const overlapX = Math.abs((player.x + player.w / 2) - cxc) < reach;
+          const overlapY = (player.y + player.h) > (e.y + e.h - TILE * 2.2);
+          if (overlapX && overlapY) { hitNow = true; dmg = 13; }
+        } else if (e.attackType === 'hurl') {
+          // ゴリアス：岩投げ（前方の水平帯・速い弾道）
+          const vReach = e.h * 0.55 + TILE * 1.4;
+          const reach = TILE * 10;
+          const top = (e.y + e.h * 0.42) - vReach;
+          const rx = (e.dir > 0) ? (e.x + e.w / 2) : (e.x + e.w / 2 - reach);
+          const overlapX = player.x < rx + reach && player.x + player.w > rx;
+          const overlapY = player.y < top + vReach * 2 && player.y + player.h > top;
+          if (overlapX && overlapY) { hitNow = true; dmg = 14; }
         } else if (e.attackType === 'split') {
           const ccx = e.x + e.w / 2 + e.dir * TILE * 2;
           const ccy = e.y + e.h * 0.7;
@@ -5639,6 +5700,34 @@ function update(dt){
           const closestY = Math.max(player.y, Math.min(ccy, player.y + player.h));
           const distC = Math.hypot(ccx - closestX, ccy - closestY);
           if (distC < TILE * 4.5) { hitNow = true; dmg = 10; }
+        } else if (e.attackType === 'gore') {
+          // 神鹿：角薙ぎ突進。前方へ踏み込みつつ角を横に薙ぐ（前方の広い楕円）
+          const reachX = e.w * 1.3 + TILE * 2.5;
+          const ccx = e.x + e.w / 2 + e.dir * e.w * 0.5;
+          const ccy = e.y + e.h * 0.5;
+          const vReach = e.h * 0.55 + TILE * 1.5;
+          const closestX = Math.max(player.x, Math.min(ccx, player.x + player.w));
+          const closestY = Math.max(player.y, Math.min(ccy, player.y + player.h));
+          const nx = (ccx - closestX) / reachX, ny = (ccy - closestY) / vReach;
+          if (nx * nx + ny * ny < 1) { hitNow = true; dmg = 17; }
+        } else if (e.attackType === 'roar') {
+          // 神鹿：蝕みの咆哮。前方へ呪いの胞子雲を扇状に噴出（前方の帯・終盤に発生）
+          const p = e.attackDuration ? (1 - e.phaseTimer / e.attackDuration) : 1;
+          const vReach = e.h * 0.5 + TILE * 1.6;
+          const reach = TILE * 9;
+          const top = (e.y + e.h * 0.4) - vReach;
+          const rx = (e.dir > 0) ? (e.x + e.w / 2) : (e.x + e.w / 2 - reach);
+          const overlapX = player.x < rx + reach && player.x + player.w > rx;
+          const overlapY = player.y < top + vReach * 2 && player.y + player.h > top;
+          if (p > 0.4 && overlapX && overlapY) { hitNow = true; dmg = 12; }
+        } else if (e.attackType === 'roots') {
+          // 神鹿：茨の根。前方の地面から棘が順に突き上がる（足元〜前方の地面帯）
+          const p = e.attackDuration ? (1 - e.phaseTimer / e.attackDuration) : 1;
+          const reach = e.w * 1.4 + TILE * 5;
+          const cxc = e.x + e.w / 2 + e.dir * TILE * 2.5;
+          const overlapX = Math.abs((player.x + player.w / 2) - cxc) < reach;
+          const overlapY = (player.y + player.h) > (e.y + e.h - TILE * 2.2);
+          if (p > 0.2 && overlapX && overlapY) { hitNow = true; dmg = 13; }
         } else {
           // 叩きつけ（slam）
           const vReach = e.h * 0.6 + TILE * 1.5;
@@ -5868,7 +5957,9 @@ window.onRevived = onRevived;
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 06-enemy-draw.js ===== -->
 <script>
 // ==================== 06-enemy-draw.js ====================
@@ -8123,6 +8214,1088 @@ function drawBossHpBar(e) {
 }
 
 // ======================================================
+// ===== ボス④ 暗黒巨人ドガン（bossIndex 4）=====
+// 筋骨隆々の漆黒の巨人。頭は体に比して小さく、騎士のフルフェイス兜で
+// 顔は完全に隠れ、兜のスリットから赤い双眸が光る。肩幅は体の約2倍、
+// 腕は太く長く地面に届きそう。手に無骨な木製の棍棒。
+// 知能が低く攻撃は2種だけ：近ければ棍棒を叩きつけ(slam)、離れれば岩を投げる(hurl)。
+// どちらも予備動作(タメ)が非常に長く分かりやすいが、一撃は極めて重い。
+// 画面上の頭上余白が狭いため、棍棒は「真上」でなく肩の後ろへ振りかぶる。
+// ======================================================
+registerBossDrawer(4, function(e, t) {
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const phase = e.phase || 'idle';
+  const atk = e.attackType || 'slam';
+  const windupDur = e.windupDuration || 1.5;
+  const attackDur = e.attackDuration || 0.4;
+  const flashing = e.dmgFlash && e.dmgFlash > 0;
+
+  let progress = 0;
+  if (phase === 'windup') progress = 1 - (e.phaseTimer / windupDur);
+  else if (phase === 'attack') progress = 1 - (e.phaseTimer / attackDur);
+
+  const breath = Math.sin(t * 1.6 + (e.baseX || 0));
+  const lerp = (a, b, k) => a + (b - a) * k;
+
+  // ===== モーション変数 =====
+  let crouchAmt = 0, tremble = 0, headTilt = 0, lean = 0;
+  let clubT = 0;   // 棍棒タイムライン 0=待機 / 1=振りかぶり頂点 / 2=叩き下ろし
+  let rockStage = 0; // 0=なし 1=拾う 2=構える 3=投げ
+  let rockK = 0;     // 各ステージ内の進捗
+
+  if (phase === 'idle') {
+    crouchAmt = 0.04 + breath * 0.03;
+    headTilt = Math.sin(t * 0.7) * 0.12;   // のそのそ首をかしげる（知能の低さ）
+    clubT = 0;
+  } else if (phase === 'recover') {
+    const rp = 1 - (e.phaseTimer / (e.recoverDuration || 0.6));
+    crouchAmt = (1 - rp) * 0.26;
+    lean = (1 - rp) * (atk === 'slam' ? 0.20 : 0.08);
+    headTilt = (1 - rp) * 0.16;
+    if (atk === 'slam') clubT = 2;          // 棍棒は地面に着いたまま
+  } else if (atk === 'slam') {
+    if (phase === 'windup') {
+      // 前半でしゃがみつつ肩の後ろへ振りかぶる→後半は溜めて震える
+      if (progress < 0.5) { const q = progress / 0.5; crouchAmt = q * q * 0.4; clubT = q * q; }
+      else { crouchAmt = 0.4; clubT = 1; tremble = (progress - 0.5) / 0.5; lean = -(progress - 0.5) / 0.5 * 0.12; }
+    } else {
+      clubT = 1 + Math.min(1, Math.pow(progress / 0.45, 0.8)); // 振り下ろし
+      crouchAmt = 0.4 * (1 - progress) + 0.12;
+      lean = (clubT - 1) * 0.22;
+    }
+  } else if (atk === 'hurl') {
+    if (phase === 'windup') {
+      if (progress < 0.4) { rockStage = 1; rockK = progress / 0.4; crouchAmt = rockK * 0.55; }
+      else { rockStage = 2; rockK = (progress - 0.4) / 0.6; crouchAmt = 0.55 * (1 - rockK); tremble = rockK; lean = -rockK * 0.10; }
+    } else {
+      rockStage = 3; rockK = Math.min(1, progress / 0.5); lean = rockK * 0.24; crouchAmt = 0.1 * (1 - progress);
+    }
+  }
+
+  const trembleX = tremble > 0 ? Math.sin(t * 42) * w * 0.012 * tremble : 0;
+
+  // ===== レイアウト基準（脚→胴→広い肩→小さい頭。頭上余白を残す）=====
+  const crouchPx = crouchAmt * h * 0.09;
+  const feetY     = baseY;
+  const hipY      = feetY - h * 0.40 + crouchPx * 0.5;
+  const chestY    = feetY - h * 0.60 + crouchPx;
+  const shoulderY = feetY - h * 0.68 + crouchPx;
+  const neckY     = feetY - h * 0.72 + crouchPx;
+  const headCy    = feetY - h * 0.82 + crouchPx;
+  const headR     = w * 0.150;
+  const shoulderHalf = w * 0.49;     // 肩幅＝体の約2倍
+  const waistHalf    = w * 0.27;
+  const hipHalf      = w * 0.31;
+  const leanPx    = lean * dir * w * 0.12;
+  const cxL = cx + leanPx;
+
+  // ===== 配色 =====
+  const skinDark  = flashing ? '#7a2030' : '#15151c';
+  const skinBase  = flashing ? '#9a3040' : '#22222e';
+  const skinHi    = flashing ? '#c05060' : '#3a3a4c';
+  const skinShade = '#0a0a0f';
+  const ironDark  = '#2b2f38', ironBase = '#454b57', ironHi = '#6b7280';
+  const woodDark  = '#5a3d22', woodBase = '#7a5430', woodHi = '#9c6f44';
+
+  // テーパー付きの太い四肢
+  function limb(x0, y0, x1, y1, r0, r1, fill) {
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    ctx.fillStyle = fill; ctx.beginPath();
+    ctx.moveTo(x0 + nx * r0, y0 + ny * r0);
+    ctx.lineTo(x1 + nx * r1, y1 + ny * r1);
+    ctx.arc(x1, y1, r1, Math.atan2(ny, nx), Math.atan2(-ny, -nx), false);
+    ctx.lineTo(x0 - nx * r0, y0 - ny * r0);
+    ctx.arc(x0, y0, r0, Math.atan2(-ny, -nx), Math.atan2(ny, nx), false);
+    ctx.closePath(); ctx.fill();
+  }
+  // 握り(gx,gy)から先端(tx,ty)へ向かう木の棍棒（柄細→頭太）
+  function drawClub(gx, gy, tx, ty) {
+    const ang = Math.atan2(ty - gx === 0 ? (ty - gy) : (ty - gy), tx - gx);
+    const a = Math.atan2(ty - gy, tx - gx);
+    const gripR = w * 0.045, headR2 = w * 0.125;
+    const bx = gx - Math.cos(a) * w * 0.05, by = gy - Math.sin(a) * w * 0.05;
+    limb(bx, by, tx, ty, gripR, headR2, woodBase);
+    limb(gx, gy, tx, ty, gripR * 0.5, headR2 * 0.55, woodDark);
+    const ux = -Math.sin(a), uy = Math.cos(a);
+    ctx.strokeStyle = woodHi; ctx.lineWidth = Math.max(1, w * 0.012);
+    ctx.beginPath(); ctx.moveTo(gx + ux * gripR * 0.4, gy + uy * gripR * 0.4); ctx.lineTo(tx + ux * headR2 * 0.4, ty + uy * headR2 * 0.4); ctx.stroke();
+    ctx.fillStyle = woodDark;
+    ctx.beginPath(); ctx.arc(tx - Math.cos(a) * headR2 * 0.3, ty - Math.sin(a) * headR2 * 0.3, headR2 * 0.30, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(tx + ux * headR2 * 0.35, ty + uy * headR2 * 0.35, headR2 * 0.20, 0, Math.PI * 2); ctx.fill();
+  }
+  function drawRock(rx, ry, rr) {
+    ctx.fillStyle = '#3a3d42'; ctx.beginPath();
+    const pts = 7;
+    for (let i = 0; i <= pts; i++) { const a = (i / pts) * Math.PI * 2; const rad = rr * (0.82 + ((i * 37) % 11) / 11 * 0.3); const px = rx + Math.cos(a) * rad, py = ry + Math.sin(a) * rad * 0.92; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#54585f'; ctx.beginPath(); ctx.ellipse(rx - rr * 0.25, ry - rr * 0.28, rr * 0.4, rr * 0.3, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#23252a'; ctx.lineWidth = Math.max(1, rr * 0.08);
+    ctx.beginPath(); ctx.moveTo(rx - rr * 0.4, ry + rr * 0.1); ctx.lineTo(rx + rr * 0.2, ry + rr * 0.4); ctx.stroke();
+  }
+
+  // ===== 影 =====
+  ctx.fillStyle = 'rgba(0,0,0,0.34)';
+  ctx.beginPath(); ctx.ellipse(cx, baseY + 2, w * 0.56, Math.max(5, w * 0.085), 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.save();
+  ctx.translate(trembleX, 0);
+
+  // ===== 脚（どっしりした内股気味スタンス）=====
+  const stanceX = w * 0.30;
+  const kneeY = (hipY + feetY) / 2 + crouchPx * 0.3;
+  limb(cx - dir * stanceX, hipY, cx - dir * stanceX * 1.05, feetY, w * 0.17, w * 0.13, skinDark);
+  limb(cx + dir * stanceX, hipY, cx + dir * stanceX * 1.05, feetY, w * 0.18, w * 0.14, skinBase);
+  ctx.fillStyle = skinDark; ctx.beginPath(); ctx.ellipse(cx - dir * stanceX * 1.05 + dir * w * 0.05, feetY - w * 0.02, w * 0.13, w * 0.07, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = skinBase; ctx.beginPath(); ctx.ellipse(cx + dir * stanceX * 1.05 + dir * w * 0.06, feetY - w * 0.02, w * 0.14, w * 0.075, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = skinHi; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.ellipse(cx + dir * stanceX, kneeY, w * 0.07, w * 0.10, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+
+  // ===== 奥腕（兜の奥側。slam時は体側、hurl時は添え手）=====
+  const farShX = cxL - dir * shoulderHalf * 0.82;
+  let farHandX = farShX - dir * w * 0.02, farHandY = feetY - h * 0.08;
+  limb(farShX, shoulderY + w * 0.02, farHandX, farHandY, w * 0.135, w * 0.10, skinDark);
+  ctx.fillStyle = skinDark; ctx.beginPath(); ctx.arc(farHandX, farHandY, w * 0.10, 0, Math.PI * 2); ctx.fill();
+
+  // ===== 胴体（広い肩→括れた腰の逆三角＋筋肉陰影）=====
+  ctx.fillStyle = skinBase; ctx.beginPath();
+  ctx.moveTo(cxL - shoulderHalf, shoulderY);
+  ctx.quadraticCurveTo(cxL - shoulderHalf * 1.02, chestY, cxL - waistHalf, hipY - h * 0.04);
+  ctx.lineTo(cxL - hipHalf, hipY + h * 0.02);
+  ctx.quadraticCurveTo(cxL, hipY + h * 0.06, cxL + hipHalf, hipY + h * 0.02);
+  ctx.lineTo(cxL + waistHalf, hipY - h * 0.04);
+  ctx.quadraticCurveTo(cxL + shoulderHalf * 1.02, chestY, cxL + shoulderHalf, shoulderY);
+  ctx.quadraticCurveTo(cxL, shoulderY - h * 0.05, cxL - shoulderHalf, shoulderY);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = skinDark;
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cxL + s * shoulderHalf * 0.34, chestY + h * 0.01, shoulderHalf * 0.30, h * 0.055, s * 0.2, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = skinShade; ctx.lineWidth = Math.max(1.5, w * 0.018); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cxL, chestY - h * 0.02); ctx.lineTo(cxL, hipY - h * 0.02); ctx.stroke();
+  for (let i = 1; i <= 3; i++) { const ay = chestY + h * 0.05 + i * h * 0.035; const aw = waistHalf * (1.1 - i * 0.12); ctx.beginPath(); ctx.moveTo(cxL - aw, ay); ctx.lineTo(cxL + aw, ay); ctx.stroke(); }
+  ctx.strokeStyle = skinHi; ctx.lineWidth = Math.max(1.5, w * 0.016); ctx.globalAlpha = 0.7;
+  ctx.beginPath(); ctx.moveTo(cxL - shoulderHalf * 0.95, shoulderY + h * 0.01); ctx.quadraticCurveTo(cxL - shoulderHalf, chestY, cxL - waistHalf * 1.05, hipY - h * 0.05); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cxL + shoulderHalf * 0.95, shoulderY + h * 0.01); ctx.quadraticCurveTo(cxL + shoulderHalf, chestY, cxL + waistHalf * 1.05, hipY - h * 0.05); ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // 肩の盛り上がり（僧帽筋＋三角筋）
+  ctx.fillStyle = skinBase;
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cxL + s * shoulderHalf * 0.86, shoulderY + h * 0.01, shoulderHalf * 0.26, h * 0.07, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = skinHi; ctx.globalAlpha = 0.4;
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cxL + s * shoulderHalf * 0.86, shoulderY - h * 0.005, shoulderHalf * 0.18, h * 0.035, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = skinDark; ctx.beginPath();
+  ctx.moveTo(cxL - shoulderHalf * 0.5, shoulderY - h * 0.01);
+  ctx.quadraticCurveTo(cxL, neckY - h * 0.01, cxL + shoulderHalf * 0.5, shoulderY - h * 0.01);
+  ctx.quadraticCurveTo(cxL, shoulderY + h * 0.02, cxL - shoulderHalf * 0.5, shoulderY - h * 0.01);
+  ctx.closePath(); ctx.fill();
+
+  // ===== 首＋小さな頭（フルフェイス兜）=====
+  const headCx = cxL + headTilt * w * 0.06 + lean * dir * w * 0.05;
+  limb(cxL, shoulderY - h * 0.005, headCx, headCy + headR * 0.7, w * 0.11, w * 0.085, skinBase);
+  ctx.save(); ctx.translate(headCx, headCy); ctx.rotate(headTilt * 0.4);
+  ctx.fillStyle = ironBase; ctx.beginPath();
+  ctx.moveTo(-headR, headR * 0.15);
+  ctx.quadraticCurveTo(-headR * 1.05, -headR * 0.9, 0, -headR * 1.1);
+  ctx.quadraticCurveTo(headR * 1.05, -headR * 0.9, headR, headR * 0.15);
+  ctx.quadraticCurveTo(headR * 0.95, headR * 0.85, dir * headR * 0.18, headR * 1.15);
+  ctx.quadraticCurveTo(-dir * headR * 0.15, headR * 1.1, -headR, headR * 0.15);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = ironDark; ctx.beginPath();
+  ctx.moveTo(-headR, headR * 0.15); ctx.quadraticCurveTo(0, headR * 0.5, headR, headR * 0.15);
+  ctx.quadraticCurveTo(headR * 0.95, headR * 0.85, dir * headR * 0.18, headR * 1.15);
+  ctx.quadraticCurveTo(-dir * headR * 0.15, headR * 1.1, -headR, headR * 0.15);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = ironDark; ctx.beginPath();
+  ctx.moveTo(-headR * 0.12, -headR * 1.05); ctx.lineTo(0, -headR * 1.4); ctx.lineTo(headR * 0.12, -headR * 1.05); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = ironHi; ctx.lineWidth = Math.max(1, w * 0.012);
+  ctx.beginPath(); ctx.moveTo(-headR * 0.9, headR * 0.1); ctx.quadraticCurveTo(-headR * 0.95, -headR * 0.82, 0, -headR * 1.03); ctx.stroke();
+  ctx.fillStyle = ironHi;
+  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, headR * 0.35 + i * headR * 0.28, headR * 0.05, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = '#050507'; ctx.beginPath(); ctx.roundRect(-headR * 0.78, -headR * 0.05, headR * 1.56, headR * 0.30, headR * 0.1); ctx.fill();
+  const glow = 0.6 + 0.4 * Math.abs(Math.sin(t * 3));
+  for (const s of [-1, 1]) {
+    const ex = s * headR * 0.42, ey = headR * 0.1;
+    const rg = ctx.createRadialGradient(ex, ey, 0, ex, ey, headR * 0.32);
+    rg.addColorStop(0, 'rgba(255,90,80,' + glow + ')'); rg.addColorStop(0.4, 'rgba(220,30,30,' + (glow * 0.8) + ')'); rg.addColorStop(1, 'rgba(120,0,0,0)');
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(ex, ey, headR * 0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd0c0'; ctx.beginPath(); ctx.arc(ex, ey, headR * 0.07, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // ===== 手前腕＋棍棒／岩 =====
+  const nearShX = cxL + dir * shoulderHalf * 0.82;
+  function drawNearArm(handX, handY) {
+    const elbowX = (nearShX + handX) / 2 + dir * w * 0.04;
+    const elbowY = (shoulderY + handY) / 2 - h * 0.015;
+    limb(nearShX, shoulderY, elbowX, elbowY, w * 0.135, w * 0.115, skinBase);
+    limb(elbowX, elbowY, handX, handY, w * 0.115, w * 0.09, skinBase);
+    ctx.fillStyle = skinHi; ctx.globalAlpha = 0.4; ctx.beginPath(); ctx.ellipse((nearShX + elbowX) / 2, (shoulderY + elbowY) / 2, w * 0.07, w * 0.05, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+  }
+
+  if (rockStage === 0) {
+    // --- 棍棒（待機〜叩きつけ）。clubT: 0待機 / 1振りかぶり / 2叩き下ろし ---
+    // キーフレーム: idle(地面に突く) → cock(肩の後ろへ) → slam(前方の地面へ)
+    const kf = {
+      idle: { gx: nearShX + dir * w * 0.05, gy: hipY - h * 0.04, tx: nearShX + dir * w * 0.18, ty: feetY - h * 0.01 },
+      cock: { gx: nearShX - dir * w * 0.06, gy: neckY - h * 0.00, tx: nearShX - dir * w * 0.52, ty: feetY - h * 0.95 },
+      slam: { gx: cx + dir * w * 0.42, gy: feetY - h * 0.40, tx: cx + dir * w * 0.92, ty: feetY - h * 0.010 },
+    };
+    let gx, gy, tx, ty;
+    if (clubT <= 1) { const k = clubT; gx = lerp(kf.idle.gx, kf.cock.gx, k); gy = lerp(kf.idle.gy, kf.cock.gy, k); tx = lerp(kf.idle.tx, kf.cock.tx, k); ty = lerp(kf.idle.ty, kf.cock.ty, k); }
+    else { const k = clubT - 1; gx = lerp(kf.cock.gx, kf.slam.gx, k); gy = lerp(kf.cock.gy, kf.slam.gy, k); tx = lerp(kf.cock.tx, kf.slam.tx, k); ty = lerp(kf.cock.ty, kf.slam.ty, k); }
+    drawNearArm(gx, gy);
+    drawClub(gx, gy, tx, ty);
+    ctx.fillStyle = skinDark; ctx.beginPath(); ctx.arc(gx, gy, w * 0.10, 0, Math.PI * 2); ctx.fill();
+    // 叩きつけ着地の砂煙
+    if ((phase === 'attack' || phase === 'recover') && clubT > 1.4) {
+      const fade = phase === 'recover' ? (e.phaseTimer / (e.recoverDuration || 0.6)) : 1;
+      ctx.fillStyle = 'rgba(180,160,140,' + (0.55 * fade) + ')';
+      for (let i = 0; i < 7; i++) { const ang = Math.PI + (i / 6) * Math.PI; const dst = w * (0.20 + (i % 2) * 0.18) * (clubT - 0.4); ctx.beginPath(); ctx.ellipse(tx + Math.cos(ang) * dst, feetY - Math.abs(Math.sin(ang)) * w * 0.13, w * 0.06, w * 0.04, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
+  } else {
+    // --- 岩投げ ---
+    const grab = { x: cx + dir * w * 0.18, y: feetY - h * 0.05 };
+    const cock = { x: nearShX - dir * w * 0.02, y: neckY - h * 0.04 };
+    const thrw = { x: cx + dir * w * 0.46, y: chestY - h * 0.02 };
+    let hx, hy;
+    if (rockStage === 1) { hx = lerp(nearShX + dir * w * 0.04, grab.x, rockK); hy = lerp(shoulderY + h * 0.08, grab.y, rockK); }
+    else if (rockStage === 2) { hx = lerp(grab.x, cock.x, rockK); hy = lerp(grab.y, cock.y, rockK); }
+    else { hx = lerp(cock.x, thrw.x, rockK); hy = lerp(cock.y, thrw.y, rockK); }
+    drawNearArm(hx, hy);
+    const rockR = w * 0.155;
+    const holding = (rockStage === 1 && rockK > 0.7) || rockStage === 2 || (rockStage === 3 && rockK < 0.45);
+    if (rockStage === 3 && rockK >= 0.45) {
+      const flyT = (rockK - 0.45) / 0.55;
+      const sx = thrw.x, sy = thrw.y;
+      const fx = sx + dir * flyT * w * 2.4;
+      const fy = sy - Math.sin(flyT * Math.PI) * h * 0.12 + flyT * h * 0.05;
+      ctx.strokeStyle = 'rgba(200,200,210,0.3)'; ctx.lineWidth = w * 0.03;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo((sx + fx) / 2, Math.min(sy, fy) - h * 0.08, fx, fy); ctx.stroke();
+      ctx.save(); ctx.translate(fx, fy); ctx.rotate(flyT * 6 * dir); drawRock(0, 0, rockR); ctx.restore();
+    }
+    ctx.fillStyle = skinDark; ctx.beginPath(); ctx.arc(hx, hy, w * 0.10, 0, Math.PI * 2); ctx.fill();
+    if (holding) drawRock(hx, hy - rockR * 0.5, rockR);
+  }
+
+  // ===== タメ中の「!」テレグラフ =====
+  if (phase === 'windup' && progress > 0.25) {
+    const blink = (Math.sin(t * 18) > -0.3) ? 1 : 0.35;
+    ctx.fillStyle = 'rgba(255,210,60,' + blink + ')';
+    ctx.font = 'bold ' + Math.round(w * 0.28) + 'px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('!', cx + dir * w * 0.30, headCy - headR * 1.5);
+    ctx.textAlign = 'left';
+  }
+
+  ctx.restore();
+  drawBossHpBar(e);
+});
+
+// ======================================================
+// ===== ボス③ 森の番人ゴリアス（bossIndex 3）=====
+// 巨大な樹木ゴーレム：木の幹の体・岩の腕・根が地面を這う。
+// 「重さ・土台のどっしり感」と「ためと解放」を徹底する。
+// 攻撃: slam(両腕叩きつけ) / root(地面から根) / hurl(岩投げ) / shockwave(全身震動)
+// ======================================================
+registerBossDrawer(3, function(e, t) {
+  // ======================================================
+  // 森の番人ゴリアス：樹齢千年級の大木そのものが怪物化した姿。
+  // 「頭」という独立パーツは存在せず、画面を貫く一本の巨大な幹が
+  // そのまま体であり顔である。幹上部に直接、目・口が刻まれている。
+  // 頭頂部の代わりに、幹の最上部から枝と葉が四方に生い茂る。
+  // 腕は伸縮自在の木の枝で、先端は鋭い爪のような指。
+  // 攻撃: slam(枝腕の叩きつけ) / root(地中の根を這わす) /
+  //       hurl(鋭い枝の突き刺し) / shockwave(全身の震動・衝撃波)
+  // ======================================================
+  const w = e.w, h = e.h, cx = e.x + w / 2, baseY = e.y + h, dir = e.dir;
+  const phase = e.phase || 'idle';
+  const atk = e.attackType || 'slam';
+  const windupDur = e.windupDuration || 1.5;
+  const attackDur = e.attackDuration || 0.4;
+  const flashing = e.dmgFlash && e.dmgFlash > 0;
+
+  let progress = 0;
+  if (phase === 'windup') progress = 1 - (e.phaseTimer / windupDur);
+  else if (phase === 'attack') progress = 1 - (e.phaseTimer / attackDur);
+
+  const breath = Math.sin(t * 1.8 + (e.baseX || 0));
+
+  // ===== モーション変数 =====
+  let crouchAmt = 0;     // 沈み込み（0=直立, 1=深く屈む）
+  let raiseArms = 0;     // 枝腕の振り上げ（0=下, 1=頭上）
+  let slamSwing = 0;     // 枝腕の叩きつけ（0=上 → 1=地面）
+  let leanFwd = 0;       // 前傾き（rootで前に傾く）
+  let shakeAmt = 0;      // 震え（shockwave）
+  let spreadAmt = 0;     // 枝腕を広げる（shockwave）
+  let hurlAim = 0;       // 枝腕の構え（hurl）
+  let hurlLaunch = 0;    // 突き刺しの解放
+  let rootBulge = 0;     // 根の張り出し量
+  let jawOpen = 0;       // 顎の開き（attack中に大きく開く）
+
+  if (phase === 'idle') {
+    crouchAmt = 0;
+    raiseArms = breath * 0.04; // ゆらゆら呼吸
+  } else if (phase === 'recover') {
+    const rp = 1 - (e.phaseTimer / (e.recoverDuration || 0.6));
+    crouchAmt = (1 - rp) * 0.15;
+  } else if (atk === 'slam') {
+    if (phase === 'windup') {
+      if (progress < 0.4) {
+        const q = progress / 0.4;
+        crouchAmt = q * q; raiseArms = q * 0.3;
+      } else {
+        crouchAmt = 1;
+        raiseArms = 0.3 + (1 - Math.pow(1 - (progress - 0.4) / 0.6, 2)) * 0.7;
+      }
+      shakeAmt = progress > 0.7 ? Math.sin(t * 38) * w * 0.012 * (progress - 0.7) / 0.3 : 0;
+      jawOpen = progress * 0.5;
+    } else {
+      slamSwing = Math.min(1, progress / 0.6);
+      crouchAmt = 0.6 * (1 - progress);
+      jawOpen = 1 - progress * 0.5;
+    }
+  } else if (atk === 'root') {
+    if (phase === 'windup') {
+      leanFwd = progress * progress * 0.25;
+      rootBulge = progress * 0.6;
+      shakeAmt = progress > 0.5 ? Math.sin(t * 30) * w * 0.008 : 0;
+      jawOpen = progress * 0.4;
+    } else {
+      leanFwd = 0.25 * (1 - progress);
+      rootBulge = 1;
+      jawOpen = 0.6;
+    }
+  } else if (atk === 'hurl') {
+    if (phase === 'windup') {
+      hurlAim = progress * progress;
+      crouchAmt = progress * 0.3;
+      jawOpen = progress * 0.6;
+    } else {
+      hurlLaunch = Math.min(1, progress * 2);
+      crouchAmt = 0.3 * (1 - progress);
+      jawOpen = 0.7;
+    }
+  } else if (atk === 'shockwave') {
+    if (phase === 'windup') {
+      shakeAmt = Math.sin(t * 40) * w * 0.015 * progress;
+      spreadAmt = 0;
+      crouchAmt = progress * progress * 0.5;
+      jawOpen = progress;
+    } else {
+      spreadAmt = Math.min(1, progress * 3);
+      crouchAmt = 0.5 * (1 - progress * 0.7);
+      shakeAmt = spreadAmt > 0.5 ? 0 : Math.sin(t * 50) * w * 0.02 * (1 - spreadAmt * 2);
+      jawOpen = 1;
+    }
+  }
+
+  // ===== レイアウト基準値 =====
+  // 「頭」を作らず、幹そのものを画面縦方向いっぱいまで伸ばす。
+  const trunkH    = h * 0.88;            // 幹の高さ（旧来より大幅に高い＝頭部廃止分を吸収）
+  const trunkWBot = w * 0.50;            // 幹の根元の太さ
+  const trunkWTop = w * 0.34;            // 幹の上部（顔がある付近）の太さ：根元よりやや細い自然な樹形
+  const faceR     = w * 0.46;            // 顔まわりの基準スケール（目・口の配置に使う）
+  const armLen    = h * 0.42;            // 枝腕の長さ
+  const armW      = w * 0.13;            // 枝腕の太さ
+  const crouchPx  = crouchAmt * h * 0.09;
+
+  const trunkBaseY = baseY - crouchPx;
+  const trunkTopY  = trunkBaseY - trunkH;        // 幹の最上部（ここから枝葉が広がる）
+  const faceCy     = trunkBaseY - trunkH * 0.78; // 顔（目・口）の中心高さ：幹上部寄り
+  const faceCx     = cx + shakeAmt + (leanFwd * dir * w * 0.1);
+
+  // ===== 影 =====
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(cx, baseY + 2, w * (0.58 + spreadAmt * 0.3), Math.max(5, w * 0.09), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(shakeAmt, 0);
+
+  // ===== 根（実在の植物構造に基づくリアルな根：主根+支根の分岐、根元太く先端細い、常時うねる）=====
+  {
+    // 主根を4本配置。各主根は「根元が太く先端が細い」テーパー形状を多角形(fill)で描く。
+    // strokeでは均一な太さしか表現できないため、左右2辺の輪郭を別々に計算してポリゴンで塗る。
+    const nMainRoots = 4;
+
+    // 1本の根（主根 or 支根）を、根元太・先端細のテーパー形状で描画するヘルパー。
+    // pathPts: [{x,y}, ...] 根の中心線（根元→先端の順）
+    // baseThick / tipThick: 根元/先端の太さ
+    function drawTaperedRoot(pathPts, baseThick, tipThick, fillStyleVal) {
+      const n = pathPts.length;
+      const leftPts = [], rightPts = [];
+      for (let i = 0; i < n; i++) {
+        const p = pathPts[i];
+        const prev = pathPts[Math.max(0, i - 1)];
+        const next = pathPts[Math.min(n - 1, i + 1)];
+        // 進行方向の法線を求めて左右にオフセット
+        const dx = next.x - prev.x, dy = next.y - prev.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len, ny = dx / len;
+        const tt = i / (n - 1);
+        const thick = baseThick + (tipThick - baseThick) * tt; // 根元→先端でテーパー
+        leftPts.push({ x: p.x + nx * thick, y: p.y + ny * thick });
+        rightPts.push({ x: p.x - nx * thick, y: p.y - ny * thick });
+      }
+      ctx.fillStyle = fillStyleVal;
+      ctx.beginPath();
+      ctx.moveTo(leftPts[0].x, leftPts[0].y);
+      for (let i = 1; i < n; i++) ctx.lineTo(leftPts[i].x, leftPts[i].y);
+      // 先端を丸める
+      ctx.lineTo(pathPts[n - 1].x, pathPts[n - 1].y + tipThick * 0.3);
+      for (let i = n - 1; i >= 0; i--) ctx.lineTo(rightPts[i].x, rightPts[i].y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    for (let ri = 0; ri < nMainRoots; ri++) {
+      const side = (ri % 2 === 0) ? 1 : -1;
+      const slot  = (ri < 2) ? 1 : 0.6; // 奥側(太い・長い)・手前側(細い・短い)
+      const rootSpread = w * (0.5 + slot * 0.55 + rootBulge * 0.6);
+      const segs = 10; // 中心線を10分割し、各点をうねらせる
+
+      // 常時うねるアニメーション：地中で蠢く生き物のように、各点が個別位相で波打つ
+      const undulateSpeed = 1.3, undulateAmp = w * 0.030 * (1 + rootBulge * 0.5);
+      const phaseOffset = ri * 1.7 + (e.baseX || 0);
+
+      // 中心線を生成（根元→先端）。横方向の蛇行＋常時のうねりを加える。
+      const pathPts = [];
+      for (let s = 0; s <= segs; s++) {
+        const tt = s / segs;
+        // 基本カーブ：根元から横へ広がりつつ、徐々に地表寄りへ
+        const baseX = cx + side * rootSpread * (tt * tt * 0.3 + tt * 0.7);
+        const baseYc = trunkBaseY + h * 0.045 * Math.sin(tt * Math.PI) - Math.max(4, w * 0.04) * slot * tt;
+        // うねり（常時アニメーション・先端に近いほど振幅を大きく＝地表で活発に蠢く）
+        const wob = Math.sin(t * undulateSpeed + phaseOffset + tt * 5.0) * undulateAmp * (0.3 + tt * 1.2);
+        const wobY = Math.cos(t * undulateSpeed * 0.8 + phaseOffset + tt * 4.0) * undulateAmp * 0.4 * tt;
+        pathPts.push({ x: baseX + wob, y: baseYc + wobY });
+      }
+
+      const baseThick = Math.max(5, w * (0.085 - slot * 0.015)) * (1 + rootBulge * 0.4) ;
+      const tipThick  = baseThick * 0.18; // 先端は根元の約2割の太さまで先細る
+
+      const rootColor = flashing ? '#ff5040' : `hsl(27, 42%, ${16 + ri * 2}%)`;
+      drawTaperedRoot(pathPts, baseThick, tipThick, rootColor);
+
+      if (!flashing) {
+        // 表面のひび割れ・節（コブ）：根の中腹に不規則に配置
+        ctx.strokeStyle = 'rgba(12,6,2,0.45)';
+        ctx.lineWidth = Math.max(1, w * 0.005);
+        for (let cidx = 2; cidx < segs - 1; cidx += 2) {
+          const p = pathPts[cidx];
+          const tt = cidx / segs;
+          const localThick = baseThick + (tipThick - baseThick) * tt;
+          ctx.beginPath();
+          ctx.moveTo(p.x - localThick * 0.6, p.y - localThick * 0.3);
+          ctx.lineTo(p.x + localThick * 0.5, p.y + localThick * 0.4);
+          ctx.stroke();
+        }
+        // 節（コブ）を1〜2箇所、根の太い部分に
+        ctx.fillStyle = 'rgba(20,12,4,0.5)';
+        const knobIdx = Math.floor(segs * 0.3);
+        const kp = pathPts[knobIdx];
+        const kThick = baseThick + (tipThick - baseThick) * (knobIdx / segs);
+        ctx.beginPath();
+        ctx.ellipse(kp.x, kp.y, kThick * 0.7, kThick * 0.5, side * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        // ハイライト（地表に出ている根の丸みを表現）
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.lineWidth = Math.max(1, w * 0.006);
+        ctx.beginPath();
+        for (let s = 0; s <= segs; s++) {
+          const p = pathPts[s];
+          if (s === 0) ctx.moveTo(p.x, p.y - (baseThick + (tipThick - baseThick) * (s / segs)) * 0.4);
+          else ctx.lineTo(p.x, p.y - (baseThick + (tipThick - baseThick) * (s / segs)) * 0.4);
+        }
+        ctx.stroke();
+      }
+
+      // ----- 支根（主根の中腹から分岐する細い根。2本ずつ） -----
+      if (!flashing) {
+        const branchPoints = [0.35, 0.65]; // 主根のどの位置から分岐するか
+        for (const bp of branchPoints) {
+          const bIdx = Math.floor(segs * bp);
+          const startP = pathPts[bIdx];
+          const startThick = (baseThick + (tipThick - baseThick) * bp) * 0.55;
+          const subSegs = 6;
+          const subSide = side * (bp < 0.5 ? -1 : 1); // 主根から左右どちらかへ分岐
+          const subLen = rootSpread * 0.38 * (1 - bp * 0.3);
+          const subPhase = phaseOffset + bp * 3.1;
+
+          const subPts = [];
+          for (let s = 0; s <= subSegs; s++) {
+            const tt = s / subSegs;
+            const bx = startP.x + subSide * subLen * tt * 0.6 + side * subLen * tt * 0.5;
+            const by = startP.y + h * 0.02 * tt + Math.abs(subLen) * 0.15 * tt;
+            const wob = Math.sin(t * undulateSpeed * 1.2 + subPhase + tt * 6.0) * undulateAmp * 0.6 * tt;
+            subPts.push({ x: bx + wob, y: by });
+          }
+          drawTaperedRoot(subPts, startThick, startThick * 0.15, `hsl(27, 40%, ${15 + ri}%)`);
+        }
+      }
+    }
+  }
+
+
+
+  // ===== 幹（巨木本体：頭を含む一本の太い幹。樹齢千年の瘤・深い亀裂・苔を持つ）=====
+  {
+    const leanAngle = leanFwd * dir * 0.10;
+    ctx.save();
+    ctx.translate(cx, trunkBaseY);
+    ctx.rotate(leanAngle);
+    ctx.translate(-cx, -trunkBaseY);
+
+    if (flashing) {
+      ctx.fillStyle = '#ff5040';
+    } else {
+      const tg = ctx.createLinearGradient(cx - trunkWBot, 0, cx + trunkWBot, 0);
+      tg.addColorStop(0, '#2e1c0c');
+      tg.addColorStop(0.28, '#5a3818');
+      tg.addColorStop(0.52, '#7a4f28');
+      tg.addColorStop(0.76, '#5a3818');
+      tg.addColorStop(1, '#22140a');
+      ctx.fillStyle = tg;
+    }
+    ctx.strokeStyle = '#160c04';
+    ctx.lineWidth = Math.max(2.2, w * 0.018);
+
+    // 幹の輪郭：根元は太く、不規則な瘤を持たせながら上部の顔まわりへ自然にすぼまる。
+    // 左右非対称・複数の瘤（バルジ）で「一枚岩」ではない自然木らしさを出す。
+    ctx.beginPath();
+    ctx.moveTo(cx - trunkWBot * 1.05, trunkBaseY);
+    ctx.bezierCurveTo(
+      cx - trunkWBot * 1.15, trunkBaseY - trunkH * 0.12,
+      cx - trunkWBot * 0.78, trunkBaseY - trunkH * 0.22,   // 下部の瘤（左）
+      cx - trunkWBot * 0.95, trunkBaseY - trunkH * 0.34
+    );
+    ctx.bezierCurveTo(
+      cx - trunkWBot * 1.08, trunkBaseY - trunkH * 0.46,
+      cx - trunkWTop * 1.05, trunkBaseY - trunkH * 0.60,   // 中段のくびれ
+      cx - trunkWTop * 0.92, trunkBaseY - trunkH * 0.72
+    );
+    ctx.bezierCurveTo(
+      cx - trunkWTop * 1.02, trunkBaseY - trunkH * 0.84,   // 顔まわりの瘤（左頬）
+      cx - trunkWTop * 0.70, trunkBaseY - trunkH * 0.94,
+      cx - trunkWTop * 0.55, trunkTopY
+    );
+    ctx.lineTo(cx + trunkWTop * 0.55, trunkTopY);
+    ctx.bezierCurveTo(
+      cx + trunkWTop * 0.70, trunkBaseY - trunkH * 0.94,
+      cx + trunkWTop * 1.10, trunkBaseY - trunkH * 0.84,   // 顔まわりの瘤（右頬・左より大きい）
+      cx + trunkWTop * 0.98, trunkBaseY - trunkH * 0.72
+    );
+    ctx.bezierCurveTo(
+      cx + trunkWTop * 1.08, trunkBaseY - trunkH * 0.60,
+      cx + trunkWBot * 0.95, trunkBaseY - trunkH * 0.46,
+      cx + trunkWBot * 1.10, trunkBaseY - trunkH * 0.34
+    );
+    ctx.bezierCurveTo(
+      cx + trunkWBot * 0.85, trunkBaseY - trunkH * 0.22,   // 下部の瘤（右）
+      cx + trunkWBot * 1.18, trunkBaseY - trunkH * 0.10,
+      cx + trunkWBot * 1.05, trunkBaseY
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    if (!flashing) {
+      // 縦の樹皮ライン（深い溝・本数を増やして密度を出す）
+      ctx.strokeStyle = 'rgba(15,8,2,0.55)';
+      ctx.lineWidth = Math.max(1.2, w * 0.008);
+      for (const lx of [-0.62, -0.40, -0.20, -0.04, 0.14, 0.32, 0.54]) {
+        const topW = trunkWTop, botW = trunkWBot;
+        const bxBot = cx + lx * botW * 1.6;
+        const bxTop = cx + lx * topW * 1.3;
+        ctx.beginPath();
+        ctx.moveTo(bxBot, trunkBaseY - h * 0.01);
+        ctx.bezierCurveTo(
+          bxBot + Math.sin(t * 0.25 + lx * 4) * 2, trunkBaseY - trunkH * 0.35,
+          bxTop - Math.sin(t * 0.25 + lx * 4) * 2, trunkBaseY - trunkH * 0.68,
+          bxTop, trunkTopY + h * 0.01
+        );
+        ctx.stroke();
+      }
+      // 瘤・うろ（樹齢千年らしい大きなくぼみを2〜3箇所）
+      ctx.fillStyle = 'rgba(15,8,2,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(cx - trunkWBot * 0.45, trunkBaseY - trunkH * 0.20, trunkWBot * 0.22, trunkH * 0.05, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx + trunkWTop * 0.50, trunkBaseY - trunkH * 0.50, trunkWTop * 0.18, trunkH * 0.04, -0.15, 0, Math.PI * 2);
+      ctx.fill();
+      // 光沢（左上光源・幹全体に細長く）
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      ctx.beginPath();
+      ctx.ellipse(cx - trunkWBot * 0.32, trunkBaseY - trunkH * 0.42, trunkWBot * 0.18, trunkH * 0.34, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+      // 苔（根元〜下部に広く・樹齢千年の象徴）
+      ctx.fillStyle = 'rgba(65,115,48,0.40)';
+      ctx.beginPath();
+      ctx.ellipse(cx, trunkBaseY - trunkH * 0.06, trunkWBot * 1.0, trunkH * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(65,115,48,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(cx - trunkWBot * 0.6, trunkBaseY - trunkH * 0.28, trunkWBot * 0.30, trunkH * 0.10, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // ===== 頭頂部の代わり：幹最上部から伸びる枝と葉（生い茂る樹冠）=====
+  if (!flashing) {
+    const crownCx = cx + leanFwd * dir * w * 0.08;
+    const crownY = trunkTopY;
+    // 主枝（4〜6本、左右非対称に四方へ伸びる）
+    const branches = [
+      { ang: -2.5, len: 1.7, w: 0.20 },
+      { ang: -2.0, len: 1.35, w: 0.16 },
+      { ang: -1.55, len: 1.55, w: 0.18 },  // ほぼ真上
+      { ang: -1.05, len: 1.30, w: 0.15 },
+      { ang: -0.55, len: 1.65, w: 0.19 },
+      { ang: -0.15, len: 1.20, w: 0.13 },
+    ];
+    for (const br of branches) {
+      const ex = crownCx + Math.cos(br.ang) * faceR * br.len;
+      const ey = crownY + Math.sin(br.ang) * faceR * br.len;
+      const midx = crownCx + Math.cos(br.ang) * faceR * br.len * 0.5;
+      const midy = crownY + Math.sin(br.ang) * faceR * br.len * 0.5 + faceR * 0.08;
+      ctx.strokeStyle = '#3a2810';
+      ctx.lineWidth = Math.max(2, w * br.w);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(crownCx, crownY + faceR * 0.05);
+      ctx.quadraticCurveTo(midx, midy, ex, ey);
+      ctx.stroke();
+      // 小枝の分岐
+      const subAng1 = br.ang - 0.35, subAng2 = br.ang + 0.30;
+      for (const sa of [subAng1, subAng2]) {
+        const sx = ex + Math.cos(sa) * faceR * 0.30;
+        const sy = ey + Math.sin(sa) * faceR * 0.30;
+        ctx.lineWidth = Math.max(1, w * br.w * 0.4);
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+        // 葉の塊（小枝の先に丸い葉群）
+        ctx.fillStyle = `hsl(${100 + (br.ang * 8) % 20}, 38%, ${22 + (sa * 10) % 8}%)`;
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, faceR * 0.22, faceR * 0.16, sa, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 枝先の葉群（メイン）
+      ctx.fillStyle = `hsl(${95 + (br.ang * 6) % 18}, 40%, ${24 + (br.ang * 5) % 6}%)`;
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, faceR * 0.30, faceR * 0.20, br.ang, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.beginPath();
+      ctx.ellipse(ex - faceR * 0.08, ey - faceR * 0.06, faceR * 0.14, faceR * 0.09, br.ang, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ===== 顔（幹に直接刻まれた目と口：頭という塊を作らず、表面の彫り込みとして表現）=====
+  {
+    ctx.save();
+    ctx.translate(faceCx, faceCy);
+
+    // ----- 目（岩のゴーレムで使った発光裂け目表現を踏襲。鋭く吊り上がった威圧的な形）-----
+    const eyeScaleY = (phase === 'windup' || phase === 'attack') ? 0.4 : 1.0;
+    const eo = dir * faceR * 0.04;
+    const eyeY = -faceR * 0.30;
+    for (const side of [-1, 1]) {
+      const ex = side * faceR * 0.40 + eo;
+      const ey = eyeY;
+      const eW = faceR * 0.30;
+      const eH = faceR * 0.16 * eyeScaleY;
+      const tilt = -side * dir * 0.34; // 鋭く吊り上がる
+
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(tilt);
+
+      if (!flashing) {
+        // 樹皮に刻まれた裂け目（暗いくぼみ）
+        ctx.fillStyle = '#0a0500';
+        ctx.beginPath();
+        ctx.moveTo(-eW * 0.65, eH * 0.20);
+        ctx.lineTo(0, -eH * 1.1);
+        ctx.lineTo(eW * 0.70, -eH * 0.30);
+        ctx.lineTo(eW * 0.20, eH * 0.55);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(15,8,2,0.6)';
+        ctx.lineWidth = Math.max(1, w * 0.006);
+        ctx.stroke();
+      }
+
+      // 灯る光（単純な発光：複雑な瞳孔を持たない）
+      const glowR = eW * 0.55;
+      const auraG = ctx.createRadialGradient(0, 0, 0, 0, 0, glowR);
+      auraG.addColorStop(0, 'rgba(180,255,100,0.65)');
+      auraG.addColorStop(1, 'rgba(180,255,100,0)');
+      ctx.fillStyle = auraG;
+      ctx.beginPath();
+      ctx.arc(0, 0, glowR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = flashing ? '#ffffff' : '#caff80';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, eW * 0.22, eH * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(eW * 0.04, -eH * 0.15, eW * 0.08, eH * 0.20, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // ----- 口（常時大きく開いた裂け目。内部に多数の鋭い牙。怖さを最優先したデザイン）-----
+    if (!flashing) {
+      const mouthY = faceR * 0.30;
+      const openAmt = 0.55 + jawOpen * 0.5; // 常時かなり開いている状態を基準値に
+      const mouthW = faceR * 0.62;
+      const mouthH = faceR * (0.32 + openAmt * 0.30);
+
+      // 口腔内部（暗闇）
+      ctx.fillStyle = '#160a04';
+      ctx.beginPath();
+      ctx.moveTo(-mouthW, mouthY - faceR * 0.04);
+      ctx.quadraticCurveTo(0, mouthY - faceR * 0.10, mouthW, mouthY - faceR * 0.04);
+      ctx.quadraticCurveTo(mouthW * 0.85, mouthY + mouthH, 0, mouthY + mouthH * 1.05);
+      ctx.quadraticCurveTo(-mouthW * 0.85, mouthY + mouthH, -mouthW, mouthY - faceR * 0.04);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#0a0500';
+      ctx.lineWidth = Math.max(2, w * 0.014);
+      ctx.stroke();
+
+      // 上顎の牙（5本・大きく不揃い）
+      ctx.fillStyle = '#e8ddc0';
+      const fangXsTop = [-0.55, -0.30, -0.06, 0.20, 0.46];
+      const fangLenTop = [0.55, 0.80, 0.65, 0.85, 0.50];
+      for (let i = 0; i < fangXsTop.length; i++) {
+        const fx = fangXsTop[i] * mouthW;
+        const flen = fangLenTop[i] * mouthH;
+        ctx.beginPath();
+        ctx.moveTo(fx - faceR * 0.045, mouthY - faceR * 0.05);
+        ctx.lineTo(fx + faceR * 0.045, mouthY - faceR * 0.05);
+        ctx.lineTo(fx, mouthY - faceR * 0.05 + flen);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(15,8,2,0.4)';
+        ctx.lineWidth = Math.max(0.8, w * 0.004);
+        ctx.stroke();
+      }
+      // 下顎の牙（4本・上顎より小さい、突き上げる形）
+      ctx.fillStyle = '#d8c8a0';
+      const fangXsBot = [-0.42, -0.14, 0.14, 0.42];
+      const fangLenBot = [0.40, 0.55, 0.50, 0.35];
+      for (let i = 0; i < fangXsBot.length; i++) {
+        const fx = fangXsBot[i] * mouthW;
+        const flen = fangLenBot[i] * mouthH;
+        const baseYf = mouthY + mouthH;
+        ctx.beginPath();
+        ctx.moveTo(fx - faceR * 0.04, baseYf);
+        ctx.lineTo(fx + faceR * 0.04, baseYf);
+        ctx.lineTo(fx, baseYf - flen);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // 口の周囲の樹皮の裂け目テクスチャ（口が幹の表皮を裂いて開いている印象を強める）
+      ctx.strokeStyle = 'rgba(15,8,2,0.5)';
+      ctx.lineWidth = Math.max(1, w * 0.006);
+      ctx.beginPath();
+      ctx.moveTo(-mouthW * 1.05, mouthY - faceR * 0.10);
+      ctx.lineTo(-mouthW * 1.25, mouthY - faceR * 0.30);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(mouthW * 1.05, mouthY - faceR * 0.08);
+      ctx.lineTo(mouthW * 1.28, mouthY - faceR * 0.25);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  // ===== 腕（伸縮自在の枝：先端は爪のように鋭く長い指）=====
+  {
+    const armOriginY = trunkBaseY - trunkH * 0.55;
+
+    for (const side of [-1, 1]) {
+      const armOriginX = cx + side * trunkWTop * 0.78;
+
+      let armAngle, stretch;
+      if (atk === 'slam' && (phase === 'windup' || phase === 'attack')) {
+        if (phase === 'windup') {
+          armAngle = -Math.PI * (0.55 + raiseArms * 0.45);
+          stretch = 0.85 + raiseArms * 0.15;
+        } else {
+          armAngle = -Math.PI + slamSwing * Math.PI * 0.85;
+          stretch = 1.0 + slamSwing * 0.25; // 叩きつけ時に伸びる
+        }
+      } else if (atk === 'hurl' && (phase === 'windup' || phase === 'attack')) {
+        if (phase === 'windup') {
+          const isThrowArm = (side === dir);
+          armAngle = isThrowArm
+            ? -Math.PI * (0.3 + hurlAim * 0.6) * dir * side
+            : -Math.PI * 0.25;
+          stretch = isThrowArm ? (0.7 - hurlAim * 0.2) : 0.85; // 溜め＝縮む
+        } else {
+          const isThrowArm = (side === dir);
+          armAngle = isThrowArm
+            ? -Math.PI * 0.10 * dir * side + hurlLaunch * Math.PI * 0.35 * dir * side
+            : -Math.PI * 0.3;
+          stretch = isThrowArm ? (1.0 + hurlLaunch * 0.6) : 0.85; // 解放＝大きく伸びる（突き刺し）
+        }
+      } else if (atk === 'shockwave' && (phase === 'windup' || phase === 'attack')) {
+        if (phase === 'windup') {
+          armAngle = -Math.PI * (0.5 + crouchAmt * 0.3);
+          stretch = 0.9;
+        } else {
+          armAngle = -Math.PI * (0.5 - spreadAmt * 0.38);
+          stretch = 1.0 + spreadAmt * 0.2;
+        }
+      } else if (atk === 'root' && (phase === 'windup' || phase === 'attack')) {
+        armAngle = -Math.PI * (0.25 + leanFwd * 0.3);
+        stretch = 0.85;
+      } else {
+        armAngle = -Math.PI * (0.25 + raiseArms * 0.1) + breath * 0.04 * side;
+        stretch = 0.85 + breath * 0.03; // 待機時もわずかに伸縮（生命感）
+      }
+
+      const curArmLen = armLen * stretch;
+      const handX = armOriginX + Math.cos(armAngle) * curArmLen * side;
+      const handY = armOriginY + Math.sin(Math.abs(armAngle)) * curArmLen;
+      const elbowX = armOriginX + Math.cos(armAngle) * curArmLen * 0.5 * side;
+      const elbowY = armOriginY + Math.sin(Math.abs(armAngle)) * curArmLen * 0.5 + curArmLen * 0.06;
+
+      // 枝の幹部分（根元から手首まで、節を持つ木質の腕）
+      ctx.strokeStyle = flashing ? '#ff5040' : '#4a3018';
+      ctx.lineWidth = Math.max(4, armW * 1.5);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(armOriginX, armOriginY);
+      ctx.quadraticCurveTo(elbowX, elbowY, handX, handY);
+      ctx.stroke();
+
+      if (!flashing) {
+        // 樹皮の質感ライン
+        ctx.strokeStyle = '#2c1c0c';
+        ctx.lineWidth = Math.max(1.5, armW * 0.4);
+        ctx.beginPath();
+        ctx.moveTo(armOriginX + side * armW * 0.25, armOriginY + curArmLen * 0.1);
+        ctx.quadraticCurveTo(elbowX + side * armW * 0.2, elbowY, handX + side * armW * 0.15, handY - curArmLen * 0.08);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+        ctx.lineWidth = Math.max(1, armW * 0.25);
+        ctx.beginPath();
+        ctx.moveTo(armOriginX - side * armW * 0.3, armOriginY + curArmLen * 0.08);
+        ctx.quadraticCurveTo(elbowX - side * armW * 0.25, elbowY, handX - side * armW * 0.2, handY - curArmLen * 0.1);
+        ctx.stroke();
+        // 節（こぶ状の節目を2箇所）
+        ctx.fillStyle = '#3a2410';
+        ctx.beginPath();
+        ctx.ellipse(elbowX, elbowY, armW * 0.55, armW * 0.40, armAngle, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 手首（小さな瘤）
+      const wristR = Math.max(5, armW * 0.85);
+      ctx.fillStyle = flashing ? '#ff5040' : '#3a2412';
+      ctx.beginPath();
+      ctx.arc(handX, handY, wristR, 0, Math.PI * 2);
+      ctx.fill();
+      if (!flashing) {
+        ctx.strokeStyle = '#1c1006';
+        ctx.lineWidth = Math.max(1, w * 0.006);
+        ctx.stroke();
+      }
+
+      // 指（爪のように鋭く長い小枝・4本、先端は尖った形）
+      const fingerAngleBase = armAngle;
+      const fingerSpread = [-0.5, -0.17, 0.17, 0.5];
+      for (const fa of fingerSpread) {
+        const fAngle = fingerAngleBase + fa * 0.9;
+        const fLen = wristR * 3.4 * (1 - Math.abs(fa) * 0.25);
+        const fx = handX + Math.cos(fAngle) * fLen * side;
+        const fy = handY + Math.sin(Math.abs(fAngle)) * fLen * (fa > -0.3 && fa < 0.3 ? 1 : 0.85);
+        // 実際は腕の伸びる方向に対して指がさらに伸びる形にする（突き刺し感）
+        const dirX = Math.cos(armAngle) * side;
+        const dirY = Math.sin(Math.abs(armAngle));
+        const perpX = -dirY * side, perpY = dirX * side;
+        const spreadDist = fa * wristR * 2.2;
+        const tipX = handX + dirX * fLen + perpX * spreadDist;
+        const tipY = handY + dirY * fLen + perpY * spreadDist;
+        const baseX2 = handX + perpX * spreadDist * 0.3;
+        const baseY2 = handY + perpY * spreadDist * 0.3;
+
+        ctx.strokeStyle = flashing ? '#ff5040' : '#2c1c0e';
+        ctx.lineWidth = Math.max(2, wristR * 0.30);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(baseX2, baseY2);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+        // 爪先の鋭い光沢（爪らしい硬質感）
+        if (!flashing) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+          ctx.lineWidth = Math.max(1, wristR * 0.10);
+          ctx.beginPath();
+          ctx.moveTo(baseX2 + (tipX - baseX2) * 0.4, baseY2 + (tipY - baseY2) * 0.4);
+          ctx.lineTo(tipX, tipY);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // ===== 攻撃エフェクト（判定範囲と完全一致） =====
+  if (phase === 'attack') {
+    const impact = progress;
+    ctx.save();
+
+    if (atk === 'slam') {
+      const groundHit = Math.max(0, Math.min(1, (slamSwing - 0.75) / 0.25));
+      const fade = Math.max(0, 1 - Math.max(0, impact - 0.4) / 0.6);
+      const hitSlamX = w * 0.9 + TILE * 2.0;
+      const hitVReach = h * 0.6 + TILE * 1.5;
+      ctx.fillStyle = 'rgba(120,80,30,0.35)';
+      ctx.globalAlpha = groundHit * fade * 0.7;
+      ctx.beginPath();
+      ctx.ellipse(cx, baseY - hitVReach * 0.5, hitSlamX, hitVReach * 0.85, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = groundHit * fade;
+      ctx.strokeStyle = '#d4a050';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.ellipse(cx, baseY - hitVReach * 0.45, hitSlamX * Math.min(1, groundHit * 1.3), hitVReach * 0.8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(150,110,60,0.7)';
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI - Math.PI * 0.1;
+        const dist2 = hitSlamX * (0.7 + groundHit * 0.5);
+        const dx = cx + Math.cos(a) * dist2;
+        const dy = baseY - Math.sin(a) * hitVReach * 0.4 - groundHit * TILE * 0.8;
+        ctx.globalAlpha = groundHit * fade * (1 - i * 0.06);
+        ctx.beginPath();
+        ctx.arc(dx, dy, Math.max(3, w * 0.04 * groundHit), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+    } else if (atk === 'root') {
+      const reach = w * 1.2 + TILE * 5;
+      const cxc = cx + dir * TILE * 2;
+      const groundY = baseY - TILE * 0.3;
+      for (let i = 0; i < 5; i++) {
+        const rp = Math.max(0, Math.min(1, (impact - i * 0.12) * 2));
+        if (rp <= 0) continue;
+        const rootX = cxc + dir * (reach * 0.2 + (i / 5) * reach * 0.8) * rp;
+        const rootThick = Math.max(3, w * 0.05 * (1 - i * 0.15));
+        ctx.strokeStyle = `rgba(80,55,20,${0.85 - i * 0.1})`;
+        ctx.lineWidth = rootThick;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = rp;
+        ctx.beginPath();
+        ctx.moveTo(cx + dir * w * 0.5, groundY);
+        ctx.quadraticCurveTo(
+          cx + dir * reach * 0.4 + (i - 2) * w * 0.1, groundY + TILE * 0.3,
+          rootX, groundY - Math.sin(i * 0.6 + t * 4) * TILE * 0.25
+        );
+        ctx.stroke();
+        ctx.fillStyle = `rgba(70,45,15,0.9)`;
+        ctx.beginPath();
+        ctx.arc(rootX, groundY - Math.sin(i * 0.6 + t * 4) * TILE * 0.25, rootThick * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = impact * 0.5;
+      ctx.fillStyle = 'rgba(130,95,50,0.6)';
+      for (let i = 0; i < 6; i++) {
+        const tx = cxc + dir * (i / 6) * reach * impact;
+        ctx.beginPath();
+        ctx.ellipse(tx, groundY, TILE * 0.18, TILE * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+    } else if (atk === 'hurl') {
+      // 「岩を投げる」演出を廃止し、鋭い枝の腕を前方へ突き刺す演出に変更（判定範囲は従来通り維持）
+      const vReach = h * 0.55 + TILE * 1.4;
+      const reach = TILE * 10;
+      const startX = cx + dir * w * 0.5;
+      const projY = baseY - h * 0.42;
+      const tipX = startX + dir * reach * Math.min(1, impact * 1.5);
+      const tipY = projY + vReach * 0.10 * Math.min(1, impact * 1.5);
+      // 突き出された鋭い枝（軌跡）
+      ctx.strokeStyle = flashing ? 'rgba(255,80,64,0.5)' : 'rgba(60,40,20,0.55)';
+      ctx.lineWidth = Math.max(4, w * 0.05) * (1 - impact * 0.3);
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = Math.max(0, 0.8 - impact * 0.6);
+      ctx.beginPath();
+      ctx.moveTo(startX, projY);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+      // 鋭い先端（光る切っ先）
+      ctx.globalAlpha = Math.max(0, 1 - impact * 1.1);
+      ctx.strokeStyle = '#d8c8a0';
+      ctx.lineWidth = Math.max(2, w * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(tipX - dir * w * 0.06, tipY - h * 0.03);
+      ctx.lineTo(tipX + dir * w * 0.04, tipY);
+      ctx.lineTo(tipX - dir * w * 0.06, tipY + h * 0.03);
+      ctx.stroke();
+      // 判定帯（薄く表示）
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = '#d4a050';
+      const rx2 = (dir > 0) ? (cx + w * 0.5) : (cx + w * 0.5 - reach);
+      ctx.fillRect(rx2, projY - vReach, reach, vReach * 2);
+
+    } else if (atk === 'shockwave') {
+      const hitR = TILE * 6.5;
+      ctx.fillStyle = 'rgba(120,90,30,0.14)';
+      ctx.globalAlpha = spreadAmt;
+      ctx.beginPath();
+      ctx.arc(cx, baseY - h * 0.5, hitR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = (1 - impact) * 0.9 * spreadAmt;
+      ctx.strokeStyle = '#d4a050';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(cx, baseY - h * 0.5, hitR * Math.min(1, impact * 1.5), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = spreadAmt * 0.7;
+      ctx.strokeStyle = 'rgba(160,120,50,0.8)';
+      ctx.lineWidth = Math.max(1.5, w * 0.01);
+      for (let i = 0; i < 10; i++) {
+        const angle = (i / 10) * Math.PI * 2;
+        const r1 = w * 0.6, r2 = hitR * impact;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(angle) * r1, baseY - h * 0.5 + Math.sin(angle) * r1 * 0.5);
+        ctx.lineTo(cx + Math.cos(angle) * r2, baseY - h * 0.5 + Math.sin(angle) * r2 * 0.5);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  // ===== 予備動作の警告 =====
+  if (phase === 'windup') {
+    if (Math.sin(t * 18) > 0) {
+      ctx.fillStyle = '#ff3030';
+      ctx.font = `bold ${Math.round(w * 0.28)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('!', faceCx, faceCy - faceR * 1.8 - h * 0.04);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  ctx.restore();
+  drawBossHpBar(e);
+});
+
+// ======================================================
 // ===== クイーンスライム（旧ボス・未実装ボスのフォールバック） =====
 // ======================================================
 function drawQueenSlime(e, t) {
@@ -8847,7 +10020,759 @@ function drawBird(p, cfg){
 // ======================================================
 
 
+// ============================================================
+//  ボス⑤  常世の神鹿（とこよのかみしか）  bossIndex 5
+//  四足の巨大な神鹿。森の神・生命と死を司る神獣という原型に基づく独自デザイン
+//  （特定作品のキャラクターの複製ではない）。
+//  ・鹿の関節構造に忠実：前脚=肘(後)→前膝(前)、後脚=膝/スティフル(前)→
+//    飛節/ホック(後・逆関節)→球節(前)。屈むほど膝が張り出し接地は常に維持。
+//  ・背に苔と草、長く流麗な尾、玉虫色のオーラ、角先に灯る生命の芽。
+//  ・足元に花が咲きやがて枯れる（生と死）。周囲に光の胞子が漂う。
+//  攻撃: gore(角薙ぎ突進) / leap(天翔る踏みつけ) /
+//        roar(蝕みの咆哮) / roots(茨の根)
+//  依存: グローバル ctx / registerBossDrawer。ヘルパーはIIFE内に隔離。
+// ============================================================
+(function () {
+  'use strict';
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const easeOut = k => 1 - Math.pow(1 - k, 3);
+  const easeIn = k => k * k * k;
+  const easeInOut = k => k < 0.5 ? 4*k*k*k : 1 - Math.pow(-2*k+2, 3)/2;
+
+  // 根元太・先端細のテーパー肢を多角形で塗る（ゴリアスのrootと同方式）。
+  // pathPts: [{x,y}...] 中心線（根元→先端） / baseTh,tipTh: 太さ
+  function drawTaperedLimb(pathPts, baseTh, tipTh, fill, stroke, lw) {
+    const n = pathPts.length;
+    const L = [], R = [];
+    for (let i = 0; i < n; i++) {
+      const p = pathPts[i];
+      const prev = pathPts[Math.max(0, i-1)], next = pathPts[Math.min(n-1, i+1)];
+      let dx = next.x - prev.x, dy = next.y - prev.y;
+      const len = Math.hypot(dx, dy) || 1; dx/=len; dy/=len;
+      const nx = -dy, ny = dx;
+      const tt = i/(n-1);
+      const th = baseTh + (tipTh - baseTh) * tt;
+      L.push({ x: p.x + nx*th, y: p.y + ny*th });
+      R.push({ x: p.x - nx*th, y: p.y - ny*th });
+    }
+    ctx.beginPath();
+    ctx.moveTo(L[0].x, L[0].y);
+    for (let i = 1; i < n; i++) ctx.lineTo(L[i].x, L[i].y);
+    ctx.lineTo(pathPts[n-1].x, pathPts[n-1].y + tipTh*0.2);
+    for (let i = n-1; i >= 0; i--) ctx.lineTo(R[i].x, R[i].y);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1.5; ctx.lineJoin = 'round'; ctx.stroke(); }
+  }
+
+  // 滑らかな閉曲線（胴体シルエット用、Catmull-Romもどき）
+  function smoothBlob(pts, close = true) {
+    const n = pts.length;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 0; i < n - (close?0:1); i++) {
+      const p0 = pts[(i-1+n)%n], p1 = pts[i], p2 = pts[(i+1)%n], p3 = pts[(i+2)%n];
+      const c1x = p1.x + (p2.x - p0.x)/6, c1y = p1.y + (p2.y - p0.y)/6;
+      const c2x = p2.x - (p3.x - p1.x)/6, c2y = p2.y - (p3.y - p1.y)/6;
+      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, p2.x, p2.y);
+    }
+    if (close) ctx.closePath();
+  }
+
+  // =====================================================================
+  //  脚の関節レイアウト（鹿の構造に忠実）
+  //  facing right (+x = 前方) のローカル座標で計算する。
+  //  pivot(肩/股) と hoof(蹄) を与え、中間関節を「正しい曲がり向き」で配置。
+  //  屈むほど（鉛直落差が縮むほど）膝を張り出させて潰れを表現＝接地は常にhoofY。
+  //  profile: [{t, dx}] t=pivot→hoofの比率, dx=前後オフセット係数(前+/後-)
+  // =====================================================================
+  function buildLeg(pivot, hoof, profile, w, compBoost) {
+    const drop = Math.max(1, hoof.y - pivot.y);
+    const naturalDrop = profile.naturalDrop;       // 立位での標準落差
+    // 落差が標準より縮む＝屈伸 → 関節の張り出しを増やす
+    const comp = clamp((naturalDrop - drop) / naturalDrop, -0.3, 0.9);
+    const bow = (1 + comp * 1.6) * (compBoost || 1);
+    const pts = [ { x: pivot.x, y: pivot.y } ];
+    for (const j of profile.joints) {
+      const x = lerp(pivot.x, hoof.x, j.t) + j.dx * w * bow;
+      const y = lerp(pivot.y, hoof.y, j.t);
+      pts.push({ x, y, name: j.name });
+    }
+    pts.push({ x: hoof.x, y: hoof.y, name: 'hoof' });
+    return pts;
+  }
+  // 前脚：肘(やや後)→手根=前膝(やや前)→球節。全体ほぼ直立。
+  const FRONT_PROFILE = {
+    naturalDrop: 1,
+    joints: [
+      { t: 0.30, dx: -0.018, name: 'elbow' },   // 肘：後ろに曲がる
+      { t: 0.60, dx:  0.022, name: 'carpus' },  // 前膝：前に出る
+      { t: 0.85, dx: -0.004, name: 'fetlock' }, // 球節
+    ],
+  };
+  // 後脚：膝=スティフル(前)→飛節=ホック(後・逆関節)→球節(前)。鹿特有のZ字。
+  const HIND_PROFILE = {
+    naturalDrop: 1,
+    joints: [
+      { t: 0.30, dx:  0.052, name: 'stifle' },  // 膝：前に大きく
+      { t: 0.62, dx: -0.060, name: 'hock' },    // 飛節：後ろへ（逆関節に見える点）
+      { t: 0.86, dx:  0.020, name: 'fetlock' }, // 球節：再び前
+    ],
+  };
+
+  // 蹄を描く
+  function drawHoof(x, y, w, dir, col) {
+    ctx.save();
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(x - w*0.022, y - w*0.018);
+    ctx.lineTo(x + w*0.028*dir, y - w*0.020);
+    ctx.lineTo(x + w*0.030*dir, y + 1);
+    ctx.lineTo(x - w*0.022, y + 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // =====================================================================
+  //  メイン描画
+
+  // ===== 生命の花：足元に咲き、やがて色あせ枯れる（生と死の二面性）=====
+  const _blooms = [];
+  let _bloomAcc = 0, _lastT = null;
+  function _updateBlooms(e, t) {
+    const dt = (_lastT == null) ? 0 : Math.max(0, Math.min(0.05, t - _lastT));
+    _lastT = t;
+    const cx = e.x + e.w / 2, gy = e.y + e.h;
+    const flashing = e.dmgFlash && e.dmgFlash > 0;
+    _bloomAcc += dt;
+    const interval = 0.14;
+    while (_bloomAcc >= interval) {
+      _bloomAcc -= interval;
+      if (flashing) continue;
+      const spread = e.w * 0.62;
+      _blooms.push({
+        x: cx + (Math.random() * 2 - 1) * spread,
+        y: gy + (Math.random() * 2 - 1) * 6,
+        hue: 280 + Math.random() * 120,
+        size: e.w * (0.017 + Math.random() * 0.02),
+        petals: 5 + (Math.random() * 2 | 0),
+        rot: Math.random() * Math.PI,
+        age: 0, grow: 0.5, hold: 1.1 + Math.random() * 1.4, wither: 1.4,
+      });
+      if (_blooms.length > 70) _blooms.shift();
+    }
+    for (let i = _blooms.length - 1; i >= 0; i--) {
+      const b = _blooms[i]; b.age += dt;
+      if (b.age > b.grow + b.hold + b.wither) _blooms.splice(i, 1);
+    }
+  }
+  function _drawBlooms() {
+    for (const b of _blooms) {
+      let life, droop, fade;
+      if (b.age < b.grow) { life = easeOut(b.age / b.grow); droop = 0; fade = 1; }
+      else if (b.age < b.grow + b.hold) { life = 1; droop = 0; fade = 1; }
+      else { const k = (b.age - b.grow - b.hold) / b.wither; life = 1; droop = easeIn(k); fade = 1 - k; }
+      const sz = b.size * life;
+      const y = b.y + droop * b.size * 2;
+      ctx.save();
+      ctx.translate(b.x, y);
+      ctx.rotate(b.rot + droop * 0.6);
+      ctx.globalAlpha = fade;
+      ctx.strokeStyle = `hsla(115,40%,${30 - droop * 10}%,${fade})`;
+      ctx.lineWidth = Math.max(1, b.size * 0.25);
+      ctx.beginPath(); ctx.moveTo(0, b.size * 2 * life); ctx.lineTo(0, 0); ctx.stroke();
+      const wcol = droop > 0 ? `hsl(${b.hue - 20}, 20%, ${50 - droop * 25}%)` : `hsl(${b.hue}, 60%, 68%)`;
+      for (let p = 0; p < b.petals; p++) {
+        const a = (p / b.petals) * Math.PI * 2;
+        ctx.fillStyle = wcol;
+        ctx.beginPath();
+        ctx.ellipse(Math.cos(a) * sz * 0.7, Math.sin(a) * sz * 0.7, sz * 0.55, sz * 0.3, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = droop > 0 ? 'rgba(120,90,60,0.4)' : `hsla(${b.hue + 30},80%,75%,0.9)`;
+      ctx.beginPath(); ctx.arc(0, 0, sz * 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+  // ===== 漂う光の胞子（ボス周囲の森の気配）=====
+  function _drawMotes(e, t) {
+    if (e.dmgFlash && e.dmgFlash > 0) return;
+    const cx = e.x + e.w / 2, baseY = e.y + e.h;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 12; i++) {
+      const ph = i * 2.399;
+      const rise = ((t * 0.05 + i * 0.137) % 1);
+      const y = baseY - rise * e.h * 0.85;
+      const x = cx + Math.sin(t * 0.6 + ph) * e.w * (0.30 + (i % 3) * 0.12);
+      const tw = (0.35 + 0.65 * (Math.sin(t * 2 + ph) * 0.5 + 0.5)) * (1 - rise * 0.7);
+      const hue = 95 + (i * 29) % 110;
+      ctx.fillStyle = `hsla(${hue},72%,78%,${0.45 * tw})`;
+      ctx.beginPath(); ctx.arc(x, y, e.w * 0.007 * tw + 0.4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawBoss5(e, t) {
+    _updateBlooms(e, t);
+    _drawBlooms();
+    const w = e.w, h = e.h, dir = e.dir;
+    const cx = e.x + w/2, baseY = e.y + h;
+    const phase = e.phase || 'idle';
+    const atk = e.attackType || 'gore';
+    const windupDur = e.windupDuration || 1.5;
+    const attackDur = e.attackDuration || 0.55;
+    const flashing = e.dmgFlash && e.dmgFlash > 0;
+
+    let progress = 0;
+    if (phase === 'windup') progress = 1 - (e.phaseTimer / windupDur);
+    else if (phase === 'attack') progress = 1 - (e.phaseTimer / attackDur);
+    else if (phase === 'recover') progress = 1 - (e.phaseTimer / (e.recoverDuration || 0.7));
+    progress = clamp(progress, 0, 1);
+
+    const breath = Math.sin(t * 1.6 + (e.baseX || 0));
+    const sway = Math.sin(t * 0.9 + (e.baseX || 0)) * 0.5;
+
+    // ===== モーション変数（攻撃ごとに設定） =====
+    let crouch = 0;      // 全身の沈み込み(0..1)
+    let bodyLift = 0;    // 跳躍での浮き上がり(px, 上方向)
+    let bodyShiftF = 0;  // 前後移動(前+, 局所px)
+    let headPitch = 0;   // 頭の俯仰(+で下げる, -で上げる)
+    let neckExtend = 0;  // 首の前伸ばし
+    let antlerSweep = 0; // 角の薙ぎ払い回転
+    let jaw = 0;         // 口の開き(0..1)
+    let rearLoad = 0;    // 後脚への重心移動(尻が沈む)
+    let frontReach = 0;  // 前脚の前伸ばし(突進/着地)
+    let tremble = 0;     // 震え
+    let eyeGlow = 0;     // 眼の発光・赤み(0=神秘青, 1=禍々し赤)
+    let auraPulse = 0.3 + 0.2 * (breath*0.5+0.5);
+
+    // 攻撃別タイムライン
+    if (phase === 'idle') {
+      crouch = 0.02 + breath*0.015;
+      headPitch = -0.04 + breath*0.03;
+    } else if (phase === 'recover') {
+      const rp = progress;
+      crouch = (1-rp) * 0.18;
+      headPitch = (1-rp) * 0.08;
+    } else if (atk === 'gore') {
+      eyeGlow = 0.55;
+      if (phase === 'windup') {
+        const p = progress;
+        crouch = easeOut(Math.min(1,p/0.7)) * 0.42;
+        rearLoad = easeOut(Math.min(1,p/0.7)) * 0.9;   // 尻を落として溜め
+        headPitch = easeOut(p) * 0.55;                 // 頭を下げ角を前へ
+        neckExtend = -p*0.15;
+        tremble = p>0.65 ? Math.sin(t*42)*w*0.006*(p-0.65)/0.35 : 0;
+        jaw = p*0.2;
+      } else { // attack: 前方へ踏み込み、角を下→横へ薙ぐ
+        const p = easeOut(progress);
+        bodyShiftF = p * w * 0.34;
+        crouch = 0.42 * (1-p) + 0.06;
+        rearLoad = 0.9 * (1-p);
+        frontReach = p * 0.6;
+        headPitch = lerp(0.55, 0.15, p);
+        antlerSweep = Math.sin(p*Math.PI) * 0.5;        // 薙ぎ払い
+        jaw = 0.4;
+      }
+    } else if (atk === 'leap') {
+      eyeGlow = 0.35;
+      if (phase === 'windup') {
+        const p = progress;
+        crouch = easeOut(p) * 0.85;                     // 深く屈伸
+        headPitch = easeOut(p) * 0.3;
+        rearLoad = 0.3 * p;
+        tremble = p>0.6 ? Math.sin(t*46)*w*0.006*(p-0.6)/0.4 : 0;
+      } else { // attack: 前半=跳躍上昇 / 後半=落下着地
+        const p = progress;
+        if (p < 0.45) {            // 打ち上げ
+          const q = p/0.45;
+          bodyLift = easeOut(q) * h * 1.25;
+          crouch = lerp(0.85, -0.15, easeOut(q));       // 脚を蹴り伸ばす
+          bodyShiftF = q * w * 0.20;
+        } else if (p < 0.62) {     // 滞空（頂点付近で脚をたたむ）
+          const q = (p-0.45)/0.17;
+          bodyLift = h * 1.25;
+          crouch = lerp(-0.15, 0.25, q);
+          bodyShiftF = lerp(w*0.20, w*0.30, q);
+        } else {                   // 落下→着地
+          const q = (p-0.62)/0.38;
+          bodyLift = (1 - easeIn(q)) * h * 1.25;
+          crouch = lerp(0.25, 0.55, easeIn(q));
+          bodyShiftF = w * 0.30;
+          frontReach = q*0.5;
+          if (q > 0.92) tremble = Math.sin(t*60)*w*0.02*(q-0.92)/0.08;
+        }
+      }
+    } else if (atk === 'roar') {
+      if (phase === 'windup') {
+        const p = progress;
+        headPitch = -easeOut(p) * 0.7;                  // のけぞる
+        neckExtend = -p*0.1;
+        jaw = easeOut(p) * 0.5;
+        eyeGlow = p;                                    // 眼が赤熱
+        auraPulse = 0.3 + p*0.5;
+        tremble = p>0.7 ? Math.sin(t*30)*w*0.004 : 0;
+      } else { // attack: 前へ吼える
+        const p = progress;
+        headPitch = lerp(-0.7, 0.25, easeOut(Math.min(1,p/0.5)));
+        neckExtend = easeOut(Math.min(1,p/0.5))*0.35;
+        jaw = 1;
+        eyeGlow = 1;
+        auraPulse = 0.9;
+        crouch = 0.05;
+      }
+    } else if (atk === 'roots') {
+      eyeGlow = 0.7;
+      if (phase === 'windup') {
+        const p = progress;
+        headPitch = easeOut(p) * 0.5;                   // 角を前下方へ
+        frontReach = p*0.35;                            // 前脚を開いて踏ん張り
+        crouch = p*0.2;
+        auraPulse = 0.3 + p*0.4;
+        jaw = p*0.25;
+      } else {
+        const p = progress;
+        headPitch = 0.5;
+        frontReach = 0.35;
+        crouch = 0.2;
+        auraPulse = 0.8;
+        jaw = 0.3 + Math.sin(p*Math.PI)*0.2;
+      }
+    }
+
+    // ===== 接地・基準座標（ローカル: x前+ で計算後 dir で反転）=====
+    ctx.save();
+    ctx.translate(cx, 0);
+    if (dir < 0) ctx.scale(-1, 1);
+    const D = 1; // 反転後は常に右向きで計算
+    const groundY = baseY;
+    const crouchPx = crouch * h * 0.16;
+    const liftPx = bodyLift;
+
+    const legLen   = h * 0.40;
+    const shoulderY = groundY - legLen + crouchPx - liftPx + tremble*0.4;
+    const hipY      = groundY - legLen*1.02 + crouchPx*0.9 - liftPx;
+    const shoulderX = w * (0.20 + frontReach*0.08);
+    const hipX      = -w * 0.26;
+    const bodyMidY  = (shoulderY + hipY)/2 - h*0.10;
+    const fShift = bodyShiftF;
+
+    // 蹄の接地位置（跳躍中は浮く）
+    const airborne = liftPx > h*0.04;
+    const groundContactY = airborne ? groundY - liftPx*0.05 : groundY; // ほんの少しだけ脚を残す表現
+    const fHoofY = airborne ? shoulderY + legLen*0.92 : groundY;
+    const hHoofY = airborne ? hipY + legLen*0.92 : groundY;
+
+    // 4脚の蹄X（前後・奥手前）
+    const frontNearX = shoulderX + fShift + w*0.04 + frontReach*w*0.10;
+    const frontFarX  = shoulderX + fShift - w*0.05 + frontReach*w*0.06;
+    const hindNearX  = hipX + fShift + w*0.02;
+    const hindFarX   = hipX + fShift - w*0.07;
+
+    // ===== 影 =====
+    if (!airborne || liftPx < h*0.3) {
+      const shA = airborne ? 0.18*(1 - liftPx/(h*1.25)) : 0.34;
+      ctx.fillStyle = `rgba(0,0,0,${shA})`;
+      ctx.beginPath();
+      ctx.ellipse(fShift, groundY+2, w*0.5, Math.max(4, w*0.07), 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // ===== 神秘のオーラ（背後の淡い光と禍々しい黒い揺らめき）=====
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const iriHue = (t*36 + (e.baseX||0)*40) % 360;
+    const auraCol = eyeGlow > 0.5
+      ? `rgba(180,60,90,${0.10*auraPulse})`
+      : `hsla(${iriHue}, 62%, 66%, ${0.11*auraPulse})`;
+    const ag = ctx.createRadialGradient(fShift, bodyMidY, w*0.1, fShift, bodyMidY, w*0.75);
+    ag.addColorStop(0, auraCol);
+    ag.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = ag;
+    ctx.fillRect(fShift - w, bodyMidY - h*0.6, w*2, h*1.2);
+    ctx.restore();
+
+    // ===== 体色 =====
+    const FUR_BASE = flashing ? '#ff6a5a' : '#3a4438';
+    const FUR_DARK = flashing ? '#d8483b' : '#27302a';
+    const FUR_LIGHT= flashing ? '#ff8d7e' : '#525e4c';
+    const HORN     = flashing ? '#ffd9b0' : '#cdbf9a';
+    const HORN_DK  = flashing ? '#caa97e' : '#9c8d66';
+
+    // ============ 奥側の脚（先に描く・暗め）============
+    function drawLegPair(nearX, hoofY, profile, isHind, far) {
+      const x = nearX;
+      const pivot = isHind ? { x: hipX + fShift, y: hipY } : { x: shoulderX + fShift, y: shoulderY };
+      const hoof = { x: x, y: hoofY };
+      const legPts = buildLeg(pivot, hoof, profile, w, 1);
+      const baseTh = w * (isHind ? 0.052 : 0.046) * (far?0.9:1);
+      const tipTh  = w * 0.016 * (far?0.9:1);
+      const col = far ? FUR_DARK : FUR_BASE;
+      drawTaperedLimb(legPts, baseTh, tipTh, col, far?null:FUR_DARK, w*0.006);
+      drawHoof(hoof.x, hoof.y, w, D, far ? '#1a1714' : '#0f0d0b');
+      return legPts;
+    }
+    // 奥脚
+    const hindFarPts  = drawLegPair(hindFarX,  hHoofY, HIND_PROFILE,  true,  true);
+    const frontFarPts = drawLegPair(frontFarX, fHoofY, FRONT_PROFILE, false, true);
+
+    // ============ 胴体シルエット ============
+    const bodyPts = [];
+    const topBack = bodyMidY - h*0.16;
+    // 輪郭点（右=前/胸、左=尻）。背中→尻→腹→胸 の順で時計回り。
+    bodyPts.push({ x: shoulderX + fShift + w*0.16, y: shoulderY - legLen*0.02 - h*0.20 }); // 肩(キ甲)上
+    bodyPts.push({ x: fShift + w*0.02,             y: topBack - h*0.02 + sway });          // 背中中央
+    bodyPts.push({ x: hipX + fShift + w*0.02,      y: hipY - h*0.22 });                    // 腰
+    bodyPts.push({ x: hipX + fShift - w*0.10,      y: hipY - h*0.16 });                    // 尻上
+    bodyPts.push({ x: hipX + fShift - w*0.12,      y: hipY + legLen*0.06 });               // 尻下(後腿付け根)
+    bodyPts.push({ x: hipX + fShift + w*0.04,      y: bodyMidY + h*0.18 });                // 腹後
+    bodyPts.push({ x: fShift,                      y: bodyMidY + h*0.22 + breath*2 });      // 腹中央
+    bodyPts.push({ x: shoulderX + fShift + w*0.02, y: bodyMidY + h*0.16 });                // 腹前(胸下)
+    bodyPts.push({ x: shoulderX + fShift + w*0.18, y: shoulderY - h*0.02 });               // 胸前
+    smoothBlob(bodyPts, true);
+    // 胴グラデ
+    const bg = ctx.createLinearGradient(0, topBack - h*0.1, 0, bodyMidY + h*0.22);
+    bg.addColorStop(0, FUR_LIGHT);
+    bg.addColorStop(0.55, FUR_BASE);
+    bg.addColorStop(1, FUR_DARK);
+    ctx.fillStyle = bg;
+    ctx.fill();
+    // 胴の陰影clip
+    ctx.save(); smoothBlob(bodyPts, true); ctx.clip();
+    // 腹側の影
+    const sh = ctx.createLinearGradient(0, bodyMidY - h*0.05, 0, bodyMidY + h*0.24);
+    sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = sh; ctx.fillRect(-w, bodyMidY - h*0.1, w*2, h*0.5);
+    // ===== 背の苔・草（clip内）=====
+    if (!flashing) {
+      // 苔の濃淡パッチ
+      for (let i = 0; i < 14; i++) {
+        const px = lerp(hipX+fShift-w*0.08, shoulderX+fShift+w*0.12, i/13);
+        const py = lerp(topBack, bodyMidY - h*0.1, ((i*5)%7)/7) - h*0.06;
+        const r = w*(0.03 + ((i*3)%5)/5*0.04);
+        ctx.fillStyle = `hsla(${100+((i*13)%30)}, ${38}%, ${26+((i*7)%12)}%, 0.7)`;
+        ctx.beginPath(); ctx.ellipse(px, py, r, r*0.6, 0, 0, Math.PI*2); ctx.fill();
+      }
+      // 背中から生える草の房
+      for (let i = 0; i < 9; i++) {
+        const gx = lerp(hipX+fShift, shoulderX+fShift+w*0.10, i/8);
+        const baseGY = lerp(topBack+h*0.01, shoulderY - h*0.18, Math.sin(i/8*Math.PI));
+        const blades = 3 + (i%3);
+        const swayG = Math.sin(t*1.4 + i*0.8)*w*0.012;
+        for (let b = 0; b < blades; b++) {
+          const ang = (b - (blades-1)/2) * 0.22;
+          const len = w*(0.05 + ((i+b)%4)/4*0.05);
+          ctx.strokeStyle = `hsl(${108+((i+b)%20)}, 45%, ${34+((i*b)%14)}%)`;
+          ctx.lineWidth = w*0.012; ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(gx, baseGY);
+          ctx.quadraticCurveTo(gx + Math.sin(ang)*len*0.6 + swayG, baseGY - len*0.6,
+                               gx + Math.sin(ang)*len + swayG*1.6, baseGY - len);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore(); // clip解除
+    // 胴の輪郭
+    if (!flashing) { smoothBlob(bodyPts, true); ctx.strokeStyle = FUR_DARK; ctx.lineWidth = w*0.008; ctx.stroke(); }
+
+    // 尻尾（長く流れる・先端に苔と若葉の房）
+    if (!flashing) {
+      const txr = hipX + fShift - w*0.11, tyr = hipY - h*0.14;
+      const sw1 = Math.sin(t*1.1 + (e.baseX||0));
+      const sw2 = Math.sin(t*1.5 + 1.2);
+      const len = h * 0.58; // 以前の約5倍
+      const tailPts = [
+        { x: txr,                          y: tyr },
+        { x: txr - w*0.09,                 y: tyr + len*0.20 + sw1*w*0.015 },
+        { x: txr - w*0.15 + sw1*w*0.03,    y: tyr + len*0.45 },
+        { x: txr - w*0.15 + sw2*w*0.05,    y: tyr + len*0.70 },
+        { x: txr - w*0.09 + sw1*w*0.07,    y: tyr + len*0.92 },
+      ];
+      drawTaperedLimb(tailPts, w*0.036, w*0.009, FUR_BASE, FUR_DARK, w*0.005);
+      // 尾筋の濃淡
+      ctx.strokeStyle = FUR_DARK; ctx.lineWidth = w*0.006; ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(tailPts[0].x, tailPts[0].y);
+      for (let i=1;i<tailPts.length;i++) ctx.lineTo(tailPts[i].x, tailPts[i].y);
+      ctx.stroke();
+      // 先端の房（苔・若葉）
+      const tip = tailPts[tailPts.length-1];
+      for (let b=0;b<5;b++){
+        const ang = Math.PI*0.5 + (b-2)*0.30 + sw1*0.15;
+        const bl = w*(0.05 + (b%2)*0.03);
+        ctx.strokeStyle = `hsl(${108+b*4}, 44%, ${34+(b%3)*6}%)`;
+        ctx.lineWidth = w*0.012; ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.quadraticCurveTo(tip.x+Math.cos(ang)*bl*0.6, tip.y+Math.sin(ang)*bl*0.6,
+                             tip.x+Math.cos(ang)*bl, tip.y+Math.sin(ang)*bl);
+        ctx.stroke();
+      }
+      // 房先の小さな苔玉
+      ctx.fillStyle = 'hsla(112,42%,38%,0.85)';
+      ctx.beginPath(); ctx.ellipse(tip.x, tip.y+w*0.01, w*0.02, w*0.016, 0, 0, Math.PI*2); ctx.fill();
+    }
+
+    // ============ 首・頭（前方）============
+    // 首の付け根（胸上）から頭中心へ
+    const neckBaseX = shoulderX + fShift + w*0.15;
+    const neckBaseY = shoulderY - h*0.16;
+    // 頭の基準位置：俯仰(headPitch)と首伸ばし(neckExtend)で動かす
+    const reach = (0.34 + neckExtend) * w;
+    const pitch = headPitch; // +で下げる
+    const headX = neckBaseX + Math.cos(pitch*0.9)*reach;
+    const headY = neckBaseY + Math.sin(pitch*1.1)*reach*0.7 - h*0.04;
+
+    // 首（テーパー）
+    const neckPts = [
+      { x: neckBaseX, y: neckBaseY + h*0.02 },
+      { x: lerp(neckBaseX, headX, 0.5), y: lerp(neckBaseY, headY, 0.5) - h*0.02 + Math.sin(pitch)*h*0.02 },
+      { x: headX - Math.cos(pitch)*w*0.06, y: headY - Math.sin(pitch)*w*0.04 },
+    ];
+    drawTaperedLimb(neckPts, w*0.085, w*0.055, FUR_BASE, flashing?null:FUR_DARK, w*0.007);
+    // 首のたてがみ苔
+    if (!flashing) {
+      for (let i=0;i<6;i++){
+        const tt=i/5;
+        const mx=lerp(neckBaseX,headX,tt), my=lerp(neckBaseY,headY,tt)-w*0.05;
+        ctx.fillStyle=`hsla(${105+i*4},42%,30%,0.8)`;
+        ctx.beginPath(); ctx.ellipse(mx,my,w*0.03,w*0.018,pitch,0,Math.PI*2); ctx.fill();
+      }
+    }
+
+    // 頭（細長い鹿面）
+    ctx.save();
+    ctx.translate(headX, headY);
+    ctx.rotate(pitch * 0.8);            // 顔の俯仰
+    const faceLen = w*0.22, faceH = w*0.13;
+    // 頭蓋〜マズル
+    const headPts = [
+      { x: -faceH*0.5, y: -faceH*0.55 },
+      { x:  faceLen*0.55, y: -faceH*0.30 },
+      { x:  faceLen, y: -faceH*0.02 + jaw* w*0.0 },
+      { x:  faceLen, y:  faceH*0.16 },
+      { x:  faceLen*0.5, y: faceH*0.34 + jaw*w*0.05 },
+      { x: -faceH*0.3, y: faceH*0.5 },
+      { x: -faceH*0.6, y: faceH*0.0 },
+    ];
+    smoothBlob(headPts, true);
+    const hg = ctx.createLinearGradient(0,-faceH*0.6,0,faceH*0.5);
+    hg.addColorStop(0, FUR_LIGHT); hg.addColorStop(1, FUR_DARK);
+    ctx.fillStyle = hg; ctx.fill();
+    if (!flashing){ smoothBlob(headPts,true); ctx.strokeStyle=FUR_DARK; ctx.lineWidth=w*0.006; ctx.stroke(); }
+
+    // 下顎（開口）
+    if (jaw > 0.01) {
+      ctx.fillStyle = '#1a0e0e';
+      ctx.beginPath();
+      ctx.moveTo(faceLen*0.5, faceH*0.30);
+      ctx.lineTo(faceLen*0.98, faceH*0.14);
+      ctx.lineTo(faceLen*0.92, faceH*0.16 + jaw*w*0.10);
+      ctx.lineTo(faceLen*0.45, faceH*0.34 + jaw*w*0.08);
+      ctx.closePath(); ctx.fill();
+    }
+    // 鼻
+    ctx.fillStyle = '#100c0a';
+    ctx.beginPath(); ctx.ellipse(faceLen*0.94, faceH*0.04, w*0.012, w*0.016, 0,0,Math.PI*2); ctx.fill();
+    // 耳
+    ctx.fillStyle = FUR_DARK;
+    ctx.beginPath();
+    ctx.moveTo(-faceH*0.2, -faceH*0.5);
+    ctx.quadraticCurveTo(-faceH*0.9, -faceH*1.3, -faceH*1.1, -faceH*0.5);
+    ctx.quadraticCurveTo(-faceH*0.7, -faceH*0.3, -faceH*0.2, -faceH*0.5);
+    ctx.fill();
+
+    // 眼（神秘青⇔禍々し赤に発光）
+    const eyeR = w*0.022;
+    const eX = faceLen*0.40, eY = -faceH*0.04;
+    const gcol = eyeGlow > 0.5
+      ? `rgba(255,${clamp(120-eyeGlow*100,0,255)|0},${clamp(120-eyeGlow*90,0,255)|0},`
+      : `rgba(${clamp(120-(0.5-eyeGlow)*120,0,255)|0},255,210,`;
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    const eg = ctx.createRadialGradient(eX,eY,0,eX,eY,eyeR*3.4);
+    eg.addColorStop(0, gcol + (0.9)+')');
+    eg.addColorStop(1, gcol + '0)');
+    ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(eX,eY,eyeR*3.4,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = eyeGlow>0.5 ? '#ff5a5a' : '#bdffe6';
+    ctx.beginPath(); ctx.ellipse(eX,eY,eyeR,eyeR*1.25,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#0a0606';
+    ctx.beginPath(); ctx.ellipse(eX,eY,eyeR*0.4,eyeR*0.9,0,0,Math.PI*2); ctx.fill(); // 縦長瞳孔
+
+    // ===== 角（枝角・苔と若葉付き）=====
+    // 頭頂(おでこ後方)から左右へ。dir反転済みなので「手前/奥」で2本。
+    function drawAntler(rootX, rootY, scale, far) {
+      const col = far ? HORN_DK : HORN;
+      ctx.save();
+      ctx.translate(rootX, rootY);
+      ctx.scale(scale, scale);
+      function beam(x, y, ang, len, depth) {
+        const rad = ang * Math.PI/180 + sway*0.04;
+        const ex = x + Math.cos(rad)*len, ey = y + Math.sin(rad)*len;
+        ctx.strokeStyle = col;
+        ctx.lineWidth = Math.max(1.5, (w*0.03)*(0.5+depth*0.25));
+        ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(x,y);
+        ctx.quadraticCurveTo(x+Math.cos(rad)*len*0.5 - Math.sin(rad)*len*0.12,
+                             y+Math.sin(rad)*len*0.5 + Math.cos(rad)*len*0.12, ex, ey);
+        ctx.stroke();
+        // 若葉/苔
+        if (!flashing && depth <= 2) {
+          ctx.fillStyle = far ? 'hsla(110,30%,30%,0.7)' : 'hsla(115,45%,42%,0.85)';
+          ctx.beginPath(); ctx.ellipse(ex, ey, w*0.014, w*0.008, rad, 0, Math.PI*2); ctx.fill();
+        }
+        // 角先に灯る生命の芽（手前角のみ・神秘の発光）
+        if (!flashing && !far && depth >= 1) {
+          ctx.save(); ctx.globalCompositeOperation = 'lighter';
+          const tg = ctx.createRadialGradient(ex, ey, 0, ex, ey, w*0.03);
+          const bud = eyeGlow > 0.5 ? 'rgba(255,150,150,' : 'rgba(190,255,225,';
+          tg.addColorStop(0, bud + '0.85)'); tg.addColorStop(1, bud + '0)');
+          ctx.fillStyle = tg; ctx.beginPath(); ctx.arc(ex, ey, w*0.03, 0, Math.PI*2); ctx.fill();
+          ctx.restore();
+        }
+        return { ex, ey, rad };
+      }
+      // 主枝
+      let x=0,y=0;
+      const mainLen = w*0.16;
+      const tip = beam(x,y,-72, mainLen, 0);
+      // 枝分かれ（角の又）
+      const forks = [-42, -96, -120];
+      let bx=lerp(0,tip.ex,0.5), by=lerp(0,tip.ey,0.5);
+      for (let fi=0; fi<forks.length; fi++){
+        const t2 = beam(bx,by, forks[fi], mainLen*(0.55+fi*0.05), 1);
+        if (fi===1){ beam(t2.ex,t2.ey, forks[fi]-26, mainLen*0.4, 2); }
+      }
+      // 先端側の枝
+      beam(tip.ex, tip.ey, -55, mainLen*0.5, 1);
+      beam(tip.ex, tip.ey, -96, mainLen*0.45, 1);
+      ctx.restore();
+    }
+    const antlerRootX = -faceH*0.05, antlerRootY = -faceH*0.55;
+    drawAntler(antlerRootX - w*0.01, antlerRootY, 1.0, true);   // 奥角
+    drawAntler(antlerRootX + w*0.02, antlerRootY, 1.08, false); // 手前角
+
+    ctx.restore(); // 頭ローカル解除
+
+    // ============ 手前の脚（最後に描く・明るい）============
+    const hindNearPts  = drawLegPair(hindNearX,  hHoofY, HIND_PROFILE,  true,  false);
+    const frontNearPts = drawLegPair(frontNearX, fHoofY, FRONT_PROFILE, false, false);
+
+    // ===== 攻撃エフェクト =====
+    drawAttackFx(e, t, {
+      atk, phase, progress, w, h, groundY, fShift, headX, headY, pitch,
+      shoulderX, hipX, eyeGlow, antlerSweep, liftPx, frontNearX, hindNearX
+    });
+
+    ctx.restore(); // dir反転 / translate 解除
+    _drawMotes(e, t);
+  }
+
+  function drawAttackFx(e, t, S) {
+    const { atk, phase, progress, w, h, groundY, fShift } = S;
+    if (atk === 'gore' && phase === 'attack') {
+      // 角の薙ぎ払い軌跡（前方の弧）
+      const p = progress;
+      ctx.save(); ctx.globalCompositeOperation='lighter';
+      const arcX = S.headX, arcY = S.headY;
+      ctx.strokeStyle = `rgba(150,255,210,${0.5*Math.sin(p*Math.PI)})`;
+      ctx.lineWidth = w*0.04; ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.arc(arcX - w*0.1, arcY, w*0.32, -1.2 + p*1.4, -0.2 + p*1.4);
+      ctx.stroke();
+      ctx.restore();
+      // 突進の砂煙
+      for (let i=0;i<8;i++){
+        const q=(p + i*0.12)%1;
+        const dx = S.hipX + fShift - q*w*0.4;
+        ctx.fillStyle = `rgba(120,110,90,${0.25*(1-q)})`;
+        ctx.beginPath(); ctx.arc(dx, groundY - q*h*0.12, w*0.04*(0.5+q), 0, Math.PI*2); ctx.fill();
+      }
+    }
+    if (atk === 'leap' && phase === 'attack') {
+      const p = progress;
+      if (p > 0.92) { // 着地衝撃波＋草苔の飛散
+        const k = (p-0.92)/0.08;
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        ctx.strokeStyle = `rgba(120,255,180,${0.6*(1-k)})`;
+        ctx.lineWidth = w*0.03;
+        ctx.beginPath(); ctx.ellipse(fShift+w*0.04, groundY, w*(0.3+k*0.9), h*0.05*(0.6+k), 0,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+        for (let i=0;i<14;i++){
+          const ang = (i/14)*Math.PI - Math.PI;
+          const sp = k*w*0.7;
+          const px = fShift+w*0.04 + Math.cos(ang)*sp;
+          const py = groundY - Math.abs(Math.sin(ang))*sp*0.5*(1-k);
+          ctx.fillStyle = `hsla(${108+i%20},50%,${40}%,${0.8*(1-k)})`;
+          ctx.beginPath(); ctx.arc(px,py,w*0.012,0,Math.PI*2); ctx.fill();
+        }
+      }
+    }
+    if (atk === 'roar' && phase === 'attack') {
+      const p = progress;
+      if (p > 0.45) {
+        const k=(p-0.45)/0.55;
+        // 前方扇状の胞子雲
+        ctx.save();
+        const mx = S.headX + Math.cos(S.pitch)*w*0.16;
+        const my = S.headY + Math.sin(S.pitch)*w*0.16;
+        for (let i=0;i<22;i++){
+          const a = -0.5 + (i/21)*1.0;
+          const dist = k*w*(0.4 + (i%5)/5*0.5);
+          const px = mx + Math.cos(a)*dist;
+          const py = my + Math.sin(a)*dist*0.7 + Math.sin(t*3+i)*4;
+          const r = w*(0.03+ (i%4)/4*0.04)*(0.5+k);
+          ctx.fillStyle = `hsla(${300+(i%30)}, 45%, 50%, ${0.18*(1-k*0.5)})`;
+          ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+    if (atk === 'roots' && phase === 'attack') {
+      const p = progress;
+      // 前方の地面に予告紋様→根の柱が順に突き上がる
+      const spots = [0.35, 0.6, 0.9, 1.2];
+      for (let i=0;i<spots.length;i++){
+        const sx = fShift + w*spots[i];
+        const local = clamp((p - i*0.18)/0.5, 0, 1);
+        // 予告リング
+        if (local < 0.4) {
+          const k = local/0.4;
+          ctx.strokeStyle = `rgba(150,255,210,${0.6*(1-k)})`;
+          ctx.lineWidth = w*0.01;
+          ctx.beginPath(); ctx.ellipse(sx, groundY, w*0.08*(1.3-k), h*0.02, 0,0,Math.PI*2); ctx.stroke();
+        } else {
+          // 突き上がる茨
+          const k = (local-0.4)/0.6;
+          const ht = easeOut(k)*h*0.45;
+          const rootPts = [
+            {x:sx, y:groundY},
+            {x:sx + Math.sin(i)*w*0.03, y:groundY-ht*0.5},
+            {x:sx + Math.sin(i*2)*w*0.04, y:groundY-ht},
+          ];
+          drawTaperedLimb(rootPts, w*0.03, w*0.004, '#3a2c1c', '#0f0a06', w*0.005);
+          // 棘
+          ctx.fillStyle='#241a10';
+          for (let s=0;s<3;s++){
+            const ty=groundY-ht*(0.3+s*0.25);
+            const tx=sx+ (s%2?1:-1)*w*0.02;
+            ctx.beginPath(); ctx.moveTo(sx,ty); ctx.lineTo(tx, ty-w*0.02); ctx.lineTo(sx,ty-w*0.01); ctx.fill();
+          }
+        }
+      }
+    }
+  }
+
+  registerBossDrawer(5, drawBoss5);
+})();
+
 </script>
+
 <!-- ===== 07-course-draw.js ===== -->
 <script>
 // ==================== 07-course-draw.js ====================
@@ -10530,7 +12455,9 @@ function drawTorch(g){
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 08-render.js ===== -->
 <script>
 // ==================== 08-render.js ====================
@@ -11788,7 +13715,9 @@ if (typeof canvas !== 'undefined') {
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 09-profile-id.js ===== -->
 <script>
 // ==================== 09-profile-id.js ====================
@@ -12113,7 +14042,9 @@ document.getElementById('resetLocalBtn').addEventListener('click', () => {
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 10-lobby-world.js ===== -->
 <script>
 // ==================== 10-lobby-world.js ====================
@@ -13783,7 +15714,9 @@ window.addEventListener('resize', resizeLobbyCanvas);
 // ======================================================
 
 
+
 </script>
+
 <!-- ===== 11-quest-screen.js ===== -->
 <script>
 // ==================== 11-quest-screen.js ====================
@@ -14638,7 +16571,9 @@ if (!myProfile.name) {
 
 
 
+
 </script>
+
 <!-- ===== 13-webrtc-room.js ===== -->
 <script>
 // ==================== 13-webrtc-room.js ====================
@@ -15503,7 +17438,9 @@ function showRoomScreen() {
 window.showRoomScreen = showRoomScreen;
 
 
+
 </script>
+
 <!-- ===== 12-cloud-sync.js ===== -->
 <script>
 /* ===== 12-cloud-sync.js (REST API版) =====
@@ -16012,7 +17949,13 @@ console.log('[CloudSync] REST API版 初期化完了');
 setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 
+
 </script>
+
+
+
+
+
 
 <div id="roomInvitePopup" style="
   display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -16039,3 +17982,5 @@ setTimeout(() => window.dispatchEvent(new Event('cloudsync-ready')), 500);
 
 </body>
 </html>
+
+<!-- ===== ルーム招待ポップアップ ===== -->
